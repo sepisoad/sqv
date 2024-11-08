@@ -1,3 +1,0 @@
-[submodule "dep/Nuklear"]
-	path = dep/Nuklear
-	url = git@github.com:Immediate-Mode-UI/Nuklear.git
