@@ -1,0 +1,9 @@
+{
+  "files.associations": {
+    "nuklear.h": "c",
+    "stdint.h": "c",
+    "sdl_opengl.h": "c",
+    "nuklear_sdl_gl3.h": "c",
+    "stdio.h": "c"
+  }
+}
