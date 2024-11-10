@@ -4,6 +4,20 @@
     "stdint.h": "c",
     "sdl_opengl.h": "c",
     "nuklear_sdl_gl3.h": "c",
-    "stdio.h": "c"
-  }
+    "stdio.h": "c",
+    "glew.h": "c",
+    "nuklear_glfw_gl2.h": "c",
+    "gl.h": "c",
+    "string.h": "c",
+    "glx.h": "c",
+    "glfw3.h": "c",
+    "nuklear_glfw_gl3.h": "c",
+    "ios": "c",
+    "assert.h": "c",
+    "errors.h": "c",
+    "format": "c",
+    "sstream": "c",
+    "sdl.h": "c"
+  },
+  "C_Cpp.errorSquiggles": "disabled"
 }

@@ -1,28 +1,14 @@
-#ifndef SQV_APP_H
-#define SQV_APP_H
-
+#include <assert.h>
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_opengl.h>
 
-#define NK_INCLUDE_FIXED_TYPES
-#define NK_INCLUDE_STANDARD_IO
-#define NK_INCLUDE_STANDARD_VARARGS
-#define NK_INCLUDE_DEFAULT_ALLOCATOR
-#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
-#define NK_INCLUDE_FONT_BAKING
-#define NK_INCLUDE_DEFAULT_FONT
-
-#include "../dep/nuklear/nuklear.h"
-#include "../dep/nuklear/nuklear_sdl_gl3.h"
+#include "error.h"
 
 typedef struct app_t {
-  SDL_Window *window;
-  SDL_GLContext gl_ctx;
-  struct nk_context* nk_ctx;
-  struct nk_colorf bg;
-  uint32_t width;
-  uint32_t height;
+  SDL_Window* window;
+  SDL_GLContext gl_context;
+  GLuint shader_program;
 } app_t;
 
-#endif //SQV_APP_H
+sqv_error_t sqv_app_init(app_t* app);
+sqv_error_t sqv_app_clean(app_t* app);

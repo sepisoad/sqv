@@ -1,8 +1,9 @@
-CC = gcc-14
+CC = gcc
 IGNORE = .ignore
 BUILDDIR = $(IGNORE)/build
 BIN = $(BUILDDIR)/sqv
 CFLAGS = 
+# LIBS = -lglfw3 -lGL -lGLU -lGLEW -lrt -lm -ldl
 LIBS = -lSDL2 -lGL -lm -lGLU -lGLEW
 SRC_DIR = src
 OBJ_DIR = $(BUILDDIR)
@@ -15,6 +16,7 @@ ifeq ($(DEBUG), 1)
     CFLAGS += -g -O0 -DDEBUG
 else
     CFLAGS += -O2 -DNDEBUG
+		MESA_DEBUG = 1
 endif
 
 all: build
@@ -30,7 +32,6 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 
 build: builddir $(OBJ)
 	$(CC) $(OBJ) $(CFLAGS) -o $(BIN) $(LIBS)
-
 
 ### ===============================================
 ### DEBUG TARGETS
