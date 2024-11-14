@@ -7,14 +7,35 @@
 
 #define ENTRY_SCRIPT "./src/init.lua"
 
-int main(int argc, char **argv) {
+void set_lua_package_path(lua_State *L) {
+  // Get the current package.path
+  lua_getglobal(L, "package");
+  lua_getfield(L, -1, "path");  // Get the current path
+  const char *current_path = lua_tostring(L, -1);
+
+  // Construct the new paths to only include the root deps/lua directory
+  const char *new_paths = "./deps/lua/?.lua;./deps/lua/?/init.lua;";
+  char updated_path[2048];
+
+  // Combine new paths with the current path
+  snprintf(updated_path, sizeof(updated_path), "%s%s", new_paths, current_path);
+
+  // Update package.path
+  lua_pop(L, 1);  // Remove the old path
+  lua_pushstring(L, updated_path);
+  lua_setfield(L, -2, "path");
+  lua_pop(L, 1);  // Remove the package table
+}
+
+int main(int argc, char** argv) {
   // init lua vm
-  lua_State *L = luaL_newstate();
+  lua_State* L = luaL_newstate();
   luaL_openlibs(L);
 
   // load custom modules
   open_module_lfs(L);
   open_module_stb(L);
+  set_lua_package_path(L);
 
   // redirect input args to the main lua script
   for (int i = 0; i < argc; i++) {
