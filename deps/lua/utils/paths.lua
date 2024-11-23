@@ -1,7 +1,7 @@
 local fs = require('lfs')
-local mfs = require('libs.lua.minifs.minifs')
-local log = require('libs.lua.log.log')
-local str = require('libs.lua.str.str')
+local mfs = require('minifs.minifs')
+local log = require('log.log')
+local str = require('str.str')
 
 local function create_dir_if_doesnt_exist (p)
   if not mfs.exists(p) then

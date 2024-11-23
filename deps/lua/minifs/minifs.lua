@@ -1,6 +1,5 @@
 local fs = {}
 local lfs = require("lfs")
-local pp = require("libs.lua.pprint.pprint")
 
 math.randomseed(os.time())
 local bool

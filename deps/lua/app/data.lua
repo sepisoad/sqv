@@ -1,7 +1,7 @@
-require('libs.lua.app.types')
+require('app.types')
 
 ---@type RGBColor[]
-QUAKE_PALETTE = {
+local QUAKE_PALETTE = {
 	{ Red = 0,   Green = 0,   Blue = 0 },
 	{ Red = 15,  Green = 15,  Blue = 15 },
 	{ Red = 31,  Green = 31,  Blue = 31 },
@@ -259,4 +259,8 @@ QUAKE_PALETTE = {
 	{ Red = 255, Green = 247, Blue = 199 },
 	{ Red = 255, Green = 255, Blue = 255 },
 	{ Red = 159, Green = 91,  Blue = 83 },
+}
+
+return {
+	QUAKE_PALETTE = QUAKE_PALETTE
 }
