@@ -1,195 +1,130 @@
-#!/usr/bin/env lua
-
 local gl = require("moongl")
 local glfw = require("moonglfw")
-local glmath = require("moonglmath")
-local new_camera = require("nuklear.camera")
+local mth = require("moonglmath")
 
-local vec3, mat4 = glmath.vec3, glmath.mat4
-local perspective = glmath.perspective
-local rad = math.rad
-
-local SCR_WIDTH, SCR_HEIGHT = 800, 600
-
--- Camera setup
-local camera = new_camera(vec3(0.0, 0.0, 3.0))       -- Start slightly further from the cube
-local last_x, last_y = SCR_WIDTH / 2, SCR_HEIGHT / 2 -- Initially centered
-local first_mouse = true
-
--- GLFW and OpenGL setup
-glfw.version_hint(4, 1, 'core')
-local window = glfw.create_window(SCR_WIDTH, SCR_HEIGHT, "GLSL 410 Cube")
+-- Initialize GLFW and create a window
+glfw.version_hint(3, 3, "core")
+local window = glfw.create_window(800, 600, "Spinning Cube")
 glfw.make_context_current(window)
 gl.init()
 
-glfw.set_framebuffer_size_callback(window, function(window, w, h)
-    gl.viewport(0, 0, w, h)
-    SCR_WIDTH, SCR_HEIGHT = w, h
-end)
+-- Define cube vertices and colors
+local vertices = {
+    -- Positions          -- Colors
+    -0.5, -0.5, -0.5,     1.0, 0.0, 0.0,
+     0.5, -0.5, -0.5,     0.0, 1.0, 0.0,
+     0.5,  0.5, -0.5,     0.0, 0.0, 1.0,
+    -0.5,  0.5, -0.5,     1.0, 1.0, 0.0,
+    -0.5, -0.5,  0.5,     0.0, 1.0, 1.0,
+     0.5, -0.5,  0.5,     1.0, 0.0, 1.0,
+     0.5,  0.5,  0.5,     0.5, 0.5, 0.5,
+    -0.5,  0.5,  0.5,     1.0, 1.0, 1.0
+}
 
-glfw.set_cursor_pos_callback(window, function(window, xpos, ypos)
-    -- whenever the mouse moves, this callback is called
-    -- if first_mouse then
-    --     last_x, last_y = xpos, ypos
-    --     first_mouse = false
-    -- end
-    local xoffset = xpos - last_x
-    local yoffset = last_y - ypos -- reversed since y-coordinates go from bottom to top
-    last_x, last_y = xpos, ypos
-    camera:process_mouse(xoffset, yoffset, true)
-end)
+local indices = {
+    1, 2, 3,  1, 3, 4,
+    5, 6, 7,  5, 7, 8,
+    1, 5, 8,  1, 8, 4,
+    2, 6, 7,  2, 7, 3,
+    4, 3, 7,  4, 7, 8,
+    1, 2, 6,  1, 6, 5
+}
 
-glfw.set_scroll_callback(window, function(window, xoffset, yoffset)
-    -- whenever the mouse scroll wheel scrolls, this callback is called
-    camera:process_scroll(yoffset)
-end)
+-- Create Vertex Array Object and Vertex Buffer Object
+local vao = gl.new_vertex_array()
+local vbo = gl.new_buffer("array")
+local ebo = gl.new_buffer("element array")
 
--- tell GLFW to capture our mouse:
-glfw.set_input_mode(window, 'cursor', 'disabled')
+gl.buffer_data("array", gl.pack("float", vertices), "static draw")
+gl.buffer_data("element array", gl.pack("uint", indices), "static draw")
 
--- configure global opengl state
-gl.enable('depth test')
+gl.vertex_attrib_pointer(0, 3, "float", false, 6 * gl.sizeof("float"), 0)
+gl.enable_vertex_attrib_array(0)
+gl.vertex_attrib_pointer(1, 3, "float", false, 6 * gl.sizeof("float"), 3 * gl.sizeof("float"))
+gl.enable_vertex_attrib_array(1)
 
--- Shader code
-local vsh_code = [[
-#version 410 core
+gl.unbind_vertex_array()
 
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aColor;
+-- Shader program
+local vertex_shader = [[
+#version 330 core
+layout(location = 0) in vec3 aPos;
+layout(location = 1) in vec3 aColor;
+
+out vec3 ourColor;
 
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-out vec3 vertexColor;
-
 void main()
 {
     gl_Position = projection * view * model * vec4(aPos, 1.0);
-    vertexColor = aColor;
+    ourColor = aColor;
 }
 ]]
 
-local fsh_code = [[
-#version 410 core
-
-in vec3 vertexColor;
+local fragment_shader = [[
+#version 330 core
+in vec3 ourColor;
 out vec4 FragColor;
 
 void main()
 {
-    FragColor = vec4(vertexColor, 1.0);
+    FragColor = vec4(ourColor, 1.0);
 }
 ]]
 
-local vsh = gl.create_shader('vertex')
-gl.shader_source(vsh, vsh_code)
-gl.compile_shader(vsh)
-assert(gl.get_shader(vsh, 'compile status'), gl.get_shader_info_log(vsh))
+local vertex = gl.create_shader("vertex")
+gl.shader_source(vertex, vertex_shader)
+gl.compile_shader(vertex)
 
-local fsh = gl.create_shader('fragment')
-gl.shader_source(fsh, fsh_code)
-gl.compile_shader(fsh)
-assert(gl.get_shader(fsh, 'compile status'), gl.get_shader_info_log(fsh))
+local fragment = gl.create_shader("fragment")
+gl.shader_source(fragment, fragment_shader)
+gl.compile_shader(fragment)
 
-local program = gl.create_program()
-gl.attach_shader(program, vsh)
-gl.attach_shader(program, fsh)
-gl.link_program(program)
-assert(gl.get_program(program, 'link status'), gl.get_program_info_log(program))
-gl.use_program(program)
+local prog = gl.create_program()
+gl.attach_shader(prog, vertex)
+gl.attach_shader(prog, fragment)
+gl.link_program(prog)
 
--- Cube vertices and colors
-local positions = {
-    -- Front face
-    -0.1, -0.1, 0.1,
-    0.1, -0.1, 0.1,
-    0.1, 0.1, 0.1,
-    -0.1, 0.1, 0.1,
-    -- Back face
-    -0.1, -0.1, -0.1,
-    0.1, -0.1, -0.1,
-    0.1, 0.1, -0.1,
-    -0.1, 0.1, -0.1,
-}
 
-local colors = {
-    -- Front face colors (red, green, blue, yellow)
-    1.0, 0.0, 0.0,
-    0.0, 1.0, 0.0,
-    0.0, 0.0, 1.0,
-    1.0, 1.0, 0.0,
-    -- Back face colors (cyan, magenta, white, black)
-    0.0, 1.0, 1.0,
-    1.0, 0.0, 1.0,
-    1.0, 1.0, 1.0,
-    0.0, 0.0, 0.0,
-}
+-- Configure OpenGL
+gl.enable("depth test")
 
-local indices = {
-    -- Front face
-    0, 1, 2, 2, 3, 0,
-    -- Back face
-    4, 5, 6, 6, 7, 4,
-    -- Left face
-    0, 3, 7, 7, 4, 0,
-    -- Right face
-    1, 2, 6, 6, 5, 1,
-    -- Top face
-    3, 2, 6, 6, 7, 3,
-    -- Bottom face
-    0, 1, 5, 5, 4, 0,
-}
+-- Transformation matrices
+local projection = mth.perspective(math.rad(45.0), 800/600, 0.1, 100.0)
 
--- Vertex buffers
-local vao = gl.new_vertex_array()
-local position_vbo = gl.new_buffer('array')
-gl.buffer_data('array', gl.pack('float', positions), 'static draw')
-gl.vertex_attrib_pointer(0, 3, 'float', false, 0, 0)
-gl.enable_vertex_attrib_array(0)
-
-local color_vbo = gl.new_buffer('array')
-gl.buffer_data('array', gl.pack('float', colors), 'static draw')
-gl.vertex_attrib_pointer(1, 3, 'float', false, 0, 0)
-gl.enable_vertex_attrib_array(1)
-
-local index_buffer = gl.new_buffer('element array')
-gl.buffer_data('element array', gl.pack('uint', indices), 'static draw')
-
-gl.unbind_vertex_array()
-
--- Uniform locations
-local locs = {}
-local function getloc(name) locs[name] = gl.get_uniform_location(program, name) end
-getloc("model")
-getloc("view")
-getloc("projection")
-
--- Rendering loop
-gl.clear_color(0.5, 0.5, 0.5, 1.0)
-gl.enable('depth test') -- Enable depth testing
+-- Main loop
 while not glfw.window_should_close(window) do
     glfw.poll_events()
-
-    -- Corrected Projection Matrix (near = 0.1, far = 100.0)
-    local view = camera:view()
-    local model = glmath.translate(vec3(0.0, 0.0, -100.0)) -- Move cube slightly back
-    local projection = perspective(rad(camera.zoom), SCR_WIDTH/SCR_HEIGHT, -100, 100.0)
-
-    -- Set uniforms
-    gl.uniform_matrix4f(locs.projection, false, projection)
-    gl.uniform_matrix4f(locs.view, false, view)
-    gl.uniform_matrix4f(locs.model, false, model)
-
-    gl.clear('color', 'depth')
+    
+    -- Clear the screen
+    gl.clear_color(0.2, 0.3, 0.3, 1.0)
+    gl.clear("color", "depth")
+    
+    -- Bind shader program
+    gl.use_program(prog)
+    
+    -- Set transformations
+    local time = glfw.get_time()
+    local model = mth.rotate(time, 0.5, 1.0, 0.0)
+    local view = mth.translate(0.0, 0.0, -3.0)
+    
+    gl.uniform_matrix4f(gl.get_uniform_location(prog, "model"), true, model)
+    gl.uniform_matrix4f(gl.get_uniform_location(prog, "view"), true, view)
+    gl.uniform_matrix4f(gl.get_uniform_location(prog, "projection"), true, projection)
+    
+    -- Draw the cube
     gl.bind_vertex_array(vao)
-    gl.draw_elements('triangles', #indices, 'uint', 0)
-    gl.unbind_vertex_array()
-
+    gl.draw_elements("triangles", #indices, "uint", 0)
+    
+    -- Swap buffers
     glfw.swap_buffers(window)
 end
 
 -- Cleanup
-gl.delete_program(program)
+gl.delete_program(prog)
 gl.delete_vertex_arrays(vao)
-gl.delete_buffers(position_vbo, color_vbo, index_buffer)
+gl.delete_buffers(vbo, ebo)
+glfw.terminate()
