@@ -6,7 +6,7 @@ local mth = require("moonglmath")
 glfw.version_hint(3, 3, "core")
 
 -- Create a window
-local window = glfw.create_window(800, 600, "Spinning Cube")
+local window = glfw.create_window(500, 400, "Spinning Cube")
 glfw.make_context_current(window)
 
 -- Initialize OpenGL
@@ -106,9 +106,6 @@ gl.enable_vertex_attrib_array(1)
 gl.bind_buffer("element array", ebo)
 gl.buffer_data("element array", gl.pack("uint", indices), "static draw")
 
--- Unbind VAO
-gl.unbind_vertex_array()
-
 local vertex = gl.create_shader("vertex")
 gl.shader_source(vertex, vertex_shader)
 gl.compile_shader(vertex)
@@ -127,6 +124,8 @@ gl.enable("depth test")
 
 -- Transformation matrices
 local projection = mth.perspective(math.rad(45.0), 800 / 600, 0.1, 100.0)
+
+gl.bind_vertex_array(vao)
 
 -- Main loop
 while not glfw.window_should_close(window) do
@@ -147,7 +146,7 @@ while not glfw.window_should_close(window) do
     gl.uniform_matrix4f(gl.get_uniform_location(prog, "projection"), true, projection)
 
     -- Draw the cube
-    gl.bind_vertex_array(vao)
+    -- 
     gl.draw_elements("triangles", #indices, "uint", 0)
 
     -- Swap buffers
