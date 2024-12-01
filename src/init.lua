@@ -2,23 +2,41 @@ local gl = require("moongl")
 local glfw = require("moonglfw")
 local mth = require("moonglmath")
 
--- Initialize GLFW and create a window
+-- Initialize GLFW
 glfw.version_hint(3, 3, "core")
+
+-- Create a window
 local window = glfw.create_window(800, 600, "Spinning Cube")
 glfw.make_context_current(window)
+
+-- Initialize OpenGL
 gl.init()
 
-local vertices = {
+-- Cube data: positions, colors, and indices
+local positions = {
     -- Front face
-    -0.1, -0.1, 0.1, 1.0, 0.0, 0.0,
-    0.1, -0.1, 0.1, 0.0, 1.0, 0.0,
-    0.1, 0.1, 0.1, 0.0, 0.0, 1.0,
-    -0.1, 0.1, 0.1, 1.0, 1.0, 0.0,
+    -0.1, -0.1,  0.1,
+     0.1, -0.1,  0.1,
+     0.1,  0.1,  0.1,
+    -0.1,  0.1,  0.1,
     -- Back face
-    -0.1, -0.1, -0.1, 0.0, 1.0, 1.0,
-    0.1, -0.1, -0.1, 1.0, 0.0, 1.0,
-    0.1, 0.1, -0.1, 1.0, 1.0, 1.0,
-    -0.1, 0.1, -0.1, 0.0, 0.0, 0.0,
+    -0.1, -0.1, -0.1,
+     0.1, -0.1, -0.1,
+     0.1,  0.1, -0.1,
+    -0.1,  0.1, -0.1,
+}
+
+local colors = {
+    -- Front face colors
+    1.0, 0.0, 0.0,
+    0.0, 1.0, 0.0,
+    0.0, 0.0, 1.0,
+    1.0, 1.0, 0.0,
+    -- Back face colors
+    0.0, 1.0, 1.0,
+    1.0, 0.0, 1.0,
+    1.0, 1.0, 1.0,
+    0.0, 0.0, 0.0,
 }
 
 local indices = {
@@ -36,19 +54,29 @@ local indices = {
     0, 1, 5, 5, 4, 0,
 }
 
--- Create Vertex Array Object and Vertex Buffer Object
+-- Create VAO and buffers
 local vao = gl.new_vertex_array()
-local vbo = gl.new_buffer("array")
+local position_vbo = gl.new_buffer("array")
+local color_vbo = gl.new_buffer("array")
 local ebo = gl.new_buffer("element array")
 
-gl.buffer_data("array", gl.pack("float", vertices), "static draw")
-gl.buffer_data("element array", gl.pack("uint", indices), "static draw")
-
-gl.vertex_attrib_pointer(0, 3, "float", false, 6 * gl.sizeof("float"), 0)
+-- Upload position data to GPU
+gl.bind_buffer("array", position_vbo)
+gl.buffer_data("array", gl.pack("float", positions), "static draw")
+gl.vertex_attrib_pointer(0, 3, "float", false, 0, 0)
 gl.enable_vertex_attrib_array(0)
-gl.vertex_attrib_pointer(1, 3, "float", false, 6 * gl.sizeof("float"), 3 * gl.sizeof("float"))
+
+-- Upload color data to GPU
+gl.bind_buffer("array", color_vbo)
+gl.buffer_data("array", gl.pack("float", colors), "static draw")
+gl.vertex_attrib_pointer(1, 3, "float", false, 0, 0)
 gl.enable_vertex_attrib_array(1)
 
+-- Upload indices to GPU
+gl.bind_buffer("element array", ebo)
+gl.buffer_data("element array", gl.pack("uint", indices), "static draw")
+
+-- Unbind VAO
 gl.unbind_vertex_array()
 
 -- Shader program
@@ -94,37 +122,34 @@ gl.attach_shader(prog, vertex)
 gl.attach_shader(prog, fragment)
 gl.link_program(prog)
 
-
 -- Configure OpenGL
 gl.enable("depth test")
 
 -- Transformation matrices
-local projection = mth.perspective(math.rad(45.0), 800/600, 0.1, 100.0)
+local projection = mth.perspective(math.rad(45.0), 800 / 600, 0.1, 100.0)
 
 -- Main loop
 while not glfw.window_should_close(window) do
     glfw.poll_events()
-    
+
     -- Clear the screen
-    gl.clear_color(0.2, 0.3, 0.3, 1.0)
+    gl.clear_color(0.0, 0.0, 0.0, 1.0)
     gl.clear("color", "depth")
-    
-    -- Bind shader program
-    gl.use_program(prog)
-    
+
     -- Set transformations
     local time = glfw.get_time()
-    local model = mth.rotate(time, 0.5, 1.0, 0.0)
-    local view = mth.translate(0.0, 0.0, -3.0)
-    
+    local model = mth.rotate(time, 0.1, 1.0, 0.1)
+    local view = mth.translate(0.0, 0.0, -1.0)
+
+    gl.use_program(prog)
     gl.uniform_matrix4f(gl.get_uniform_location(prog, "model"), true, model)
     gl.uniform_matrix4f(gl.get_uniform_location(prog, "view"), true, view)
     gl.uniform_matrix4f(gl.get_uniform_location(prog, "projection"), true, projection)
-    
+
     -- Draw the cube
     gl.bind_vertex_array(vao)
     gl.draw_elements("triangles", #indices, "uint", 0)
-    
+
     -- Swap buffers
     glfw.swap_buffers(window)
 end
@@ -132,5 +157,5 @@ end
 -- Cleanup
 gl.delete_program(prog)
 gl.delete_vertex_arrays(vao)
-gl.delete_buffers(vbo, ebo)
+gl.delete_buffers(position_vbo, color_vbo, ebo)
 glfw.terminate()
