@@ -1,53 +1,30 @@
 local gl = require("moongl")
 local glfw = require("moonglfw")
 local mth = require("moonglmath")
+local pp = require("pprint.pprint")
 
 -- Initialize GLFW
 glfw.version_hint(3, 3, "core")
-local window = glfw.create_window(800, 600, "Wireframe Cube")
+local window = glfw.create_window(500, 400, "Wireframe Cube")
 glfw.make_context_current(window)
 gl.init()
 
--- Shader program
-local vertex_shader = [[
-#version 330 core
-layout(location = 0) in vec3 aPos;
-
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
-
-void main()
-{
-    gl_Position = projection * view * model * vec4(aPos, 1.0);
-}
-]]
-
-local fragment_shader = [[
-#version 330 core
-out vec4 FragColor;
-
-void main()
-{
-    FragColor = vec4(1.0, 1.0, 1.0, 1.0); // White color
-}
-]]
 
 -- Cube data
 local positions = {
     -- Cube vertices
-    -0.5, -0.5, -0.5,   0.5, -0.5, -0.5,   0.5,  0.5, -0.5,  -0.5,  0.5, -0.5,
-    -0.5, -0.5,  0.5,   0.5, -0.5,  0.5,   0.5,  0.5,  0.5,  -0.5,  0.5,  0.5,
+    -0.5, -0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, -0.5, 0.5, -0.5,
+    -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, 0.5, 0.5, 0.5, -0.5, 0.5, 0.5,
 }
 
 local indices = {
     -- Cube faces
-    0, 1, 2,  2, 3, 0,
-    4, 5, 6,  6, 7, 4,
-    0, 3, 7,  7, 4, 0,
-    1, 5, 6,  6, 2, 1,
-    3, 2, 6,  6, 7, 3,
-    0, 1, 5,  5, 4, 0,
+    0, 1, 2, 2, 3, 0,
+    4, 5, 6, 6, 7, 4,
+    0, 3, 7, 7, 4, 0,
+    1, 5, 6, 6, 2, 1,
+    3, 2, 6, 6, 7, 3,
+    0, 1, 5, 5, 4, 0,
 }
 
 -- Create VAO and buffers
@@ -69,19 +46,11 @@ gl.buffer_data("element array", gl.pack("uint", indices), "static draw")
 
 gl.unbind_vertex_array()
 
--- Compile shaders
-local vertex = gl.create_shader("vertex")
-gl.shader_source(vertex, vertex_shader)
-gl.compile_shader(vertex)
-
-local fragment = gl.create_shader("fragment")
-gl.shader_source(fragment, fragment_shader)
-gl.compile_shader(fragment)
-
-local prog = gl.create_program()
-gl.attach_shader(prog, vertex)
-gl.attach_shader(prog, fragment)
-gl.link_program(prog)
+-- Compile and use shaders
+local prog = gl.make_program(
+    "vertex", "res/shaders/simple.vert",
+    "fragment", "res/shaders/simple.frag"
+)
 
 -- Enable wireframe mode
 gl.polygon_mode("front and back", "line")
@@ -113,7 +82,7 @@ while not glfw.window_should_close(window) do
 end
 
 -- Cleanup
-gl.delete_program(prog)
 gl.delete_vertex_arrays(vao)
 gl.delete_buffers(vbo, ebo)
+gl.clean_program(prog)
 glfw.terminate()
