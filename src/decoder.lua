@@ -29,7 +29,7 @@ if f == nil then
    os.exit(1)
 end
 
-local hdr = {
+local header = {
    Code = read.string(f, 4),
    Version = read.integer(f),
    Scale = {
@@ -59,16 +59,16 @@ local hdr = {
    Size = read.float(f),
 }
 
-local skin_size = hdr.SkinWidth * hdr.SkinHeight
+local skin_size = header.SkinWidth * header.SkinHeight
 local skins = { single = {}, group = {} }
-for idx = 1, hdr.SkinsCount, 1 do
+for idx = 1, header.SkinsCount, 1 do
    local group = read.integer(f)
    if group == 0 then
       local skin = read.bytes(f, skin_size)
       table.insert(skins.single, skin)
       local fp = ".ignore/out/" .. idx .. ".png"
       paths.create_dir_for_file_path(".ignore/out/" .. idx .. ".png")
-      save_png_file(skin, palette, hdr.SkinWidth, hdr.SkinHeight, fp)
+      save_png_file(skin, palette, header.SkinWidth, header.SkinHeight, fp)
    else
       local count = read.integer(f)
       local group = {}
@@ -84,7 +84,7 @@ for idx = 1, hdr.SkinsCount, 1 do
 end
 
 local tex_coords = {} -- TODO: needs improvements
-for _ = 1, hdr.VerticesCount, 1 do
+for _ = 1, header.VerticesCount, 1 do
    local tex_coord = {
       OnSeam = read.integer(f) ~= 0,
       S = read.integer(f),
@@ -94,7 +94,7 @@ for _ = 1, hdr.VerticesCount, 1 do
 end
 
 local triangles = {}
-for _ = 1, hdr.TrianglesCount, 1 do
+for _ = 1, header.TrianglesCount, 1 do
    local triangle = {
       FrontFace = read.integer(f) ~= 0,
       X = read.integer(f),
@@ -105,7 +105,7 @@ for _ = 1, hdr.TrianglesCount, 1 do
 end
 
 local frames = {}
-for _ = 1, hdr.FramesCount, 1 do
+for _ = 1, header.FramesCount, 1 do
    local frame = {
       Type = read.integer(f),
       Min = {
@@ -124,7 +124,7 @@ for _ = 1, hdr.FramesCount, 1 do
    }
 
    local vertices = {}
-   for _ = 1, hdr.VerticesCount, 1 do
+   for _ = 1, header.VerticesCount, 1 do
       local vertex = {
          X = read.byte(f),
          Y = read.byte(f),
@@ -139,4 +139,10 @@ for _ = 1, hdr.FramesCount, 1 do
    table.insert(frames, frame)
 end
 
-pp(frames)
+return {
+   header = header,
+   skins = skins,
+   tex_coords = tex_coords,
+   triangles = triangles,
+   frames = frames,
+}

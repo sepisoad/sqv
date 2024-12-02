@@ -1,31 +1,42 @@
 local gl = require("moongl")
 local glfw = require("moonglfw")
 local mth = require("moonglmath")
+local mdl = require("src.decoder")
 local pp = require("pprint.pprint")
+
+local window_width = 500
+local window_height = 400
 
 -- Initialize GLFW
 glfw.version_hint(3, 3, "core")
-local window = glfw.create_window(500, 400, "Wireframe Cube")
+local window = glfw.create_window(window_width, window_height, "Wireframe Cube")
 glfw.make_context_current(window)
 gl.init()
 
 
--- Cube data
-local positions = {
-    -- Cube vertices
-    -0.5, -0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, -0.5, 0.5, -0.5,
-    -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, 0.5, 0.5, 0.5, -0.5, 0.5, 0.5,
-}
+local function create_position()
+    local array = {}
+    for _, value in ipairs(mdl.frames[1].Vertices) do
+        table.insert(array, (value.X * mdl.header.Scale.X) + mdl.header.ScaleOrigin.X)
+        table.insert(array, (value.Y * mdl.header.Scale.Y) + mdl.header.ScaleOrigin.Y)
+        table.insert(array, (value.Z * mdl.header.Scale.Z) + mdl.header.ScaleOrigin.Z)
+    end
+    return array
+end
 
-local indices = {
-    -- Cube faces
-    0, 1, 2, 2, 3, 0,
-    4, 5, 6, 6, 7, 4,
-    0, 3, 7, 7, 4, 0,
-    1, 5, 6, 6, 2, 1,
-    3, 2, 6, 6, 7, 3,
-    0, 1, 5, 5, 4, 0,
-}
+local function create_indices()
+    local array = {}
+    for _, value in ipairs(mdl.triangles) do
+        table.insert(array, value.X)
+        table.insert(array, value.Y)
+        table.insert(array, value.Z)
+    end
+    return array
+end
+
+-- LOG
+local positions = create_position()
+local indices = create_indices()
 
 -- Create VAO and buffers
 local vao = gl.new_vertex_array()
@@ -56,7 +67,10 @@ local prog = gl.make_program(
 gl.polygon_mode("front and back", "line")
 
 -- Main rendering loop
-local projection = mth.perspective(math.rad(45.0), 800 / 600, 0.1, 100.0)
+local projection = mth.perspective(math.rad(45.0), window_width / window_height, 0.1, 10000.0)
+
+local t0 = glfw.now()
+local angle, speed = 0, math.pi / 3
 
 while not glfw.window_should_close(window) do
     glfw.poll_events()
@@ -64,10 +78,19 @@ while not glfw.window_should_close(window) do
     gl.clear_color(0.0, 0.0, 0.0, 1.0)
     gl.clear("color", "depth")
 
-    -- Set transformations
-    local time = glfw.get_time()
-    local model = mth.rotate(time, 0.3, 0.5, 0.7)
-    local view = mth.translate(0.0, 0.0, -2.0)
+    local t = glfw.now()
+    local dt = t - t0
+    t0 = t
+    angle = angle + speed * dt
+    if angle >= 2 * math.pi then angle = angle - 2 * math.pi end
+
+    -- Set transformations    
+    local view = mth.translate(0.0, 0.0, -100.0)
+    local model =
+        mth.translate(0, -20, 0)
+        * mth.rotate(angle, 0, 1, 0)
+        * mth.rotate(math.rad(-90), 1, 0, 0)
+        * mth.rotate(math.rad(90), 0, 0, 1)
 
     gl.use_program(prog)
     gl.uniform_matrix4f(gl.get_uniform_location(prog, "model"), true, model)
