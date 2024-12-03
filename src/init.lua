@@ -9,11 +9,16 @@ local window_height = 400
 
 -- Initialize GLFW
 glfw.version_hint(3, 3, "core")
-local window = glfw.create_window(window_width, window_height, "Wireframe Cube")
+local window = glfw.create_window(window_width, window_height, "Correct Winding Order")
 glfw.make_context_current(window)
 gl.init()
 
+-- Helper to generate random colors
+local function random_color()
+    return {math.random(), math.random(), math.random()}
+end
 
+-- Generate position data
 local function create_position()
     local array = {}
     for _, value in ipairs(mdl.frames[1].Vertices) do
@@ -24,47 +29,97 @@ local function create_position()
     return array
 end
 
-local function create_indices()
+-- Generate index data with correct winding order based on the triangle side
+local function create_indices_with_side(triangles)
     local array = {}
-    for _, value in ipairs(mdl.triangles) do
-        table.insert(array, value.X)
-        table.insert(array, value.Y)
-        table.insert(array, value.Z)
+    for _, triangle in ipairs(triangles) do
+        if triangle.FrontFace then
+            -- Clockwise (flip winding order)
+            table.insert(array, triangle.X)
+            table.insert(array, triangle.Z)
+            table.insert(array, triangle.Y)
+        else
+            -- Counter-clockwise (front-facing)
+            table.insert(array, triangle.X)
+            table.insert(array, triangle.Y)
+            table.insert(array, triangle.Z)
+        end
     end
     return array
 end
 
--- LOG
+-- Expand vertices and indices to ensure unique vertices per triangle
+local function expand_vertices_and_indices(vertices, indices)
+    local expanded_vertices = {}
+    local expanded_indices = {}
+    local current_index = 0
+
+    for i = 1, #indices, 3 do
+        for j = 0, 2 do -- For each vertex in the triangle
+            local vertex_index = indices[i + j] + 1 -- Lua is 1-based
+            table.insert(expanded_vertices, vertices[(vertex_index - 1) * 3 + 1]) -- X
+            table.insert(expanded_vertices, vertices[(vertex_index - 1) * 3 + 2]) -- Y
+            table.insert(expanded_vertices, vertices[(vertex_index - 1) * 3 + 3]) -- Z
+            table.insert(expanded_indices, current_index)
+            current_index = current_index + 1
+        end
+    end
+
+    return expanded_vertices, expanded_indices
+end
+
+-- Create random colors for each triangle
+local function create_triangle_colors(num_triangles)
+    local array = {}
+    for _ = 1, num_triangles do
+        local color = random_color()
+        for _ = 1, 3 do -- Same color for all 3 vertices of the triangle
+            table.insert(array, color[1]) -- R
+            table.insert(array, color[2]) -- G
+            table.insert(array, color[3]) -- B
+        end
+    end
+    return array
+end
+
+-- Generate data
 local positions = create_position()
-local indices = create_indices()
+local indices = create_indices_with_side(mdl.triangles)
+local expanded_positions, expanded_indices = expand_vertices_and_indices(positions, indices)
+local num_triangles = #expanded_indices / 3
+local colors = create_triangle_colors(num_triangles)
 
 -- Create VAO and buffers
 local vao = gl.new_vertex_array()
-local vbo = gl.new_buffer("array")
+local vbo_position = gl.new_buffer("array")
+local vbo_color = gl.new_buffer("array")
 local ebo = gl.new_buffer("element array")
 
 gl.bind_vertex_array(vao)
 
--- Upload vertex data
-gl.bind_buffer("array", vbo)
-gl.buffer_data("array", gl.pack("float", positions), "static draw")
-gl.vertex_attrib_pointer(0, 3, "float", false, 0, 0)
+-- Upload position data
+gl.bind_buffer("array", vbo_position)
+gl.buffer_data("array", gl.pack("float", expanded_positions), "static draw")
+gl.vertex_attrib_pointer(0, 3, "float", false, 0, 0) -- Layout location 0
 gl.enable_vertex_attrib_array(0)
+
+-- Upload color data
+gl.bind_buffer("array", vbo_color)
+gl.buffer_data("array", gl.pack("float", colors), "static draw")
+gl.vertex_attrib_pointer(1, 3, "float", false, 0, 0) -- Layout location 1
+gl.enable_vertex_attrib_array(1)
 
 -- Upload index data
 gl.bind_buffer("element array", ebo)
-gl.buffer_data("element array", gl.pack("uint", indices), "static draw")
+gl.buffer_data("element array", gl.pack("uint", expanded_indices), "static draw")
 
 gl.unbind_vertex_array()
 
 -- Compile and use shaders
 local prog = gl.make_program(
-    "vertex", "res/shaders/simple.vert",
-    "fragment", "res/shaders/simple.frag"
+    "vertex", "res/shaders/color.vert",
+    "fragment", "res/shaders/color.frag"
 )
-
--- Enable wireframe mode
-gl.polygon_mode("front and back", "line")
 
 -- Main rendering loop
 local projection = mth.perspective(math.rad(45.0), window_width / window_height, 0.1, 10000.0)
@@ -72,6 +127,8 @@ local projection = mth.perspective(math.rad(45.0), window_width / window_height,
 local t0 = glfw.now()
 local angle, speed = 0, math.pi / 3
 
+
+gl.disable("cull face")
 while not glfw.window_should_close(window) do
     glfw.poll_events()
 
@@ -84,7 +141,7 @@ while not glfw.window_should_close(window) do
     angle = angle + speed * dt
     if angle >= 2 * math.pi then angle = angle - 2 * math.pi end
 
-    -- Set transformations    
+    -- Set transformations
     local view = mth.translate(0.0, 0.0, -100.0)
     local model =
         mth.translate(0, -20, 0)
@@ -97,15 +154,15 @@ while not glfw.window_should_close(window) do
     gl.uniform_matrix4f(gl.get_uniform_location(prog, "view"), true, view)
     gl.uniform_matrix4f(gl.get_uniform_location(prog, "projection"), true, projection)
 
-    -- Draw wireframe cube
+    -- Draw the model with random colors
     gl.bind_vertex_array(vao)
-    gl.draw_elements("triangles", #indices, "uint", 0)
+    gl.draw_elements("triangles", #expanded_indices, "uint", 0)
 
     glfw.swap_buffers(window)
 end
 
 -- Cleanup
 gl.delete_vertex_arrays(vao)
-gl.delete_buffers(vbo, ebo)
+gl.delete_buffers(vbo_position, vbo_color, ebo)
 gl.clean_program(prog)
 glfw.terminate()
