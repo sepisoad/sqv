@@ -1,11 +1,11 @@
 local gl = require("moongl")
 local glfw = require("moonglfw")
-local mth = require("moonglmath")
+local glm = require("moonglmath")
 local mdl = require("src.decoder")
 local pp = require("pprint.pprint")
 
-local window_width = 500
-local window_height = 400
+local window_width = 300
+local window_height = 250
 
 -- Initialize GLFW
 glfw.version_hint(3, 3, "core")
@@ -15,16 +15,18 @@ gl.init()
 
 -- Helper to generate random colors
 local function random_color()
-    return {math.random(), math.random(), math.random()}
+    return { math.random(), math.random(), math.random() }
 end
 
 -- Generate position data
-local function create_position()
+local function create_position(vertices)
     local array = {}
-    for _, value in ipairs(mdl.frames[1].Vertices) do
-        table.insert(array, (value.X * mdl.header.Scale.X) + mdl.header.ScaleOrigin.X)
-        table.insert(array, (value.Y * mdl.header.Scale.Y) + mdl.header.ScaleOrigin.Y)
-        table.insert(array, (value.Z * mdl.header.Scale.Z) + mdl.header.ScaleOrigin.Z)
+    for _, vertex in ipairs(vertices) do
+        local sclae = mdl.header.Scale
+        local origin = mdl.header.Origin
+        table.insert(array, (vertex.x * sclae.x) + origin.x)
+        table.insert(array, (vertex.y * sclae.y) + origin.y)
+        table.insert(array, (vertex.z * sclae.z) + origin.z)
     end
     return array
 end
@@ -35,14 +37,14 @@ local function create_indices_with_side(triangles)
     for _, triangle in ipairs(triangles) do
         if triangle.FrontFace then
             -- Clockwise (flip winding order)
-            table.insert(array, triangle.X)
-            table.insert(array, triangle.Z)
-            table.insert(array, triangle.Y)
+            table.insert(array, triangle.Vec.x)
+            table.insert(array, triangle.Vec.z)
+            table.insert(array, triangle.Vec.y)
         else
             -- Counter-clockwise (front-facing)
-            table.insert(array, triangle.X)
-            table.insert(array, triangle.Y)
-            table.insert(array, triangle.Z)
+            table.insert(array, triangle.Vec.x)
+            table.insert(array, triangle.Vec.y)
+            table.insert(array, triangle.Vec.z)
         end
     end
     return array
@@ -55,8 +57,10 @@ local function expand_vertices_and_indices(vertices, indices)
     local current_index = 0
 
     for i = 1, #indices, 3 do
-        for j = 0, 2 do -- For each vertex in the triangle
+        for j = 0, 2 do                             -- For each vertex in the triangle
             local vertex_index = indices[i + j] + 1 -- Lua is 1-based
+            pp(vertex_index)
+
             table.insert(expanded_vertices, vertices[(vertex_index - 1) * 3 + 1]) -- X
             table.insert(expanded_vertices, vertices[(vertex_index - 1) * 3 + 2]) -- Y
             table.insert(expanded_vertices, vertices[(vertex_index - 1) * 3 + 3]) -- Z
@@ -73,7 +77,7 @@ local function create_triangle_colors(num_triangles)
     local array = {}
     for _ = 1, num_triangles do
         local color = random_color()
-        for _ = 1, 3 do -- Same color for all 3 vertices of the triangle
+        for _ = 1, 3 do                   -- Same color for all 3 vertices of the triangle
             table.insert(array, color[1]) -- R
             table.insert(array, color[2]) -- G
             table.insert(array, color[3]) -- B
@@ -83,8 +87,10 @@ local function create_triangle_colors(num_triangles)
 end
 
 -- Generate data
-local positions = create_position()
+local positions = create_position(mdl.frames[1].Vertices)
 local indices = create_indices_with_side(mdl.triangles)
+pp(positions)
+pp(indices)
 local expanded_positions, expanded_indices = expand_vertices_and_indices(positions, indices)
 local num_triangles = #expanded_indices / 3
 local colors = create_triangle_colors(num_triangles)
@@ -122,7 +128,7 @@ local prog = gl.make_program(
 )
 
 -- Main rendering loop
-local projection = mth.perspective(math.rad(45.0), window_width / window_height, 0.1, 10000.0)
+local projection = glm.perspective(math.rad(45.0), window_width / window_height, 0.1, 10000.0)
 
 local t0 = glfw.now()
 local angle, speed = 0, math.pi / 3
@@ -142,12 +148,11 @@ while not glfw.window_should_close(window) do
     if angle >= 2 * math.pi then angle = angle - 2 * math.pi end
 
     -- Set transformations
-    local view = mth.translate(0.0, 0.0, -100.0)
+    local view = glm.translate(0.0, 0.0, -100.0)
     local model =
-        mth.translate(0, -20, 0)
-        * mth.rotate(angle, 0, 1, 0)
-        * mth.rotate(math.rad(-90), 1, 0, 0)
-        * mth.rotate(math.rad(90), 0, 0, 1)
+        glm.translate(0, -20, 0)
+        * glm.rotate(angle, 0, 1, 0)
+        * glm.rotate(math.rad(-90), 1, 0, 0)
 
     gl.use_program(prog)
     gl.uniform_matrix4f(gl.get_uniform_location(prog, "model"), true, model)

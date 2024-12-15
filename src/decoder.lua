@@ -5,6 +5,7 @@ local xio = require('utils.io')
 local bits = require('utils.bits')
 local paths = require('utils.paths')
 local data = require('app.data')
+local glm = require("moonglmath")
 
 local read = bits.reader
 local IN = ".keep/armor.mdl"
@@ -19,7 +20,6 @@ local function save_png_file(data, palette, width, height, path)
 
    local ok, err = pcall(stb.encode_paletted_png, path, palette, pixels, width, height)
    if not ok then
-      pp(err)
       os.exit(1)
    end
 end
@@ -32,22 +32,25 @@ end
 local header = {
    Code = read.string(f, 4),
    Version = read.integer(f),
-   Scale = {
-      X = read.float(f),
-      Y = read.float(f),
-      Z = read.float(f),
-   },
-   ScaleOrigin = {
-      X = read.float(f),
-      Y = read.float(f),
-      Z = read.float(f),
-   },
+   Scale = glm.vec3(read.float(f), read.float(f), read.float(f)),
+   -- {
+   --    X = read.float(f),
+   --    Y = read.float(f),
+   --    Z = read.float(f),
+   -- },
+   Origin = glm.vec3(read.float(f), read.float(f), read.float(f)),
+   -- {
+   --    X = read.float(f),
+   --    Y = read.float(f),
+   --    Z = read.float(f),
+   -- },
    BoundingRadius = read.float(f),
-   EyePosition = {
-      X = read.float(f),
-      Y = read.float(f),
-      Z = read.float(f),
-   },
+   EyePosition = glm.vec3(read.float(f), read.float(f), read.float(f)),
+   -- {
+   --    X = read.float(f),
+   --    Y = read.float(f),
+   --    Z = read.float(f),
+   -- },
    SkinsCount = read.integer(f),
    SkinWidth = read.integer(f),
    SkinHeight = read.integer(f),
@@ -97,9 +100,10 @@ local triangles = {}
 for _ = 1, header.TrianglesCount, 1 do
    local triangle = {
       FrontFace = read.integer(f) ~= 0,
-      X = read.integer(f),
-      Y = read.integer(f),
-      Z = read.integer(f),
+      Vec = glm.vec3(
+         read.integer(f),
+         read.integer(f),
+         read.integer(f)),
    }
    table.insert(triangles, triangle)
 end
@@ -108,29 +112,26 @@ local frames = {}
 for _ = 1, header.FramesCount, 1 do
    local frame = {
       Type = read.integer(f),
-      Min = {
-         X = read.byte(f),
-         Y = read.byte(f),
-         Z = read.byte(f),
-         N = read.byte(f),
-      },
-      Max = {
-         X = read.byte(f),
-         Y = read.byte(f),
-         Z = read.byte(f),
-         N = read.byte(f),
-      },
+      Min = glm.vec4(
+         read.byte(f),
+         read.byte(f),
+         read.byte(f),
+         read.byte(f)),
+      Max = glm.vec4(
+         read.byte(f),
+         read.byte(f),
+         read.byte(f),
+         read.byte(f)),
       Name = read.cstring(f, 16)
    }
 
    local vertices = {}
    for _ = 1, header.VerticesCount, 1 do
-      local vertex = {
-         X = read.byte(f),
-         Y = read.byte(f),
-         Z = read.byte(f),
-         N = read.byte(f),
-      }
+      local vertex = glm.vec4(
+         read.byte(f),
+         read.byte(f),
+         read.byte(f),
+         read.byte(f))
       table.insert(vertices, vertex)
    end
 
