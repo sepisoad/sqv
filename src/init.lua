@@ -63,15 +63,15 @@ local function expand_vertices_and_indices(vertices, indices)
 end
 
 
-local function create_texture_coordinates(tex_coords, triangles)
-  local out_tex_coords = {}
+local function create_texture_coordinates(uvs, triangles)
+  local out_uv = {}
   for _, triangle in ipairs(triangles) do
     for j = 1, 3 do
       local idx = triangle.Vec[j] + 1
 
-      local s = tex_coords[idx].S
-      local t = tex_coords[idx].T
-      local onseam = tex_coords[idx].OnSeam
+      local s = uvs[idx].U
+      local t = uvs[idx].V
+      local onseam = uvs[idx].OnSeam
 
       if not triangle.FrontFace and onseam then
         s = s + mdl.header.SkinWidth * 0.5;
@@ -80,18 +80,18 @@ local function create_texture_coordinates(tex_coords, triangles)
       s = (s + 0.5) / mdl.header.SkinWidth;
       t = (t + 0.5) / mdl.header.SkinHeight;
 
-      table.insert(out_tex_coords, s)
-      table.insert(out_tex_coords, t)
+      table.insert(out_uv, s)
+      table.insert(out_uv, t)
     end
   end
-  return out_tex_coords
+  return out_uv
 end
 
 -- Generate data
-local positions = create_position(mdl.frames[1].Vertices)
+local positions = create_position(mdl.frames.Simple[1].Positions)
 local indices = create_indices_with_side(mdl.triangles)
 local expanded_positions, expanded_indices = expand_vertices_and_indices(positions, indices)
-local text_coords = create_texture_coordinates(mdl.tex_coords, mdl.triangles)
+local uvs = create_texture_coordinates(mdl.uvs, mdl.triangles)
 
 -- Create VAO and buffers
 local vao = gl.gen_vertex_arrays()
@@ -108,7 +108,7 @@ gl.enable_vertex_attrib_array(0)
 
 -- Bind and buffer texture coordinates
 gl.bind_buffer('array', vbo_texcoords)
-gl.buffer_data('array', gl.pack('float', text_coords), 'static draw')
+gl.buffer_data('array', gl.pack('float', uvs), 'static draw')
 gl.vertex_attrib_pointer(1, 2, 'float', false, 2 * gl.sizeof('float'), 0)
 gl.enable_vertex_attrib_array(1)
 
@@ -120,7 +120,7 @@ gl.unbind_buffer('array')
 gl.unbind_vertex_array()
 
 -- load and create a texture --------------------------------------------------
-local data = mdl.skins.single[1]
+local data = mdl.skins.Single[1]
 local texture = gl.gen_textures()
 gl.bind_texture('2d', texture)
 gl.texture_parameter('2d', 'wrap s', 'repeat')

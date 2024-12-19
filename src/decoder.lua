@@ -1,5 +1,4 @@
 local os = require('os')
-local stb = require('stb')
 local pp = require("pprint.pprint")
 local xio = require('utils.io')
 local bits = require('utils.bits')
@@ -38,7 +37,7 @@ local header = {
   SkinWidth = read.integer(f),
   SkinHeight = read.integer(f),
   VerticesCount = read.integer(f),
-  TrianglesCount = read.integer(f), -- WTF is this?
+  TrianglesCount = read.integer(f),
   FramesCount = read.integer(f),
   SyncType = read.integer(f),
   Flags = read.integer(f),
@@ -46,13 +45,13 @@ local header = {
 }
 
 local skin_size = header.SkinWidth * header.SkinHeight
-local skins = { single = {}, group = {} }
+local skins = { Single = {}, Group = {} }
 for idx = 1, header.SkinsCount, 1 do
   local kind = read.integer(f)
   if kind == 0 then
     local skin = read.bytes(f, skin_size)
     local image = decode_plt_image(skin)
-    table.insert(skins.single, image)
+    table.insert(skins.Single, image)
   else
     local count = read.integer(f)
     local group = {}
@@ -63,18 +62,18 @@ for idx = 1, header.SkinsCount, 1 do
       }
       table.insert(group, skin)
     end
-    table.insert(skins.group, group)
+    table.insert(skins.Group, group)
   end
 end
 
-local tex_coords = {} -- TODO: needs improvements
+local uvs = {} -- TODO: needs improvements
 for _ = 1, header.VerticesCount, 1 do
-  local tex_coord = {
+  local uv = {
     OnSeam = read.integer(f) ~= 0,
-    S = read.integer(f),
-    T = read.integer(f),
+    U = read.integer(f),
+    V = read.integer(f),
   }
-  table.insert(tex_coords, tex_coord)
+  table.insert(uvs, uv)
 end
 
 local triangles = {}
@@ -90,30 +89,35 @@ for _ = 1, header.TrianglesCount, 1 do
   table.insert(triangles, triangle)
 end
 
-local frames = {}
+local frames = { Simple = {}, Group = {} }
 for _ = 1, header.FramesCount, 1 do
-  local frame = {
-    Type = read.integer(f),
-    Min = { read.byte(f), read.byte(f), read.byte(f), read.byte(f) },
-    Max = { read.byte(f), read.byte(f), read.byte(f), read.byte(f) },
-    Name = read.cstring(f, 16)
-  }
+  local kind = read.integer(f)
 
-  local vertices = {}
-  for _ = 1, header.VerticesCount, 1 do
-    local vertex = { read.byte(f), read.byte(f), read.byte(f), read.byte(f) }
-    table.insert(vertices, vertex)
+  if kind == 0 then -- single frame
+    local frame = {
+      Min = { read.byte(f), read.byte(f), read.byte(f), read.byte(f) },
+      Max = { read.byte(f), read.byte(f), read.byte(f), read.byte(f) },
+      Name = read.cstring(f, 16)
+    }
+
+    local positions = {}
+    for _ = 1, header.VerticesCount do
+      local position = { read.byte(f), read.byte(f), read.byte(f), read.byte(f) }
+      table.insert(positions, position)
+    end
+
+    frame.Positions = positions
+    table.insert(frames.Simple, frame)
+  else
+    -- TODO
+    pp("===========TODO===========")
   end
-
-  frame.Vertices = vertices
-
-  table.insert(frames, frame)
 end
 
 return {
   header = header,
   skins = skins,
-  tex_coords = tex_coords,
+  uvs = uvs,
   triangles = triangles,
   frames = frames,
 }
