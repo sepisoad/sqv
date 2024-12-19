@@ -22,9 +22,9 @@ local function create_position(vertices)
   for _, vertex in ipairs(vertices) do
     local sclae = mdl.header.Scale
     local origin = mdl.header.Origin
-    table.insert(out_vertices, (vertex.x * sclae.x) + origin.x)
-    table.insert(out_vertices, (vertex.y * sclae.y) + origin.y)
-    table.insert(out_vertices, (vertex.z * sclae.z) + origin.z)
+    table.insert(out_vertices, (vertex[1] * sclae[1]) + origin[1])
+    table.insert(out_vertices, (vertex[2] * sclae[2]) + origin[2])
+    table.insert(out_vertices, (vertex[3] * sclae[3]) + origin[3])
   end
   return out_vertices
 end
@@ -33,10 +33,9 @@ end
 local function create_indices_with_side(triangles)
   local out_triangles = {}
   for _, triangle in ipairs(triangles) do
-    -- Clockwise winding for back faces
-    table.insert(out_triangles, triangle.Vec.x)
-    table.insert(out_triangles, triangle.Vec.y)
-    table.insert(out_triangles, triangle.Vec.z)
+    table.insert(out_triangles, triangle.Vec[1])
+    table.insert(out_triangles, triangle.Vec[2])
+    table.insert(out_triangles, triangle.Vec[3])
   end
   return out_triangles
 end
@@ -67,7 +66,7 @@ end
 local function create_texture_coordinates(tex_coords, triangles)
   local out_tex_coords = {}
   for _, triangle in ipairs(triangles) do
-    for j = 1, 3, 1 do
+    for j = 1, 3 do
       local idx = triangle.Vec[j] + 1
 
       local s = tex_coords[idx].S
@@ -121,7 +120,7 @@ gl.unbind_buffer('array')
 gl.unbind_vertex_array()
 
 -- load and create a texture --------------------------------------------------
-local data = mdl.skins.single[2]
+local data = mdl.skins.single[1]
 local texture = gl.gen_textures()
 gl.bind_texture('2d', texture)
 gl.texture_parameter('2d', 'wrap s', 'repeat')
@@ -143,9 +142,9 @@ local projection = glm.perspective(math.rad(45.0), window_width / window_height,
 local t0 = glfw.now()
 local angle, speed = 0, math.pi / 3
 
-gl.enable("cull face") -- SEPI: NEED THIS
+-- gl.enable("cull face") -- SEPI: NEED THIS
 -- gl.polygon_mode("front and back", "line") -- SEPI: VERY NICE
-gl.cull_face("front")  -- SEPI: DUNNO
+-- gl.cull_face("front")  -- SEPI: DUNNO
 gl.front_face("ccw")   -- SEPI: DUNNO
 
 while not glfw.window_should_close(window) do
@@ -167,7 +166,7 @@ while not glfw.window_should_close(window) do
   -- Set transformations
   local view = glm.translate(0.0, 0.0, -100.0)
   local model =
-      glm.translate(0, -20, 0)
+      glm.translate(0, 0, 0)
       * glm.rotate(angle, 0, 1, 0)
       * glm.rotate(math.rad(-90), 1, 0, 0)
 
