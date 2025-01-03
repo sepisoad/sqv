@@ -1,59 +1,121 @@
-#include <lua5.4/lauxlib.h>
-#include <lua5.4/lua.h>
-#include <lua5.4/lualib.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <dlfcn.h>
+#include <raylib.h>
+#include <threads.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
-#include <lfs/lfs.h>
-#include <stb/img.h>
+volatile bool plugin_updated = false;
+const char* plugin_source = "src/live.c";
+const char* plugin_path = ".ignore/build/live.so";
+void* plugin_handler = NULL;
 
-#define ENTRY_SCRIPT "./src/init.lua"
-
-void set_lua_package_path(lua_State *L) {
-  // Get the current package.path
-  lua_getglobal(L, "package");
-  lua_getfield(L, -1, "path");  // Get the current path
-  const char *current_path = lua_tostring(L, -1);
-
-  // Construct the new paths to only include the root deps/lua directory
-  const char *new_paths = "./deps/lua/?.lua;./deps/lua/?/init.lua;";
-  char updated_path[2048];
-
-  // Combine new paths with the current path
-  snprintf(updated_path, sizeof(updated_path), "%s%s", new_paths, current_path);
-
-  // Update package.path
-  lua_pop(L, 1);  // Remove the old path
-  lua_pushstring(L, updated_path);
-  lua_setfield(L, -2, "path");
-  lua_pop(L, 1);  // Remove the package table
+time_t get_file_date(const char* filename) {
+  struct stat file_stat;
+  if (stat(filename, &file_stat) == -1) {
+    perror("stat");
+    return 0;
+  }
+  return file_stat.st_mtime;
 }
 
-int main(int argc, char** argv) {
-  // init lua vm
-  lua_State* L = luaL_newstate();
-  luaL_openlibs(L);
+int monitor_plugin(void* arg) {
+  time_t last_modified = get_file_date(plugin_source);
 
-  // load custom modules
-  open_module_lfs(L);
-  open_module_stb(L);
-  set_lua_package_path(L);
+  while (1) {
+    sleep(1); // Check the file every second
+    time_t current_modified = get_file_date(plugin_source);
 
-  // redirect input args to the main lua script
-  for (int i = 0; i < argc; i++) {
-    lua_pushstring(L, argv[i]);
-    lua_rawseti(L, -2, i);
+    if (current_modified > last_modified) {
+      plugin_updated = true;
+      last_modified = current_modified;
+    }
   }
-  lua_setglobal(L, "arg");
+  return 0;
+}
 
-  // run the entry script
-  if (luaL_dofile(L, ENTRY_SCRIPT) != LUA_OK) {
-    fprintf(stderr, "Error: %s\n", lua_tostring(L, -1));
-    lua_pop(L, 1);
+int init_monitor_plugin() {
+  thrd_t monitor_thread;
+  if (thrd_create(&monitor_thread, monitor_plugin, NULL) != thrd_success) {
+    fprintf(stderr, "Failed to create thread\n");
+    return EXIT_FAILURE;
+  }
+}
+
+void build_plugin() {
+  int ret = system("make clean_plugin");
+  if (ret == -1) {
+    perror("system");
   }
 
-  // run the debug script
-  // luaL_dofile(L, "src/debug.lua");
+  ret = system("make plugin");
+  if (ret == -1) {
+    perror("system");
+  }
+  else {
+    printf("Command executed with return code: %d\n", ret);
+  }
+}
 
-  // clean up
-  lua_close(L);
+void reaload_plugin() {
+  if (plugin_handler) {
+    dlclose(plugin_handler);
+    plugin_handler = NULL;
+  }
+
+  plugin_handler = dlopen(plugin_path, RTLD_LAZY);
+  if (!plugin_handler) {
+    fprintf(stderr, "Error: %s\n", dlerror());
+    exit(EXIT_FAILURE);
+  }
+
+  char* error = dlerror();
+  if (error) {
+    fprintf(stderr, "Error: %s\n", error);
+    dlclose(plugin_handler);
+    exit(EXIT_FAILURE);
+  }
+
+  int (*func)();
+  *(int**)(&func) = dlsym(plugin_handler, "func");
+
+  error = dlerror();
+  if (error) {
+    fprintf(stderr, "Error: %s\n", error);
+    dlclose(plugin_handler);
+    exit(EXIT_FAILURE);
+  }
+
+  // Call the function
+  printf("HELLO: %d\n:", func());
+}
+
+int main(void) {
+  const int screenWidth = 800;
+  const int screenHeight = 450;
+
+  InitWindow(screenWidth, screenHeight, "raylib [core] example - basic window");
+
+  SetTargetFPS(60);
+  //--------------------------------------------------------------------------------------
+
+  bool pause = true;
+  init_monitor_plugin();
+  reaload_plugin();
+  while (true) {
+    if (IsKeyReleased(KEY_ESCAPE) || plugin_updated) {
+      build_plugin();
+      reaload_plugin();
+      plugin_updated = false;
+    }
+
+    BeginDrawing();
+    ClearBackground(RAYWHITE);
+    DrawText("Congrats! You created your first window!", 190, 200, 20, LIGHTGRAY);
+    EndDrawing();
+  }
+
+  CloseWindow();
   return 0;
 }
