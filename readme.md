@@ -1,5 +1,10 @@
 # SQV
 
+!!!!!!
+SEPI: when you are back from georgia
+      consider using odin + raylib + caly
+!!!!!!
+
 ## REFS:
 - https://formats.kaitai.io/quake_mdl/quake_mdl.svg
 - https://book.leveldesignbook.com/appendix/resources/formats/mdl

@@ -79,7 +79,7 @@ end
 local triangles = {}
 for _ = 1, header.TrianglesCount, 1 do
   local triangle = {
-    FrontFace = read.integer(f) == 1,
+    FrontFace = read.integer(f) ~= 0,
     Vec = {
       read.integer(f),
       read.integer(f),
@@ -90,6 +90,7 @@ for _ = 1, header.TrianglesCount, 1 do
 end
 
 local frames = { Simple = {}, Group = {} }
+local frame_triangles = { Positions = {}, UVs = {} }
 for _ = 1, header.FramesCount, 1 do
   local kind = read.integer(f)
 
@@ -101,12 +102,37 @@ for _ = 1, header.FramesCount, 1 do
     }
 
     local positions = {}
-    for _ = 1, header.VerticesCount do
-      local position = { read.byte(f), read.byte(f), read.byte(f), read.byte(f) }
+    for _ = 1, #uvs do
+      local position = {
+        (read.byte(f) * header.Scale[1]) + header.Origin[1],
+        (read.byte(f) * header.Scale[2]) + header.Origin[2],
+        (read.byte(f) * header.Scale[3]) + header.Origin[3],
+        read.byte(f),
+      }
       table.insert(positions, position)
     end
 
     frame.Positions = positions
+
+    for _, triangle in ipairs(triangles) do
+      for i = 1, 3 do
+        local vertidx = triangle.Vec[i] + 1
+        local u = uvs[vertidx].U
+        local v = uvs[vertidx].V
+        local onseam = uvs[vertidx].OnSeam
+
+        if onseam and not triangle.FrontFace then
+          u = u + header.SkinWidth * 0.5
+        end
+
+        u = (u + 0.5) / header.SkinWidth
+        v = (v + 0.5) / header.SkinHeight
+
+        table.insert(frame_triangles.Positions, positions[vertidx])
+        table.insert(frame_triangles.UVs, { u, v })
+      end
+    end
+
     table.insert(frames.Simple, frame)
   else
     -- TODO
@@ -120,4 +146,5 @@ return {
   uvs = uvs,
   triangles = triangles,
   frames = frames,
+  frame_triangles = frame_triangles,
 }

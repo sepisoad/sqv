@@ -1,7 +1,6 @@
 local gl = require("moongl")
 local glfw = require("moonglfw")
 local glm = require("moonglmath")
-local img = require("moonimage")
 local mdl = require("src.decoder")
 local pp = require("pprint.pprint")
 
@@ -14,54 +13,44 @@ local window = glfw.create_window(window_width, window_height, "Correct Winding 
 glfw.make_context_current(window)
 gl.init()
 
-
--- Generate position data
-local function create_position(vertices)
-  local out_vertices = {}
-
-  for _, vertex in ipairs(vertices) do
-    local sclae = mdl.header.Scale
-    local origin = mdl.header.Origin
-    table.insert(out_vertices, (vertex[1] * sclae[1]) + origin[1])
-    table.insert(out_vertices, (vertex[2] * sclae[2]) + origin[2])
-    table.insert(out_vertices, (vertex[3] * sclae[3]) + origin[3])
+local function expand_position(positions)
+  local _position = {}
+  for _, position in ipairs(positions) do
+    table.insert(_position, position[1])
+    table.insert(_position, position[2])
+    table.insert(_position, position[3])
   end
-  return out_vertices
+  return _position
 end
 
--- Generate index data with correct winding order based on the triangle side
-local function create_indices_with_side(triangles)
-  local out_triangles = {}
+local function expand_triangles(triangles)
+  local _triangles = {}
   for _, triangle in ipairs(triangles) do
-    table.insert(out_triangles, triangle.Vec[1])
-    table.insert(out_triangles, triangle.Vec[2])
-    table.insert(out_triangles, triangle.Vec[3])
+    table.insert(_triangles, triangle.Vec[1])
+    table.insert(_triangles, triangle.Vec[2])
+    table.insert(_triangles, triangle.Vec[3])
   end
-  return out_triangles
+  return _triangles
 end
 
-
-
--- Expand vertices and indices to ensure unique vertices per triangle
-local function expand_vertices_and_indices(vertices, indices)
-  local expanded_vertices = {}
-  local expanded_indices = {}
+local function expand_positions_and_triangles(positions, triangles)
+  local _positions = {}
+  local _tirangles = {}
   local current_index = 0
 
-  for i = 1, #indices, 3 do
+  for i = 1, #triangles, 3 do
     for j = 0, 2 do
-      local vertex_index = indices[i + j] + 1
-      table.insert(expanded_vertices, vertices[(vertex_index - 1) * 3 + 1]) -- X
-      table.insert(expanded_vertices, vertices[(vertex_index - 1) * 3 + 2]) -- Y
-      table.insert(expanded_vertices, vertices[(vertex_index - 1) * 3 + 3]) -- Z
-      table.insert(expanded_indices, current_index)
+      local idx = triangles[i + j] + 1
+      table.insert(_positions, positions[(idx - 1) * 3 + 1]) -- X
+      table.insert(_positions, positions[(idx - 1) * 3 + 2]) -- Y
+      table.insert(_positions, positions[(idx - 1) * 3 + 3]) -- Z
+      table.insert(_tirangles, current_index)
       current_index = current_index + 1
     end
   end
 
-  return expanded_vertices, expanded_indices
+  return _positions, _tirangles
 end
-
 
 local function create_texture_coordinates(uvs, triangles)
   local out_uv = {}
@@ -88,9 +77,9 @@ local function create_texture_coordinates(uvs, triangles)
 end
 
 -- Generate data
-local positions = create_position(mdl.frames.Simple[1].Positions)
-local indices = create_indices_with_side(mdl.triangles)
-local expanded_positions, expanded_indices = expand_vertices_and_indices(positions, indices)
+local positions = expand_position(mdl.frames.Simple[1].Positions)
+local triangles = expand_triangles(mdl.triangles)
+local positions_ex, indices_ex = expand_positions_and_triangles(positions, triangles)
 local uvs = create_texture_coordinates(mdl.uvs, mdl.triangles)
 
 -- Create VAO and buffers
@@ -102,7 +91,7 @@ gl.bind_vertex_array(vao)
 
 -- Bind and buffer positions
 gl.bind_buffer('array', vbo_positions)
-gl.buffer_data('array', gl.pack('float', expanded_positions), 'static draw')
+gl.buffer_data('array', gl.pack('float', positions_ex), 'static draw')
 gl.vertex_attrib_pointer(0, 3, 'float', false, 3 * gl.sizeof('float'), 0)
 gl.enable_vertex_attrib_array(0)
 
@@ -114,7 +103,7 @@ gl.enable_vertex_attrib_array(1)
 
 -- Bind and buffer element indices
 gl.bind_buffer('element array', ebo)
-gl.buffer_data('element array', gl.pack('uint', expanded_indices), 'static draw')
+gl.buffer_data('element array', gl.pack('uint', indices_ex), 'static draw')
 
 gl.unbind_buffer('array')
 gl.unbind_vertex_array()
@@ -177,7 +166,7 @@ while not glfw.window_should_close(window) do
 
   -- Draw the model with random colors
   gl.bind_vertex_array(vao)
-  gl.draw_elements("triangles", #expanded_indices, "uint", 0)
+  gl.draw_elements("triangles", #indices_ex, "uint", 0)
 
   glfw.swap_buffers(window)
 end

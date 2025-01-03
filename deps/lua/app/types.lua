@@ -117,7 +117,7 @@ MipTex = {}
 ---@field Green integer (1 byte unsigned, 0-255)
 ---@field Blue integer (1 byte unsigned, 0-255)
 RGBColor = {
-  _Size = 3
+  -- _Size = 3 -- TODO: i don't use this anymore
 }
 
 ---@alias Colors RGBColor[]
