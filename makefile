@@ -8,8 +8,8 @@ C_DEPS = -Ideps/c -I/usr/local/include
 SRC_DIR = src
 
 CC = gcc-14
-CC_LIBS = -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
-CC_FLAGS = $(C_DEPS) -std=c23 -DRAYLIB_LIBTYPE=SHARED -DPLATFORM=PLATFORM_DESKTOP_RGFW
+CC_LIBS = -lraylib -lGL -lX11 -lXrandr -lXinerama -lXi -lXxf86vm -lXcursor -lm -lpthread -ldl -lrt
+CC_FLAGS = $(C_DEPS) -std=c23 -fPIC -DRAYLIB_LIBTYPE=SHARED -DPLATFORM=PLATFORM_DESKTOP_RGFW
 
 DEBUG ?= 1
 ifeq ($(DEBUG), 1)
