@@ -1,14 +1,14 @@
+#include <dlfcn.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <dlfcn.h>
-#include <threads.h>
 #include <sys/stat.h>
+#include <threads.h>
 #include <unistd.h>
-#include <stdbool.h>
 
 volatile bool plugin_updated = false;
 const char* plugin_source = "src/plugin.c";
-const char* plugin_path = ".ignore/build/plugin.so";
+const char* plugin_path = ".ignore/build/libplugin.so";
 void* plugin_handler = NULL;
 void (*plugin_init_fn)() = NULL;
 void (*plugin_main_fn)(int, int) = NULL;
@@ -48,14 +48,14 @@ void init_monitor_plugin() {
 }
 
 bool build_plugin() {
-  int ret = system("make clean_plugin");
+  int ret = system("make --no-print-directory -C . -f Plugin.make clean");
   if (ret == -1) {
     fprintf(stderr, "Error: Failed to execute 'make clean_plugin'\n");
     perror("system");
     return false;
   }
 
-  ret = system("make plugin");
+  ret = system("make Plugin");
   if (ret == -1) {
     fprintf(stderr, "Error: Failed to execute 'make plugin'\n");
     perror("system");
@@ -81,7 +81,8 @@ void reload_plugin() {
 
   plugin_handler = dlopen(plugin_path, RTLD_LAZY);
   if (!plugin_handler) {
-    fprintf(stderr, "Error: Failed to load plugin '%s': %s\n", plugin_path, dlerror());
+    fprintf(stderr, "Error: Failed to load plugin '%s': %s\n", plugin_path,
+            dlerror());
     return;
   }
 

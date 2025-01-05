@@ -69,7 +69,7 @@ void plugin_main(int screen_width, int screen_height) {
 
 void DrawCubeTexture(Texture2D texture, Vector3 position, float width,
                      float height, float length) {
-  Color color = GREEN;
+  Color color = WHITE;
   float x = position.x;
   float y = position.y;
   float z = position.z;
