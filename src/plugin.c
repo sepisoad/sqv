@@ -8,11 +8,10 @@
 #define MAX_POINTS 11
 
 Camera camera;
+Vector2 cubeScreenPosition;
 Vector3 cubePosition;
-Vector3 cubeSize;
-Ray ray;
-RayCollision collision;
 Texture texture;
+bool is_cursor_enable;
 float angle;
 
 void DrawCubeTexture(Texture2D, Vector3, float, float, float, Color);
@@ -21,10 +20,9 @@ void DrawCubeTextureRec(Texture2D, Rectangle, Vector3, float, float, float,
 
 void plugin_init() {
   camera = (Camera){0};
+
   cubePosition = (Vector3){0.0f, 1.0f, 0.0f};
-  cubeSize = (Vector3){2.0f, 2.0f, 2.0f};
-  ray = (Ray){0};
-  collision = (RayCollision){0};
+  cubeScreenPosition = (Vector2){0.0f, 0.0f};
 
   camera.position = (Vector3){10.0f, 10.0f, 10.0f};
   camera.target = (Vector3){0.0f, 0.0f, 0.0f};
@@ -33,21 +31,35 @@ void plugin_init() {
   camera.projection = CAMERA_PERSPECTIVE;
 
   texture = LoadTexture("res/textures/container2.png");
+
   angle = 0.0f;
+  is_cursor_enable = true;
+
+  //
 }
 
 void plugin_kill() { UnloadTexture(texture); }
 
 void plugin_main(int screen_width, int screen_height) {
+  if (IsKeyReleased(KEY_ESCAPE)) {
+    EnableCursor();
+  }
+  if (IsKeyReleased(KEY_SPACE)) {
+    DisableCursor();
+  }
+
+  UpdateCamera(&camera, CAMERA_THIRD_PERSON);
+  cubeScreenPosition = GetWorldToScreen(
+      (Vector3){cubePosition.x, cubePosition.y + 2.5f, cubePosition.z}, camera);
+
   BeginDrawing();
   ClearBackground(RAYWHITE);
   BeginMode3D(camera);
-  DrawCubeTexture(texture, (Vector3){-2.0f, 2.0f, 0.0f}, 2.0f, 4.0f, 2.0f,
-                  WHITE);
-  DrawCubeTextureRec(texture,
-                     (Rectangle){0.0f, texture.height / 2.0f,
-                                 texture.width / 2.0f, texture.height / 2.0f},
-                     (Vector3){2.0f, 1.0f, 0.0f}, 2.0f, 2.0f, 2.0f, WHITE);
+  // DrawCubeTexture(texture, (Vector3){0.0f, 1.0f, 0.0f}, 2.0f, 2.0f, 2.0f,
+  //                 WHITE);
+  DrawCubeTextureRec(
+      texture, (Rectangle){0.0f, texture.height, texture.width, texture.height},
+      (Vector3){0.0f, 0.0f, 0.0f}, 4.0f, 4.0f, 4.0f, WHITE);
   DrawGrid(10, 1.0f);
   EndMode3D();
   DrawFPS(10, 10);
