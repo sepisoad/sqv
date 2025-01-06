@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "quake/mdl_decoder.h"
+
 #define MAX_POINTS 11
 
 Camera camera;
@@ -17,7 +19,7 @@ float angle;
 void DrawCubeTexture(Texture2D, Vector3, float, float, float);
 void DrawCubeTextureRec(Texture2D, Rectangle, Vector3, float, float, float);
 
-void plugin_init() {
+void plugin_init(quake_model* model) {
   camera = (Camera){0};
 
   cubePosition = (Vector3){0.0f, 1.0f, 0.0f};
@@ -35,6 +37,8 @@ void plugin_init() {
   is_cursor_enable = true;
   // EnableCursor();
   //
+
+  printf("%s\n", model->frames[0].frame.name);
 }
 
 void plugin_kill() { UnloadTexture(texture); }

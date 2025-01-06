@@ -6,11 +6,13 @@
 #include <threads.h>
 #include <unistd.h>
 
+#include "quake/mdl_decoder.h"
+
 volatile bool plugin_updated = false;
 const char* plugin_source = "src/plugin.c";
 const char* plugin_path = ".ignore/build/libplugin.so";
 void* plugin_handler = NULL;
-void (*plugin_init_fn)() = NULL;
+void (*plugin_init_fn)(quake_model*);
 void (*plugin_main_fn)(int, int) = NULL;
 void (*plugin_kill_fn)() = NULL;
 
