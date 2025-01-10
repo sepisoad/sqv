@@ -13,7 +13,7 @@ const char* plugin_source = "src/plugin.c";
 const char* plugin_path = ".ignore/build/libplugin.so";
 void* plugin_handler = NULL;
 void (*plugin_init_fn)(quake_model*);
-void (*plugin_main_fn)(int, int) = NULL;
+void (*plugin_main_fn)(int, int, quake_model*) = NULL;
 void (*plugin_kill_fn)() = NULL;
 
 time_t get_file_date(const char* filename) {

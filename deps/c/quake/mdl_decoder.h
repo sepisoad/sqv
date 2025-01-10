@@ -1,4 +1,5 @@
-#pragma once
+#ifndef QUAKE_DECODER_H
+#define QUAKE_DECODER_H
 
 #include <stdint.h>
 
@@ -65,6 +66,8 @@ typedef struct {
   texture_coordinate* texture_coordinates;
   triangle* triangles;
   frame* frames;
-  uint8_t* texture_id;
+  uint32_t texture_id;
   int is_kin;  // TODO: make bool
 } quake_model;
+
+#endif  // QUAKE_DECODER_H

@@ -16,8 +16,241 @@ Texture texture;
 bool is_cursor_enable;
 float angle;
 
+vector anorms_table[162] = {
+    {-0.525731f, 0.000000f, 0.850651f},   {-0.442863f, 0.238856f, 0.864188f},
+    {-0.295242f, 0.000000f, 0.955423f},   {-0.309017f, 0.500000f, 0.809017f},
+    {-0.162460f, 0.262866f, 0.951056f},   {0.000000f, 0.000000f, 1.000000f},
+    {0.000000f, 0.850651f, 0.525731f},    {-0.147621f, 0.716567f, 0.681718f},
+    {0.147621f, 0.716567f, 0.681718f},    {0.000000f, 0.525731f, 0.850651f},
+    {0.309017f, 0.500000f, 0.809017f},    {0.525731f, 0.000000f, 0.850651f},
+    {0.295242f, 0.000000f, 0.955423f},    {0.442863f, 0.238856f, 0.864188f},
+    {0.162460f, 0.262866f, 0.951056f},    {-0.681718f, 0.147621f, 0.716567f},
+    {-0.809017f, 0.309017f, 0.500000f},   {-0.587785f, 0.425325f, 0.688191f},
+    {-0.850651f, 0.525731f, 0.000000f},   {-0.864188f, 0.442863f, 0.238856f},
+    {-0.716567f, 0.681718f, 0.147621f},   {-0.688191f, 0.587785f, 0.425325f},
+    {-0.500000f, 0.809017f, 0.309017f},   {-0.238856f, 0.864188f, 0.442863f},
+    {-0.425325f, 0.688191f, 0.587785f},   {-0.716567f, 0.681718f, -0.147621f},
+    {-0.500000f, 0.809017f, -0.309017f},  {-0.525731f, 0.850651f, 0.000000f},
+    {0.000000f, 0.850651f, -0.525731f},   {-0.238856f, 0.864188f, -0.442863f},
+    {0.000000f, 0.955423f, -0.295242f},   {-0.262866f, 0.951056f, -0.162460f},
+    {0.000000f, 1.000000f, 0.000000f},    {0.000000f, 0.955423f, 0.295242f},
+    {-0.262866f, 0.951056f, 0.162460f},   {0.238856f, 0.864188f, 0.442863f},
+    {0.262866f, 0.951056f, 0.162460f},    {0.500000f, 0.809017f, 0.309017f},
+    {0.238856f, 0.864188f, -0.442863f},   {0.262866f, 0.951056f, -0.162460f},
+    {0.500000f, 0.809017f, -0.309017f},   {0.850651f, 0.525731f, 0.000000f},
+    {0.716567f, 0.681718f, 0.147621f},    {0.716567f, 0.681718f, -0.147621f},
+    {0.525731f, 0.850651f, 0.000000f},    {0.425325f, 0.688191f, 0.587785f},
+    {0.864188f, 0.442863f, 0.238856f},    {0.688191f, 0.587785f, 0.425325f},
+    {0.809017f, 0.309017f, 0.500000f},    {0.681718f, 0.147621f, 0.716567f},
+    {0.587785f, 0.425325f, 0.688191f},    {0.955423f, 0.295242f, 0.000000f},
+    {1.000000f, 0.000000f, 0.000000f},    {0.951056f, 0.162460f, 0.262866f},
+    {0.850651f, -0.525731f, 0.000000f},   {0.955423f, -0.295242f, 0.000000f},
+    {0.864188f, -0.442863f, 0.238856f},   {0.951056f, -0.162460f, 0.262866f},
+    {0.809017f, -0.309017f, 0.500000f},   {0.681718f, -0.147621f, 0.716567f},
+    {0.850651f, 0.000000f, 0.525731f},    {0.864188f, 0.442863f, -0.238856f},
+    {0.809017f, 0.309017f, -0.500000f},   {0.951056f, 0.162460f, -0.262866f},
+    {0.525731f, 0.000000f, -0.850651f},   {0.681718f, 0.147621f, -0.716567f},
+    {0.681718f, -0.147621f, -0.716567f},  {0.850651f, 0.000000f, -0.525731f},
+    {0.809017f, -0.309017f, -0.500000f},  {0.864188f, -0.442863f, -0.238856f},
+    {0.951056f, -0.162460f, -0.262866f},  {0.147621f, 0.716567f, -0.681718f},
+    {0.309017f, 0.500000f, -0.809017f},   {0.425325f, 0.688191f, -0.587785f},
+    {0.442863f, 0.238856f, -0.864188f},   {0.587785f, 0.425325f, -0.688191f},
+    {0.688191f, 0.587785f, -0.425325f},   {-0.147621f, 0.716567f, -0.681718f},
+    {-0.309017f, 0.500000f, -0.809017f},  {0.000000f, 0.525731f, -0.850651f},
+    {-0.525731f, 0.000000f, -0.850651f},  {-0.442863f, 0.238856f, -0.864188f},
+    {-0.295242f, 0.000000f, -0.955423f},  {-0.162460f, 0.262866f, -0.951056f},
+    {0.000000f, 0.000000f, -1.000000f},   {0.295242f, 0.000000f, -0.955423f},
+    {0.162460f, 0.262866f, -0.951056f},   {-0.442863f, -0.238856f, -0.864188f},
+    {-0.309017f, -0.500000f, -0.809017f}, {-0.162460f, -0.262866f, -0.951056f},
+    {0.000000f, -0.850651f, -0.525731f},  {-0.147621f, -0.716567f, -0.681718f},
+    {0.147621f, -0.716567f, -0.681718f},  {0.000000f, -0.525731f, -0.850651f},
+    {0.309017f, -0.500000f, -0.809017f},  {0.442863f, -0.238856f, -0.864188f},
+    {0.162460f, -0.262866f, -0.951056f},  {0.238856f, -0.864188f, -0.442863f},
+    {0.500000f, -0.809017f, -0.309017f},  {0.425325f, -0.688191f, -0.587785f},
+    {0.716567f, -0.681718f, -0.147621f},  {0.688191f, -0.587785f, -0.425325f},
+    {0.587785f, -0.425325f, -0.688191f},  {0.000000f, -0.955423f, -0.295242f},
+    {0.000000f, -1.000000f, 0.000000f},   {0.262866f, -0.951056f, -0.162460f},
+    {0.000000f, -0.850651f, 0.525731f},   {0.000000f, -0.955423f, 0.295242f},
+    {0.238856f, -0.864188f, 0.442863f},   {0.262866f, -0.951056f, 0.162460f},
+    {0.500000f, -0.809017f, 0.309017f},   {0.716567f, -0.681718f, 0.147621f},
+    {0.525731f, -0.850651f, 0.000000f},   {-0.238856f, -0.864188f, -0.442863f},
+    {-0.500000f, -0.809017f, -0.309017f}, {-0.262866f, -0.951056f, -0.162460f},
+    {-0.850651f, -0.525731f, 0.000000f},  {-0.716567f, -0.681718f, -0.147621f},
+    {-0.716567f, -0.681718f, 0.147621f},  {-0.525731f, -0.850651f, 0.000000f},
+    {-0.500000f, -0.809017f, 0.309017f},  {-0.238856f, -0.864188f, 0.442863f},
+    {-0.262866f, -0.951056f, 0.162460f},  {-0.864188f, -0.442863f, 0.238856f},
+    {-0.809017f, -0.309017f, 0.500000f},  {-0.688191f, -0.587785f, 0.425325f},
+    {-0.681718f, -0.147621f, 0.716567f},  {-0.442863f, -0.238856f, 0.864188f},
+    {-0.587785f, -0.425325f, 0.688191f},  {-0.309017f, -0.500000f, 0.809017f},
+    {-0.147621f, -0.716567f, 0.681718f},  {-0.425325f, -0.688191f, 0.587785f},
+    {-0.162460f, -0.262866f, 0.951056f},  {0.442863f, -0.238856f, 0.864188f},
+    {0.162460f, -0.262866f, 0.951056f},   {0.309017f, -0.500000f, 0.809017f},
+    {0.147621f, -0.716567f, 0.681718f},   {0.000000f, -0.525731f, 0.850651f},
+    {0.425325f, -0.688191f, 0.587785f},   {0.587785f, -0.425325f, 0.688191f},
+    {0.688191f, -0.587785f, 0.425325f},   {-0.955423f, 0.295242f, 0.000000f},
+    {-0.951056f, 0.162460f, 0.262866f},   {-1.000000f, 0.000000f, 0.000000f},
+    {-0.850651f, 0.000000f, 0.525731f},   {-0.955423f, -0.295242f, 0.000000f},
+    {-0.951056f, -0.162460f, 0.262866f},  {-0.864188f, 0.442863f, -0.238856f},
+    {-0.951056f, 0.162460f, -0.262866f},  {-0.809017f, 0.309017f, -0.500000f},
+    {-0.864188f, -0.442863f, -0.238856f}, {-0.951056f, -0.162460f, -0.262866f},
+    {-0.809017f, -0.309017f, -0.500000f}, {-0.681718f, 0.147621f, -0.716567f},
+    {-0.681718f, -0.147621f, -0.716567f}, {-0.850651f, 0.000000f, -0.525731f},
+    {-0.688191f, 0.587785f, -0.425325f},  {-0.587785f, 0.425325f, -0.688191f},
+    {-0.425325f, 0.688191f, -0.587785f},  {-0.425325f, -0.688191f, -0.587785f},
+    {-0.587785f, -0.425325f, -0.688191f}, {-0.688191f, -0.587785f, -0.425325f}};
+
+unsigned char quake_palette[256][3] = {
+    {0, 0, 0},       {15, 15, 15},    {31, 31, 31},    {47, 47, 47},
+    {63, 63, 63},    {75, 75, 75},    {91, 91, 91},    {107, 107, 107},
+    {123, 123, 123}, {139, 139, 139}, {155, 155, 155}, {171, 171, 171},
+    {187, 187, 187}, {203, 203, 203}, {219, 219, 219}, {235, 235, 235},
+    {15, 11, 7},     {23, 15, 11},    {31, 23, 11},    {39, 27, 15},
+    {47, 35, 19},    {55, 43, 23},    {63, 47, 23},    {75, 55, 27},
+    {83, 59, 27},    {91, 67, 31},    {99, 75, 31},    {107, 83, 31},
+    {115, 87, 31},   {123, 95, 35},   {131, 103, 35},  {143, 111, 35},
+    {11, 11, 15},    {19, 19, 27},    {27, 27, 39},    {39, 39, 51},
+    {47, 47, 63},    {55, 55, 75},    {63, 63, 87},    {71, 71, 103},
+    {79, 79, 115},   {91, 91, 127},   {99, 99, 139},   {107, 107, 151},
+    {115, 115, 163}, {123, 123, 175}, {131, 131, 187}, {139, 139, 203},
+    {0, 0, 0},       {7, 7, 0},       {11, 11, 0},     {19, 19, 0},
+    {27, 27, 0},     {35, 35, 0},     {43, 43, 7},     {47, 47, 7},
+    {55, 55, 7},     {63, 63, 7},     {71, 71, 7},     {75, 75, 11},
+    {83, 83, 11},    {91, 91, 11},    {99, 99, 11},    {107, 107, 15},
+    {7, 0, 0},       {15, 0, 0},      {23, 0, 0},      {31, 0, 0},
+    {39, 0, 0},      {47, 0, 0},      {55, 0, 0},      {63, 0, 0},
+    {71, 0, 0},      {79, 0, 0},      {87, 0, 0},      {95, 0, 0},
+    {103, 0, 0},     {111, 0, 0},     {119, 0, 0},     {127, 0, 0},
+    {19, 19, 0},     {27, 27, 0},     {35, 35, 0},     {47, 43, 0},
+    {55, 47, 0},     {67, 55, 0},     {75, 59, 7},     {87, 67, 7},
+    {95, 71, 7},     {107, 75, 11},   {119, 83, 15},   {131, 87, 19},
+    {139, 91, 19},   {151, 95, 27},   {163, 99, 31},   {175, 103, 35},
+    {35, 19, 7},     {47, 23, 11},    {59, 31, 15},    {75, 35, 19},
+    {87, 43, 23},    {99, 47, 31},    {115, 55, 35},   {127, 59, 43},
+    {143, 67, 51},   {159, 79, 51},   {175, 99, 47},   {191, 119, 47},
+    {207, 143, 43},  {223, 171, 39},  {239, 203, 31},  {255, 243, 27},
+    {11, 7, 0},      {27, 19, 0},     {43, 35, 15},    {55, 43, 19},
+    {71, 51, 27},    {83, 55, 35},    {99, 63, 43},    {111, 71, 51},
+    {127, 83, 63},   {139, 95, 71},   {155, 107, 83},  {167, 123, 95},
+    {183, 135, 107}, {195, 147, 123}, {211, 163, 139}, {227, 179, 151},
+    {171, 139, 163}, {159, 127, 151}, {147, 115, 135}, {139, 103, 123},
+    {127, 91, 111},  {119, 83, 99},   {107, 75, 87},   {95, 63, 75},
+    {87, 55, 67},    {75, 47, 55},    {67, 39, 47},    {55, 31, 35},
+    {43, 23, 27},    {35, 19, 19},    {23, 11, 11},    {15, 7, 7},
+    {187, 115, 159}, {175, 107, 143}, {163, 95, 131},  {151, 87, 119},
+    {139, 79, 107},  {127, 75, 95},   {115, 67, 83},   {107, 59, 75},
+    {95, 51, 63},    {83, 43, 55},    {71, 35, 43},    {59, 31, 35},
+    {47, 23, 27},    {35, 19, 19},    {23, 11, 11},    {15, 7, 7},
+    {219, 195, 187}, {203, 179, 167}, {191, 163, 155}, {175, 151, 139},
+    {163, 135, 123}, {151, 123, 111}, {135, 111, 95},  {123, 99, 83},
+    {107, 87, 71},   {95, 75, 59},    {83, 63, 51},    {67, 51, 39},
+    {55, 43, 31},    {39, 31, 23},    {27, 19, 15},    {15, 11, 7},
+    {111, 131, 123}, {103, 123, 111}, {95, 115, 103},  {87, 107, 95},
+    {79, 99, 87},    {71, 91, 79},    {63, 83, 71},    {55, 75, 63},
+    {47, 67, 55},    {43, 59, 47},    {35, 51, 39},    {31, 43, 31},
+    {23, 35, 23},    {15, 27, 19},    {11, 19, 11},    {7, 11, 7},
+    {255, 243, 27},  {239, 223, 23},  {219, 203, 19},  {203, 183, 15},
+    {187, 167, 15},  {171, 151, 11},  {155, 131, 7},   {139, 115, 7},
+    {123, 99, 7},    {107, 83, 0},    {91, 71, 0},     {75, 55, 0},
+    {59, 43, 0},     {43, 31, 0},     {27, 15, 0},     {11, 7, 0},
+    {0, 0, 255},     {11, 11, 239},   {19, 19, 223},   {27, 27, 207},
+    {35, 35, 191},   {43, 43, 175},   {47, 47, 159},   {47, 47, 143},
+    {47, 47, 127},   {47, 47, 111},   {47, 47, 95},    {43, 43, 79},
+    {35, 35, 63},    {27, 27, 47},    {19, 19, 31},    {11, 11, 15},
+    {43, 0, 0},      {59, 0, 0},      {75, 7, 0},      {95, 7, 0},
+    {111, 15, 0},    {127, 23, 7},    {147, 31, 7},    {163, 39, 11},
+    {183, 51, 15},   {195, 75, 27},   {207, 99, 43},   {219, 127, 59},
+    {227, 151, 79},  {231, 171, 95},  {239, 191, 119}, {247, 211, 139},
+    {167, 123, 59},  {183, 155, 55},  {199, 195, 55},  {231, 227, 87},
+    {127, 191, 255}, {171, 231, 255}, {215, 255, 255}, {103, 0, 0},
+    {139, 0, 0},     {179, 0, 0},     {215, 0, 0},     {255, 0, 0},
+    {255, 243, 147}, {255, 247, 199}, {255, 255, 255}, {159, 91, 83}};
+
 void DrawCubeTexture(Texture2D, Vector3, float, float, float);
 void DrawCubeTextureRec(Texture2D, Rectangle, Vector3, float, float, float);
+
+void quake_make_texture_from_skin(int n, quake_model* model) {
+  int width = model->header.skin_width;
+  int height = model->header.skin_height;
+  uint8_t* pixels = malloc(width * height * 3);
+
+  for (int i = 0; i < width * height; ++i) {
+    pixels[(i * 3) + 0] = quake_palette[model->skins[n].data[i]][0];
+    pixels[(i * 3) + 1] = quake_palette[model->skins[n].data[i]][1];
+    pixels[(i * 3) + 2] = quake_palette[model->skins[n].data[i]][2];
+  }
+
+  Image image = {.data = pixels,
+                 .width = width,
+                 .height = height,
+                 .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8,
+                 .mipmaps = 1};
+
+  texture = LoadTextureFromImage(image);
+  model->texture_id = texture.id;
+
+  printf("Texture created. ID: %d\n", texture.id);  // Debug print
+  if (texture.id == 0) {
+    printf("Error: Failed to load texture.\n");
+  }
+
+  UnloadImage(image);
+  // free(pixels);
+}
+
+void render_quake_frame(uint32_t n, const quake_model* model) {
+  if ((n < 0) || (n >= model->header.frames_count)) return;
+
+  rlPushMatrix();
+  rlSetTexture(texture.id);
+
+  // rlScalef(0.02, 0.02, 0.02);
+  // rlTranslatef(-135.0f, -10.0f, -100.0f);
+  rlRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+  rlRotatef(-90.0f, 0.0f, 0.0f, 1.0f);
+
+  rlBegin(RL_TRIANGLES);
+  // rlEnableWireMode();
+  for (int i = 0; i < model->header.triangles_count; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      vertex* pvert =
+          &model->frames[n].frame.vertices[model->triangles[i].vertex[j]];
+
+      float s =
+          (float)model->texture_coordinates[model->triangles[i].vertex[j]].s;
+      float t =
+          (float)model->texture_coordinates[model->triangles[i].vertex[j]].t;
+
+      if (!model->triangles[i].is_front_front &&
+          model->texture_coordinates[model->triangles[i].vertex[j]]
+              .is_on_seam) {
+        s += model->header.skin_width * 0.5f;
+      }
+
+      s = (s + 0.5f) / model->header.skin_width;
+      t = (t + 0.5f) / model->header.skin_height;
+
+      rlTexCoord2f(s, t);
+
+      // float* nv = anorms_table[pvert->normal_index];
+      // rlNormal3f(nv[0], nv[1], nv[2]);
+
+      Vector3 v = {pvert->v[0], pvert->v[1], pvert->v[2]};
+      v.x *= model->header.model_scale[0];
+      v.y *= model->header.model_scale[1];
+      v.z *= model->header.model_scale[2];
+      v.x += model->header.model_translate[0];
+      v.y += model->header.model_translate[1];
+      v.z += model->header.model_translate[2];
+
+      rlVertex3f(v.x, v.y, v.z);
+    }
+  }
+  // rlDisableWireMode();
+
+  rlEnd();
+  rlSetTexture(0);
+  rlPopMatrix();
+}
 
 void plugin_init(quake_model* model) {
   camera = (Camera){0};
@@ -25,30 +258,30 @@ void plugin_init(quake_model* model) {
   cubePosition = (Vector3){0.0f, 1.0f, 0.0f};
   cubeScreenPosition = (Vector2){0.0f, 0.0f};
 
-  camera.position = (Vector3){10.0f, 10.0f, 10.0f};
+  camera.position = (Vector3){50.0f, 50.0f, 50.0f};
   camera.target = (Vector3){0.0f, 0.0f, 0.0f};
   camera.up = (Vector3){0.0f, 1.0f, 0.0f};
   camera.fovy = 45.0f;
   camera.projection = CAMERA_PERSPECTIVE;
 
-  texture = LoadTexture("res/textures/container2.png");
+  // texture = LoadTexture("res/textures/container2.png");
 
   angle = 0.0f;
   is_cursor_enable = true;
-  // EnableCursor();
-  //
 
-  printf("%s\n", model->frames[0].frame.name);
+  rlEnableBackfaceCulling();
+  rlEnableDepthTest();
+  rlSetCullFace(RL_CULL_FACE_FRONT);
+  quake_make_texture_from_skin(0, model);
 }
 
-void plugin_kill() { UnloadTexture(texture); }
+// void plugin_kill() { UnloadTexture(texture); }
 
-void plugin_main(int screen_width, int screen_height) {
+void plugin_main(int screen_width, int screen_height, quake_model* model) {
   if (IsKeyReleased(KEY_ESCAPE)) {
     is_cursor_enable = !is_cursor_enable;
     if (is_cursor_enable) {
       EnableCursor();
-
     } else {
       DisableCursor();
     }
@@ -56,179 +289,24 @@ void plugin_main(int screen_width, int screen_height) {
 
   UpdateCamera(&camera, CAMERA_THIRD_PERSON);
   cubeScreenPosition = GetWorldToScreen(
-      (Vector3){cubePosition.x, cubePosition.y + 2.5f, cubePosition.z}, camera);
+      (Vector3){cubePosition.x, cubePosition.y, cubePosition.z}, camera);
 
   BeginDrawing();
+
   ClearBackground(RAYWHITE);
+
   BeginMode3D(camera);
-  DrawCubeTexture(texture, (Vector3){0.0f, 0.0f, 0.0f}, 4.0f, 4.0f, 4.0f);
-  // DrawCubeTextureRec(
-  //     texture, (Rectangle){0.0f, texture.height, texture.width,
-  //     texture.height}, (Vector3){0.0f, 0.0f, 0.0f}, 4.0f, 4.0f, 4.0f);
+
+  DrawCube(cubePosition, 2.0f, 2.0f, 2.0f, RED);
+  DrawCubeWires(cubePosition, 2.0f, 2.0f, 2.0f, MAROON);
+
   DrawGrid(10, 1.0f);
+
   EndMode3D();
+
+  DrawText("Welcome to the third dimension!", 10, 40, 20, DARKGRAY);
+
   DrawFPS(10, 10);
+
   EndDrawing();
-}
-
-void DrawCubeTexture(Texture2D texture, Vector3 position, float width,
-                     float height, float length) {
-  Color color = WHITE;
-  float x = position.x;
-  float y = position.y;
-  float z = position.z;
-
-  rlSetTexture(texture.id);
-
-  rlBegin(RL_QUADS);
-  rlColor4ub(color.r, color.g, color.b, color.a);
-
-  rlNormal3f(0.0f, 0.0f, 1.0f);
-  rlTexCoord2f(0.0f, 0.0f);
-  rlVertex3f(x - width / 2, y - height / 2, z + length / 2);
-  rlTexCoord2f(1.0f, 0.0f);
-  rlVertex3f(x + width / 2, y - height / 2, z + length / 2);
-  rlTexCoord2f(1.0f, 1.0f);
-  rlVertex3f(x + width / 2, y + height / 2, z + length / 2);
-  rlTexCoord2f(0.0f, 1.0f);
-  rlVertex3f(x - width / 2, y + height / 2, z + length / 2);
-
-  rlNormal3f(0.0f, 0.0f, -1.0f);
-  rlTexCoord2f(1.0f, 0.0f);
-  rlVertex3f(x - width / 2, y - height / 2, z - length / 2);
-  rlTexCoord2f(1.0f, 1.0f);
-  rlVertex3f(x - width / 2, y + height / 2, z - length / 2);
-  rlTexCoord2f(0.0f, 1.0f);
-  rlVertex3f(x + width / 2, y + height / 2, z - length / 2);
-  rlTexCoord2f(0.0f, 0.0f);
-  rlVertex3f(x + width / 2, y - height / 2, z - length / 2);
-
-  rlNormal3f(0.0f, 1.0f, 0.0f);
-  rlTexCoord2f(0.0f, 1.0f);
-  rlVertex3f(x - width / 2, y + height / 2, z - length / 2);
-  rlTexCoord2f(0.0f, 0.0f);
-  rlVertex3f(x - width / 2, y + height / 2, z + length / 2);
-  rlTexCoord2f(1.0f, 0.0f);
-  rlVertex3f(x + width / 2, y + height / 2, z + length / 2);
-  rlTexCoord2f(1.0f, 1.0f);
-  rlVertex3f(x + width / 2, y + height / 2, z - length / 2);
-
-  rlNormal3f(0.0f, -1.0f, 0.0f);
-  rlTexCoord2f(1.0f, 1.0f);
-  rlVertex3f(x - width / 2, y - height / 2, z - length / 2);
-  rlTexCoord2f(0.0f, 1.0f);
-  rlVertex3f(x + width / 2, y - height / 2, z - length / 2);
-  rlTexCoord2f(0.0f, 0.0f);
-  rlVertex3f(x + width / 2, y - height / 2, z + length / 2);
-  rlTexCoord2f(1.0f, 0.0f);
-  rlVertex3f(x - width / 2, y - height / 2, z + length / 2);
-
-  rlNormal3f(1.0f, 0.0f, 0.0f);
-  rlTexCoord2f(1.0f, 0.0f);
-  rlVertex3f(x + width / 2, y - height / 2, z - length / 2);
-  rlTexCoord2f(1.0f, 1.0f);
-  rlVertex3f(x + width / 2, y + height / 2, z - length / 2);
-  rlTexCoord2f(0.0f, 1.0f);
-  rlVertex3f(x + width / 2, y + height / 2, z + length / 2);
-  rlTexCoord2f(0.0f, 0.0f);
-  rlVertex3f(x + width / 2, y - height / 2, z + length / 2);
-
-  rlNormal3f(-1.0f, 0.0f, 0.0f);
-  rlTexCoord2f(0.0f, 0.0f);
-  rlVertex3f(x - width / 2, y - height / 2, z - length / 2);
-  rlTexCoord2f(1.0f, 0.0f);
-  rlVertex3f(x - width / 2, y - height / 2, z + length / 2);
-  rlTexCoord2f(1.0f, 1.0f);
-  rlVertex3f(x - width / 2, y + height / 2, z + length / 2);
-  rlTexCoord2f(0.0f, 1.0f);
-  rlVertex3f(x - width / 2, y + height / 2, z - length / 2);
-  rlEnd();
-
-  rlSetTexture(0);
-}
-
-// Draw cube with texture piece applied to all faces
-void DrawCubeTextureRec(Texture2D texture, Rectangle source, Vector3 position,
-                        float width, float height, float length) {
-  Color color = WHITE;
-  float x = position.x;
-  float y = position.y;
-  float z = position.z;
-  float texWidth = (float)texture.width;
-  float texHeight = (float)texture.height;
-
-  rlSetTexture(texture.id);
-
-  rlBegin(RL_QUADS);
-  rlColor4ub(color.r, color.g, color.b, color.a);
-
-  rlNormal3f(0.0f, 0.0f, 1.0f);
-  rlTexCoord2f(source.x / texWidth, (source.y + source.height) / texHeight);
-  rlVertex3f(x - width / 2, y - height / 2, z + length / 2);
-  rlTexCoord2f((source.x + source.width) / texWidth,
-               (source.y + source.height) / texHeight);
-  rlVertex3f(x + width / 2, y - height / 2, z + length / 2);
-  rlTexCoord2f((source.x + source.width) / texWidth, source.y / texHeight);
-  rlVertex3f(x + width / 2, y + height / 2, z + length / 2);
-  rlTexCoord2f(source.x / texWidth, source.y / texHeight);
-  rlVertex3f(x - width / 2, y + height / 2, z + length / 2);
-
-  rlNormal3f(0.0f, 0.0f, -1.0f);
-  rlTexCoord2f((source.x + source.width) / texWidth,
-               (source.y + source.height) / texHeight);
-  rlVertex3f(x - width / 2, y - height / 2, z - length / 2);
-  rlTexCoord2f((source.x + source.width) / texWidth, source.y / texHeight);
-  rlVertex3f(x - width / 2, y + height / 2, z - length / 2);
-  rlTexCoord2f(source.x / texWidth, source.y / texHeight);
-  rlVertex3f(x + width / 2, y + height / 2, z - length / 2);
-  rlTexCoord2f(source.x / texWidth, (source.y + source.height) / texHeight);
-  rlVertex3f(x + width / 2, y - height / 2, z - length / 2);
-
-  rlNormal3f(0.0f, 1.0f, 0.0f);
-  rlTexCoord2f(source.x / texWidth, source.y / texHeight);
-  rlVertex3f(x - width / 2, y + height / 2, z - length / 2);
-  rlTexCoord2f(source.x / texWidth, (source.y + source.height) / texHeight);
-  rlVertex3f(x - width / 2, y + height / 2, z + length / 2);
-  rlTexCoord2f((source.x + source.width) / texWidth,
-               (source.y + source.height) / texHeight);
-  rlVertex3f(x + width / 2, y + height / 2, z + length / 2);
-  rlTexCoord2f((source.x + source.width) / texWidth, source.y / texHeight);
-  rlVertex3f(x + width / 2, y + height / 2, z - length / 2);
-
-  rlNormal3f(0.0f, -1.0f, 0.0f);
-  rlTexCoord2f((source.x + source.width) / texWidth, source.y / texHeight);
-  rlVertex3f(x - width / 2, y - height / 2, z - length / 2);
-  rlTexCoord2f(source.x / texWidth, source.y / texHeight);
-  rlVertex3f(x + width / 2, y - height / 2, z - length / 2);
-  rlTexCoord2f(source.x / texWidth, (source.y + source.height) / texHeight);
-  rlVertex3f(x + width / 2, y - height / 2, z + length / 2);
-  rlTexCoord2f((source.x + source.width) / texWidth,
-               (source.y + source.height) / texHeight);
-  rlVertex3f(x - width / 2, y - height / 2, z + length / 2);
-
-  rlNormal3f(1.0f, 0.0f, 0.0f);
-  rlTexCoord2f((source.x + source.width) / texWidth,
-               (source.y + source.height) / texHeight);
-  rlVertex3f(x + width / 2, y - height / 2, z - length / 2);
-  rlTexCoord2f((source.x + source.width) / texWidth, source.y / texHeight);
-  rlVertex3f(x + width / 2, y + height / 2, z - length / 2);
-  rlTexCoord2f(source.x / texWidth, source.y / texHeight);
-  rlVertex3f(x + width / 2, y + height / 2, z + length / 2);
-  rlTexCoord2f(source.x / texWidth, (source.y + source.height) / texHeight);
-  rlVertex3f(x + width / 2, y - height / 2, z + length / 2);
-
-  rlNormal3f(-1.0f, 0.0f, 0.0f);
-  rlTexCoord2f(source.x / texWidth, (source.y + source.height) / texHeight);
-  rlVertex3f(x - width / 2, y - height / 2, z - length / 2);
-  rlTexCoord2f((source.x + source.width) / texWidth,
-               (source.y + source.height) / texHeight);
-  rlVertex3f(x - width / 2, y - height / 2, z + length / 2);
-  rlTexCoord2f((source.x + source.width) / texWidth, source.y / texHeight);
-  rlVertex3f(x - width / 2, y + height / 2, z + length / 2);
-  rlTexCoord2f(source.x / texWidth, source.y / texHeight);
-  rlVertex3f(x - width / 2, y + height / 2, z - length / 2);
-
-  rlEnd();
-
-  rlSetTexture(0);
 }

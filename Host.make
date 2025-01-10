@@ -23,7 +23,7 @@ ifeq ($(config),debug)
   RESCOMP = windres-14
   TARGETDIR = .ignore/build
   TARGET = $(TARGETDIR)/sqv
-  OBJDIR = .ignore/build/obj/Debug/Host
+  OBJDIR = .ignore/build/obj/Debug
   DEFINES += -DDEBUG
   INCLUDES += -Ideps/c -I/usr/local/include
   FORCE_INCLUDE +=
@@ -59,7 +59,7 @@ ifeq ($(config),release)
   RESCOMP = windres-14
   TARGETDIR = .ignore/build
   TARGET = $(TARGETDIR)/sqv
-  OBJDIR = .ignore/build/obj/Release/Host
+  OBJDIR = .ignore/build/obj/Release
   DEFINES += -DNDEBUG
   INCLUDES += -Ideps/c -I/usr/local/include
   FORCE_INCLUDE +=
@@ -84,6 +84,7 @@ endif
 
 OBJECTS := \
 	$(OBJDIR)/mdl_decoder.o \
+	$(OBJDIR)/vars.o \
 	$(OBJDIR)/hotreload.o \
 	$(OBJDIR)/main.o \
 
@@ -145,6 +146,9 @@ $(OBJECTS): | $(OBJDIR)
 endif
 
 $(OBJDIR)/mdl_decoder.o: deps/c/quake/mdl_decoder.c
+	@echo $(notdir $<)
+	$(SILENT) $(CC) $(ALL_CFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/vars.o: deps/c/quake/vars.c
 	@echo $(notdir $<)
 	$(SILENT) $(CC) $(ALL_CFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/hotreload.o: src/hotreload.c
