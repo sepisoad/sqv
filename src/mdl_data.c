@@ -1,22 +1,7 @@
-#include <raylib.h>
-#include <raymath.h>
-#include <rlgl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <stdint.h>
+#include "mdl.h"
 
-#include "quake/mdl_decoder.h"
-
-#define MAX_POINTS 11
-
-Camera camera;
-Vector2 cubeScreenPosition;
-Vector3 cubePosition;
-Texture texture;
-bool is_cursor_enable;
-float angle;
-
-vector anorms_table[162] = {
+mdl_vec3 mdl_normals[162] = {
     {-0.525731f, 0.000000f, 0.850651f},   {-0.442863f, 0.238856f, 0.864188f},
     {-0.295242f, 0.000000f, 0.955423f},   {-0.309017f, 0.500000f, 0.809017f},
     {-0.162460f, 0.262866f, 0.951056f},   {0.000000f, 0.000000f, 1.000000f},
@@ -99,7 +84,7 @@ vector anorms_table[162] = {
     {-0.425325f, 0.688191f, -0.587785f},  {-0.425325f, -0.688191f, -0.587785f},
     {-0.587785f, -0.425325f, -0.688191f}, {-0.688191f, -0.587785f, -0.425325f}};
 
-unsigned char quake_palette[256][3] = {
+uint8_t mdl_palette[256][3] = {
     {0, 0, 0},       {15, 15, 15},    {31, 31, 31},    {47, 47, 47},
     {63, 63, 63},    {75, 75, 75},    {91, 91, 91},    {107, 107, 107},
     {123, 123, 123}, {139, 139, 139}, {155, 155, 155}, {171, 171, 171},
@@ -164,149 +149,3 @@ unsigned char quake_palette[256][3] = {
     {127, 191, 255}, {171, 231, 255}, {215, 255, 255}, {103, 0, 0},
     {139, 0, 0},     {179, 0, 0},     {215, 0, 0},     {255, 0, 0},
     {255, 243, 147}, {255, 247, 199}, {255, 255, 255}, {159, 91, 83}};
-
-void DrawCubeTexture(Texture2D, Vector3, float, float, float);
-void DrawCubeTextureRec(Texture2D, Rectangle, Vector3, float, float, float);
-
-void quake_make_texture_from_skin(int n, quake_model* model) {
-  int width = model->header.skin_width;
-  int height = model->header.skin_height;
-  uint8_t* pixels = malloc(width * height * 3);
-
-  for (int i = 0; i < width * height; ++i) {
-    pixels[(i * 3) + 0] = quake_palette[model->skins[n].data[i]][0];
-    pixels[(i * 3) + 1] = quake_palette[model->skins[n].data[i]][1];
-    pixels[(i * 3) + 2] = quake_palette[model->skins[n].data[i]][2];
-  }
-
-  Image image = {.data = pixels,
-                 .width = width,
-                 .height = height,
-                 .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8,
-                 .mipmaps = 1};
-
-  texture = LoadTextureFromImage(image);
-  model->texture_id = texture.id;
-
-  printf("Texture created. ID: %d\n", texture.id);  // Debug print
-  if (texture.id == 0) {
-    printf("Error: Failed to load texture.\n");
-  }
-
-  UnloadImage(image);
-  // free(pixels);
-}
-
-void render_quake_frame(uint32_t n, const quake_model* model) {
-  if ((n < 0) || (n >= model->header.frames_count)) return;
-
-  rlPushMatrix();
-  rlSetTexture(texture.id);
-
-  // rlScalef(0.02, 0.02, 0.02);
-  // rlTranslatef(-135.0f, -10.0f, -100.0f);
-  rlRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
-  rlRotatef(-90.0f, 0.0f, 0.0f, 1.0f);
-
-  rlBegin(RL_TRIANGLES);
-  // rlEnableWireMode();
-  for (int i = 0; i < model->header.triangles_count; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      vertex* pvert =
-          &model->frames[n].frame.vertices[model->triangles[i].vertex[j]];
-
-      float s =
-          (float)model->texture_coordinates[model->triangles[i].vertex[j]].s;
-      float t =
-          (float)model->texture_coordinates[model->triangles[i].vertex[j]].t;
-
-      if (!model->triangles[i].is_front_front &&
-          model->texture_coordinates[model->triangles[i].vertex[j]]
-              .is_on_seam) {
-        s += model->header.skin_width * 0.5f;
-      }
-
-      s = (s + 0.5f) / model->header.skin_width;
-      t = (t + 0.5f) / model->header.skin_height;
-
-      rlTexCoord2f(s, t);
-
-      // float* nv = anorms_table[pvert->normal_index];
-      // rlNormal3f(nv[0], nv[1], nv[2]);
-
-      Vector3 v = {pvert->v[0], pvert->v[1], pvert->v[2]};
-      v.x *= model->header.model_scale[0];
-      v.y *= model->header.model_scale[1];
-      v.z *= model->header.model_scale[2];
-      v.x += model->header.model_translate[0];
-      v.y += model->header.model_translate[1];
-      v.z += model->header.model_translate[2];
-
-      rlVertex3f(v.x, v.y, v.z);
-    }
-  }
-  // rlDisableWireMode();
-
-  rlEnd();
-  rlSetTexture(0);
-  rlPopMatrix();
-}
-
-void plugin_init(quake_model* model) {
-  camera = (Camera){0};
-
-  cubePosition = (Vector3){0.0f, 1.0f, 0.0f};
-  cubeScreenPosition = (Vector2){0.0f, 0.0f};
-
-  camera.position = (Vector3){50.0f, 50.0f, 50.0f};
-  camera.target = (Vector3){0.0f, 0.0f, 0.0f};
-  camera.up = (Vector3){0.0f, 1.0f, 0.0f};
-  camera.fovy = 45.0f;
-  camera.projection = CAMERA_PERSPECTIVE;
-
-  // texture = LoadTexture("res/textures/container2.png");
-
-  angle = 0.0f;
-  is_cursor_enable = true;
-
-  rlEnableBackfaceCulling();
-  rlEnableDepthTest();
-  rlSetCullFace(RL_CULL_FACE_FRONT);
-  quake_make_texture_from_skin(0, model);
-}
-
-// void plugin_kill() { UnloadTexture(texture); }
-
-void plugin_main(int screen_width, int screen_height, quake_model* model) {
-  if (IsKeyReleased(KEY_ESCAPE)) {
-    is_cursor_enable = !is_cursor_enable;
-    if (is_cursor_enable) {
-      EnableCursor();
-    } else {
-      DisableCursor();
-    }
-  }
-
-  UpdateCamera(&camera, CAMERA_THIRD_PERSON);
-  cubeScreenPosition = GetWorldToScreen(
-      (Vector3){cubePosition.x, cubePosition.y, cubePosition.z}, camera);
-
-  BeginDrawing();
-
-  ClearBackground(RAYWHITE);
-
-  BeginMode3D(camera);
-
-  DrawCube(cubePosition, 2.0f, 2.0f, 2.0f, RED);
-  DrawCubeWires(cubePosition, 2.0f, 2.0f, 2.0f, MAROON);
-
-  DrawGrid(10, 1.0f);
-
-  EndMode3D();
-
-  DrawText("Welcome to the third dimension!", 10, 40, 20, DARKGRAY);
-
-  DrawFPS(10, 10);
-
-  EndDrawing();
-}

@@ -1,0 +1,2 @@
+CompilerFlags:
+  Add: [-Ires/shaders]

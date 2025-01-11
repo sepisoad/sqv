@@ -12,26 +12,26 @@ endif
 
 ifeq ($(config),debug)
   ifeq ($(origin CC), default)
-    CC = gcc-14
+    CC = gcc
   endif
   ifeq ($(origin CXX), default)
-    CXX = g++-14
+    CXX = g++
   endif
   ifeq ($(origin AR), default)
-    AR = ar-14
+    AR = ar
   endif
-  RESCOMP = windres-14
+  RESCOMP = windres
   TARGETDIR = .ignore/build
   TARGET = $(TARGETDIR)/sqv
   OBJDIR = .ignore/build/obj/Debug
   DEFINES += -DDEBUG
-  INCLUDES += -Ideps/c -I/usr/local/include
+  INCLUDES += -Ires/shaders -I/usr/local/include
   FORCE_INCLUDE +=
   ALL_CPPFLAGS += $(CPPFLAGS) -MD -MP $(DEFINES) $(INCLUDES)
-  ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -std=c23 -fPIC -DRAYLIB_LIBTYPE=SHARED -DPLATFORM=PLATFORM_DESKTOP_RGFW
-  ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -std=c23 -fPIC -DRAYLIB_LIBTYPE=SHARED -DPLATFORM=PLATFORM_DESKTOP_RGFW
+  ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -std=c2x
+  ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -std=c2x
   ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-  LIBS += -lraylib -lGL -lX11 -lXrandr -lXinerama -lXi -lXxf86vm -lXcursor -lm -lpthread -ldl -lrt
+  LIBS += -lX11 -lXi -lXcursor -lGL -lm
   LDDEPS +=
   ALL_LDFLAGS += $(LDFLAGS)
   LINKCMD = $(CC) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
@@ -48,26 +48,26 @@ endif
 
 ifeq ($(config),release)
   ifeq ($(origin CC), default)
-    CC = gcc-14
+    CC = gcc
   endif
   ifeq ($(origin CXX), default)
-    CXX = g++-14
+    CXX = g++
   endif
   ifeq ($(origin AR), default)
-    AR = ar-14
+    AR = ar
   endif
-  RESCOMP = windres-14
+  RESCOMP = windres
   TARGETDIR = .ignore/build
   TARGET = $(TARGETDIR)/sqv
   OBJDIR = .ignore/build/obj/Release
   DEFINES += -DNDEBUG
-  INCLUDES += -Ideps/c -I/usr/local/include
+  INCLUDES += -Ires/shaders -I/usr/local/include
   FORCE_INCLUDE +=
   ALL_CPPFLAGS += $(CPPFLAGS) -MD -MP $(DEFINES) $(INCLUDES)
-  ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O3 -std=c23 -fPIC -DRAYLIB_LIBTYPE=SHARED -DPLATFORM=PLATFORM_DESKTOP_RGFW
-  ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O3 -std=c23 -fPIC -DRAYLIB_LIBTYPE=SHARED -DPLATFORM=PLATFORM_DESKTOP_RGFW
+  ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O3 -std=c2x
+  ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O3 -std=c2x
   ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-  LIBS += -lraylib -lGL -lX11 -lXrandr -lXinerama -lXi -lXxf86vm -lXcursor -lm -lpthread -ldl -lrt
+  LIBS += -lX11 -lXi -lXcursor -lGL -lm
   LDDEPS +=
   ALL_LDFLAGS += $(LDFLAGS) -s
   LINKCMD = $(CC) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
@@ -83,10 +83,9 @@ all: prebuild prelink $(TARGET)
 endif
 
 OBJECTS := \
-	$(OBJDIR)/mdl_decoder.o \
-	$(OBJDIR)/vars.o \
-	$(OBJDIR)/hotreload.o \
 	$(OBJDIR)/main.o \
+	$(OBJDIR)/mdl.o \
+	$(OBJDIR)/mdl_data.o \
 
 RESOURCES := \
 
@@ -145,16 +144,13 @@ else
 $(OBJECTS): | $(OBJDIR)
 endif
 
-$(OBJDIR)/mdl_decoder.o: deps/c/quake/mdl_decoder.c
-	@echo $(notdir $<)
-	$(SILENT) $(CC) $(ALL_CFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
-$(OBJDIR)/vars.o: deps/c/quake/vars.c
-	@echo $(notdir $<)
-	$(SILENT) $(CC) $(ALL_CFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
-$(OBJDIR)/hotreload.o: src/hotreload.c
-	@echo $(notdir $<)
-	$(SILENT) $(CC) $(ALL_CFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/main.o: src/main.c
+	@echo $(notdir $<)
+	$(SILENT) $(CC) $(ALL_CFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/mdl.o: src/mdl.c
+	@echo $(notdir $<)
+	$(SILENT) $(CC) $(ALL_CFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/mdl_data.o: src/mdl_data.c
 	@echo $(notdir $<)
 	$(SILENT) $(CC) $(ALL_CFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 
