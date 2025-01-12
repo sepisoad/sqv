@@ -15,7 +15,7 @@
 #include "mdl.h"
 
 int mdl_read_model(sg_bindings, const char *, mdl_model *);
-void mdl_assemble_buffer(int, const mdl_model *, float *, int *);
+void mdl_assemble_buffer(int, const mdl_model *, float *, uint16_t *);
 void mdl_free(mdl_model *);
 
 static struct {
@@ -24,10 +24,11 @@ static struct {
   sg_pipeline pip;
   sg_bindings bind;
   mdl_model mdl;
+  int indices_count;
 } state;
 
 float *mdl_vertices = NULL;
-int *mdl_indices = NULL;
+uint16_t *mdl_indices = NULL;
 
 static void init(void) {
   sg_setup(&(sg_desc){
@@ -59,45 +60,85 @@ static void init(void) {
 
   const size_t mdl_indices_count = state.mdl.header.num_tris * 3;
   const size_t mdl_indices_size = sizeof(int) * mdl_indices_count;
+  state.indices_count = mdl_indices_count;
 
   mdl_vertices = (float *)malloc(mdl_vertices_size);
-  mdl_indices = (int *)malloc(mdl_indices_size);
+  mdl_indices = (uint16_t *)malloc(mdl_indices_size);
 
   mdl_assemble_buffer(0, &state.mdl, mdl_vertices, mdl_indices);
 
-  for (int i = 0; i < mdl_indices_count; i += 3) {
-    printf("[%d %d %d]\n", mdl_indices[i + 0], mdl_indices[i + 1],
-           mdl_indices[i + 2]);
-  }
+  // for (int i = 0; i < mdl_indices_count; i++) {
+  //   printf("ind%02d=[%d]\n", i, mdl_indices[i]);
+  // }
 
-  for (int i = 0; i < mdl_vertices_count + mdl_uv_count; i += 5) {
-    printf("[%f %f1 %f1] [%f1 %f1]\n", mdl_vertices[i + 0], mdl_vertices[i + 1],
-           mdl_vertices[i + 2], mdl_vertices[i + 3], mdl_vertices[i + 4]);
-  }
+  // printf("============\n");
+
+  // int dbg_idx = 0;
+  // for (int i = 0; i < mdl_vertices_count + mdl_uv_count; i += 5) {
+  //   printf("xyz%02d=[%f, %f, %f]\n", dbg_idx, mdl_vertices[i + 0],
+  //          mdl_vertices[i + 1], mdl_vertices[i + 2]);
+  //   dbg_idx++;
+  // }
+
+  // printf("============\n");
+
+  // dbg_idx = 0;
+  // for (int i = 0; i < mdl_vertices_count + mdl_uv_count; i += 5) {
+  //   printf("uv%02d=[%f, %f]\n", dbg_idx, mdl_vertices[i + 3],
+  //          mdl_vertices[i + 4]);
+  //   dbg_idx++;
+  // }
+
+  // state.bind.vertex_buffers[0] = sg_make_buffer(&(sg_buffer_desc){
+  //     .type = SG_BUFFERTYPE_VERTEXBUFFER,
+  //     .data =
+  //         (sg_range){
+  //             .ptr = mdl_vertices,
+  //             .size = mdl_vertices_size,
+  //         },
+  // });
+  // state.bind.index_buffer = sg_make_buffer(&(sg_buffer_desc){
+  //     .type = SG_BUFFERTYPE_INDEXBUFFER,
+  //     .data =
+  //         (sg_range){
+  //             .ptr = mdl_indices,
+  //             .size = mdl_indices_size,
+  //         },
+  // });
+
+  float dbg_vertices[] = {
+      /* vert(3)                       uv(2)                 */
+      -0.016965, -1.055456, -0.941016, 0.145833, 0.925000, /**/
+      10.157645, -0.005767, 0.051735,  0.256944, 0.525000, /**/
+      -0.016965, 1.019510,  -0.918281, 0.368056, 0.875000, /**/
+      -0.016965, -1.055456, -0.941016, 0.145833, 0.925000, /**/
+      -0.016965, -0.005767, 0.991438,  0.256944, 0.125000, /**/
+      10.157645, -0.005767, 0.051735,  0.256944, 0.525000, /**/
+      -0.016965, 1.019510,  -0.918281, 0.368056, 0.875000, /**/
+      10.157645, -0.005767, 0.051735,  0.256944, 0.525000, /**/
+      -0.016965, -0.005767, 0.991438,  0.256944, 0.125000, /**/
+      -0.016965, 1.019510,  -0.918281, 0.868056, 0.875000, /**/
+      -0.016965, -0.005767, 0.991438,  0.756944, 0.125000, /**/
+      -0.016965, -1.055456, -0.941016, 0.645833, 0.925000, /**/
+  };
+
+  uint16_t dbg_indices[] = {0, 1, 2, 0, 3, 1, 2, 1, 3, 2, 3, 0};
 
   state.bind.vertex_buffers[0] = sg_make_buffer(&(sg_buffer_desc){
       .type = SG_BUFFERTYPE_VERTEXBUFFER,
-      .data =
-          (sg_range){
-              .ptr = mdl_vertices,
-              .size = mdl_vertices_size,
-          },
+      .data = SG_RANGE(dbg_vertices),
   });
   state.bind.index_buffer = sg_make_buffer(&(sg_buffer_desc){
       .type = SG_BUFFERTYPE_INDEXBUFFER,
-      .data =
-          (sg_range){
-              .ptr = mdl_indices,
-              .size = mdl_indices_size,
-          },
+      .data = SG_RANGE(dbg_indices),
   });
 
   state.pip = sg_make_pipeline(&(sg_pipeline_desc){
       .shader = sg_make_shader(sepi_shader_desc(sg_query_backend())),
-      .index_type = SG_INDEXTYPE_UINT32,
+      .index_type = SG_INDEXTYPE_UINT16,
       .cull_mode = SG_CULLMODE_BACK,
       .face_winding = SG_FACEWINDING_CCW,
-      // .primitive_type = SG_PRIMITIVETYPE_LINES,
+      .primitive_type = SG_PRIMITIVETYPE_LINES,
       .depth =
           {
               .compare = SG_COMPAREFUNC_LESS_EQUAL,
@@ -134,7 +175,7 @@ static void frame(void) {
   sg_apply_pipeline(state.pip);
   sg_apply_bindings(&state.bind);
   sg_apply_uniforms(UB_vs_params, &SG_RANGE(vs_params));
-  sg_draw(0, 12, 1);
+  sg_draw(0, state.indices_count, 1);
   sg_end_pass();
   sg_commit();
 }

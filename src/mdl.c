@@ -86,7 +86,7 @@ int mdl_read_model(sg_bindings b, const char *path, mdl_model *m) {
 }
 
 void mdl_assemble_buffer(int n, const mdl_model *m, float *ver_buf,
-                         int *ind_buf) {
+                         uint16_t *ind_buf) {
   const mdl_header h = m->header;
   if ((n < 0) || (n > h.num_frames - 1))
     return;
