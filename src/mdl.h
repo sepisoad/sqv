@@ -69,5 +69,4 @@ typedef struct {
   mdl_frame *frames;
 
   uint32_t *tex_id;
-  int iskin;
 } mdl_model;

@@ -9,11 +9,10 @@ consider using odin + raylib + caly
 
 - https://book.leveldesignbook.com/appendix/resources/formats/mdl
 - https://formats.kaitai.io/quake_mdl/quake_mdl.svg
-- https://book.leveldesignbook.com/appendix/resources/formats/mdl
-- https://quake.by/tutorials/?id=64
+- https://github.com/TheEnbyWitch/LunarViewer (******)
 - https://github.com/Paril/qmdlr
 - https://github.com/matthewearl/pyquake/blob/master/pyquake/mdl.py
 
 ## TODO:
 
-- bring the source code of `moonnuklear` and all of it's dependencies
+- my c code does not handle 'endianness'

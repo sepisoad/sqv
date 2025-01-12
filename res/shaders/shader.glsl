@@ -1,27 +1,31 @@
+@ctype mat4 hmm_mat4
+
 @vs vs
-in vec3 position;
-in vec2 aTexCoord;
-  
-out vec2 TexCoord;
+layout(binding=0) uniform vs_params {
+    mat4 mvp;
+};
+
+in vec4 pos;
+in vec2 texcoord0;
+out vec2 uv;
 
 void main() {
-    gl_Position = vec4(position, 1.0);
-    TexCoord = aTexCoord;
+    gl_Position = mvp * pos;
+    uv = texcoord0;
 }
 @end
 
 @fs fs
-out vec4 FragColor;
+layout(binding=0) uniform texture2D tex;
+layout(binding=0) uniform sampler smp;
 
-in vec2 TexCoord;
-
-uniform layout(binding=0) texture2D _ourTexture;
-uniform layout(binding=1) sampler ourTexture_smp;
-#define ourTexture sampler2D(_ourTexture, ourTexture_smp)
+in vec2 uv;
+out vec4 frag_color;
 
 void main() {
-    FragColor = texture(ourTexture, TexCoord);
+    frag_color = texture(sampler2D(tex, smp), uv);
 }
 @end
 
-@program simple vs fs
+@program sepi vs fs
+

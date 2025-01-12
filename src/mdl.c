@@ -54,7 +54,6 @@ int mdl_read_model(sg_bindings b, const char *path, mdl_model *m) {
   m->frames = (mdl_frame *)malloc(sizeof(mdl_frame) * h.num_frames);
   m->tex_id = (uint32_t *)malloc(sizeof(uint32_t) * h.num_skins);
 
-  m->iskin = 0; // hardcode!
   const size_t skinsz = h.skinwidth * h.skinheight;
   const size_t skinbufsz = sizeof(uint8_t) * skinsz;
   for (int i = 0; i < h.num_skins; ++i) {
@@ -86,53 +85,42 @@ int mdl_read_model(sg_bindings b, const char *path, mdl_model *m) {
   return 1;
 }
 
-void mdl_render_frame(int n, const mdl_model *mdl) {
-  // int i, j;
-  // float s, t;
-  // vec3_t v;
-  // struct mdl_vertex_t *pvert;
+void mdl_assemble_buffer(int n, const mdl_model *m, float *ver_buf,
+                         int *ind_buf) {
+  const mdl_header h = m->header;
+  if ((n < 0) || (n > h.num_frames - 1))
+    return;
 
-  // if ((n < 0) || (n > mdl->header.num_frames - 1))
-  //   return;
+  int ver_idx = 0;
+  int ind_idx = 0;
+  float s, t;
+  mdl_vertex *tri_vert;
 
-  // glBindTexture(GL_TEXTURE_2D, mdl->tex_id[mdl->iskin]);
+  for (int i = 0; i < h.num_tris; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      int tri_idx = m->triangles[i].vertex[j];
 
-  // /* Draw the model */
-  // glBegin(GL_TRIANGLES);
-  // /* Draw each triangle */
-  // for (i = 0; i < mdl->header.num_tris; ++i) {
-  //   /* Draw each vertex */
-  //   for (j = 0; j < 3; ++j) {
-  //     pvert = &mdl->frames[n].frame.verts[mdl->triangles[i].vertex[j]];
+      tri_vert = &m->frames[n].frame.verts[tri_idx];
 
-  //     /* Compute texture coordinates */
-  //     s = (GLfloat)mdl->texcoords[mdl->triangles[i].vertex[j]].s;
-  //     t = (GLfloat)mdl->texcoords[mdl->triangles[i].vertex[j]].t;
+      s = (float)m->texcoords[tri_idx].s;
+      t = (float)m->texcoords[tri_idx].t;
+      if (!m->triangles[i].facesfront && m->texcoords[tri_idx].onseam) {
+        s += h.skinwidth * 0.5f; /* Backface */
+      }
+      s = (s + 0.5) / h.skinwidth;
+      t = (t + 0.5) / h.skinheight;
 
-  //     if (!mdl->triangles[i].facesfront &&
-  //         mdl->texcoords[mdl->triangles[i].vertex[j]].onseam) {
-  //       s += mdl->header.skinwidth * 0.5f; /* Backface */
-  //     }
+      ver_buf[ver_idx + 0] = (h.scale[0] * tri_vert->v[0]) + h.translate[0];
+      ver_buf[ver_idx + 1] = (h.scale[1] * tri_vert->v[1]) + h.translate[1];
+      ver_buf[ver_idx + 2] = (h.scale[2] * tri_vert->v[2]) + h.translate[2];
+      ver_buf[ver_idx + 3] = s;
+      ver_buf[ver_idx + 4] = t;
+      ver_idx += 5;
 
-  //     /* Scale s and t to range from 0.0 to 1.0 */
-  //     s = (s + 0.5) / mdl->header.skinwidth;
-  //     t = (t + 0.5) / mdl->header.skinheight;
-
-  //     /* Pass texture coordinates to OpenGL */
-  //     glTexCoord2f(s, t);
-
-  //     /* Normal vector */
-  //     glNormal3fv(anorms_table[pvert->normalIndex]);
-
-  //     /* Calculate real vertex position */
-  //     v[0] = (mdl->header.scale[0] * pvert->v[0]) + mdl->header.translate[0];
-  //     v[1] = (mdl->header.scale[1] * pvert->v[1]) + mdl->header.translate[1];
-  //     v[2] = (mdl->header.scale[2] * pvert->v[2]) + mdl->header.translate[2];
-
-  //     glVertex3fv(v);
-  //   }
-  // }
-  // glEnd();
+      ind_buf[ind_idx] = tri_idx;
+      ind_idx++;
+    }
+  }
 }
 
 void mdl_free(mdl_model *m) {
