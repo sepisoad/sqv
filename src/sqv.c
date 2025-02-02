@@ -19,6 +19,7 @@
 // clang-format on
 
 sqv_err qk_init(void);
+sqv_err qk_deinit(qk_mdl *mdl);
 sqv_err qk_load_mdl(const char *path, qk_mdl *mdl);
 
 static struct {
@@ -40,6 +41,9 @@ void init(void) {
   assert(err == SQV_SUCCESS);
 
   err = qk_load_mdl(".keep/spike.mdl", &mdl);
+  assert(err == SQV_SUCCESS);
+
+  err = qk_deinit(&mdl);
   assert(err == SQV_SUCCESS);
   exit(0); // SEPI:FUCK
 

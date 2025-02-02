@@ -249,4 +249,17 @@ cleanup:
   }
   return err;
 }
+
 sqv_err qk_init(void) { return SQV_SUCCESS; }
+
+sqv_err qk_deinit(qk_mdl *mdl) {
+  for (size_t i = 0; i < mdl->header.skins_count; i++) {
+    if (mdl->skins[i].pixels)
+      free(mdl->skins[i].pixels);
+  }
+
+  if (mdl->skins)
+    free(mdl->skins);
+
+  return SQV_SUCCESS;
+}
