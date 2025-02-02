@@ -12,28 +12,28 @@ endif
 
 ifeq ($(config),debug)
   ifeq ($(origin CC), default)
-    CC = gcc
+    CC = gcc-14.2.0
   endif
   ifeq ($(origin CXX), default)
-    CXX = g++
+    CXX = g++-14.2.0
   endif
   ifeq ($(origin AR), default)
-    AR = ar
+    AR = ar-14.2.0
   endif
-  RESCOMP = windres
+  RESCOMP = windres-14.2.0
   TARGETDIR = .ignore/build
   TARGET = $(TARGETDIR)/sqv
   OBJDIR = .ignore/build/obj/Debug
-  DEFINES += -DDEBUG
-  INCLUDES += -Ires/shaders -I/usr/local/include
+  DEFINES += -DDEBUG -D_POSIX_C_SOURCE=199309L
+  INCLUDES += -Isrc -Ires/shaders -I/usr/local/include
   FORCE_INCLUDE +=
   ALL_CPPFLAGS += $(CPPFLAGS) -MD -MP $(DEFINES) $(INCLUDES)
-  ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -std=c2x
-  ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -std=c2x
+  ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -fsanitize=address -std=c2x
+  ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -fsanitize=address -std=c2x
   ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
   LIBS += -lX11 -lXi -lXcursor -lGL -lm
   LDDEPS +=
-  ALL_LDFLAGS += $(LDFLAGS)
+  ALL_LDFLAGS += $(LDFLAGS) -fsanitize=address
   LINKCMD = $(CC) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
   define PREBUILDCMDS
   endef
@@ -48,20 +48,20 @@ endif
 
 ifeq ($(config),release)
   ifeq ($(origin CC), default)
-    CC = gcc
+    CC = gcc-14.2.0
   endif
   ifeq ($(origin CXX), default)
-    CXX = g++
+    CXX = g++-14.2.0
   endif
   ifeq ($(origin AR), default)
-    AR = ar
+    AR = ar-14.2.0
   endif
-  RESCOMP = windres
+  RESCOMP = windres-14.2.0
   TARGETDIR = .ignore/build
   TARGET = $(TARGETDIR)/sqv
   OBJDIR = .ignore/build/obj/Release
-  DEFINES += -DNDEBUG
-  INCLUDES += -Ires/shaders -I/usr/local/include
+  DEFINES += -DNDEBUG -D_POSIX_C_SOURCE=199309L
+  INCLUDES += -Isrc -Ires/shaders -I/usr/local/include
   FORCE_INCLUDE +=
   ALL_CPPFLAGS += $(CPPFLAGS) -MD -MP $(DEFINES) $(INCLUDES)
   ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O3 -std=c2x
@@ -84,8 +84,8 @@ endif
 
 OBJECTS := \
 	$(OBJDIR)/main.o \
-	$(OBJDIR)/mdl.o \
-	$(OBJDIR)/mdl_data.o \
+	$(OBJDIR)/qk_data.o \
+	$(OBJDIR)/qk_mdl.o \
 
 RESOURCES := \
 
@@ -147,10 +147,10 @@ endif
 $(OBJDIR)/main.o: src/main.c
 	@echo $(notdir $<)
 	$(SILENT) $(CC) $(ALL_CFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
-$(OBJDIR)/mdl.o: src/mdl.c
+$(OBJDIR)/qk_data.o: src/qk_data.c
 	@echo $(notdir $<)
 	$(SILENT) $(CC) $(ALL_CFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
-$(OBJDIR)/mdl_data.o: src/mdl_data.c
+$(OBJDIR)/qk_mdl.o: src/qk_mdl.c
 	@echo $(notdir $<)
 	$(SILENT) $(CC) $(ALL_CFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 

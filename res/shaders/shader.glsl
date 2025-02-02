@@ -5,27 +5,24 @@ layout(binding=0) uniform vs_params {
     mat4 mvp;
 };
 
-in vec4 pos;
-in vec2 texcoord0;
-out vec2 uv;
+in vec4 position;
+in vec4 color0;
+
+out vec4 color;
 
 void main() {
-    gl_Position = mvp * pos;
-    uv = texcoord0;
+    gl_Position = mvp * position;
+    color = color0;
 }
 @end
 
 @fs fs
-layout(binding=0) uniform texture2D tex;
-layout(binding=0) uniform sampler smp;
-
-in vec2 uv;
+in vec4 color;
 out vec4 frag_color;
 
 void main() {
-    frag_color = texture(sampler2D(tex, smp), uv);
+    frag_color = color;
 }
 @end
 
-@program sepi vs fs
-
+@program cube vs fs
