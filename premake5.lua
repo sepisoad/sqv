@@ -45,7 +45,7 @@ project "Host"
     trigger = "glsl",
     description = "compile shaders into c headers",
     execute = function()
-      os.execute("sokol-shdc -i res/shaders/shader.glsl -l glsl410 -f sokol -o src/shader.h")
+      os.execute("sokol-shdc -i res/shaders/default.glsl -l glsl410 -f sokol -o src/glsl_default.h")
     end
   }
   newaction {

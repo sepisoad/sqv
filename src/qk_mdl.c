@@ -6,17 +6,16 @@
 #include <assert.h>
 #include <string.h>
 
-#include "err.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
+#include "sqv_err.h"
 #include "qk_mdl.h"
 
 /*
  * external variables
  */
 extern const uint8_t _qk_palette[256][3];
-// SEPI: do i really need '_qk_colormap' and '_qk_palette_full_bright' or are
-// they just useful for rendering textures inside the game?
-extern const uint8_t _qk_colormap[256 * 64];
-extern uint8_t _qk_palette_full_bright[256 / 32];
 
 /*
  * _qk_is_little_endian
@@ -94,24 +93,42 @@ static float _qk_to_lefloat(float num) {
 }
 
 /*
- * _qk_is_full_bright
+ * _qk_load_image
  *
- * SEPI: add comment!
+ * loads texture data baked inside mdl receives indices and image width and
+ * height and returns the texture image data
  */
 
-static bool _qk_is_full_bright(uint8_t *px, size_t sz) {
-  for (size_t i = 0; i < sz; i++) {
-    if ((_qk_palette_full_bright[(*px) / 32u] & (1u << ((*px) % 32u))) != 0u) {
-      px++;
-      return true;
-    }
-  }
-  px++;
-  return false;
-}
+static sqv_err _qk_load_image(uint8_t *indices, uint32_t width, uint32_t height,
+                              qk_skin *skin) {
+  // SEPI: this function (so far) only supports loading of 'indexed' images and
+  // we suippose the image depth is always 1
 
-static sqv_err _qk_load_image(uint8_t *px, uint32_t w, uint32_t h, uint8_t f) {
-  // SEPI: this function (so far) only supports loading of 'indexed' images
+  size_t size = width * height;
+  skin->width = width;
+  skin->height = height;
+  skin->pixels = (uint8_t *)malloc(size * 4); // SEPI:MEM: 4 => r, g, b, a
+
+  for (size_t i = 0, j = 0; i < size; i++, j += 4) {
+    uint8_t index = indices[i];
+    const uint8_t *rgb = _qk_palette[index];
+    skin->pixels[j + 0] = rgb[0]; // red
+    skin->pixels[j + 1] = rgb[1]; // green
+    skin->pixels[j + 2] = rgb[2]; // blue
+    skin->pixels[j + 3] = 255;    // alpha, always opaque
+  }
+
+  // Each row has width * 4 bytes (RGBA format)
+  int stride = width * 4;
+
+  // Save as PNG
+  if (stbi_write_png("___skin.png", width, height, 4, skin->pixels, stride)) {
+    printf("Image saved successfully as %s\n", "___skin.png");
+  } else {
+    fprintf(stderr, "Error saving PNG file.\n");
+  }
+
+  return SQV_SUCCESS;
 }
 
 /*
@@ -122,40 +139,31 @@ static sqv_err _qk_load_image(uint8_t *px, uint32_t w, uint32_t h, uint8_t f) {
 static uintptr_t _qk_load_skins(qk_mdl *mdl, uintptr_t mem) {
   const uint32_t make_index_255_transparent = (1u << 14);
   qk_header hdr = mdl->header;
-  qk_skin *skn = mdl->skin_p = (qk_skin *)mem;
+  qk_skintype *skin_type = NULL;
+  uint8_t *skin_data = NULL;
   uint32_t skin_size = hdr.skin_width * hdr.skin_height;
-  qk_texture_flags tf = QK_TEXFLG_PAD;
 
-  if (hdr.flags & make_index_255_transparent) {
-    // SEPI: figure out how to use it!
-    tf |= QK_TEXFLG_ALPHA;
-  }
+  // SEPI:MEM:
+  mdl->skins = (qk_skin *)malloc(sizeof(qk_skin) * hdr.skins_count);
+  assert(mdl->skins != NULL);
 
   for (size_t i = 0; i < hdr.skins_count; i++) {
-    if (skn->type == QK_SKIN_SINGLE) {
-      // SEPI: in ironwail's 'Mod_LoadAllSkins' function they call
-      // 'Mod_FloodFillSkin' which does something to the sking data buffer for
-      // now i'm just ignoring that logic, but remember to come back here and
-      // figure out what it does!
+    skin_type = (qk_skintype *)mem;
+    if (*skin_type == QK_SKIN_SINGLE) {
+      skin_data = (uint8_t *)malloc(skin_size);
+      assert(skin_data != NULL);
 
-      skn->data = (uint8_t *)malloc(skin_size);
-      assert(skn->data != NULL);
+      mem = mem + sizeof(qk_skintype);
+      memcpy(skin_data, (uint8_t *)mem, skin_size);
 
-      mem = mem + sizeof(skn->type);
-      memcpy(skn->data, (uint8_t *)mem, skin_size);
-      qk_texture_flags ltf;
+      qk_skin skin;
+      _qk_load_image(skin_data, hdr.skin_width, hdr.skin_height,
+                     &(mdl->skins[i]));
 
-      if (_qk_is_full_bright(skn->data, skin_size)) {
-        if (!(tf & QK_TEXFLG_ALPHA))
-          ltf = tf | QK_TEXFLG_ALPHABRIGHT;
-        else
-          ltf = tf | QK_TEXFLG_NOBRIGHT;
-      } else {
-        ltf = tf;
-      }
-
-      _qk_load_image(skn->data, hdr.skin_width, hdr.skin_height, ltf);
       mem = mem + skin_size;
+
+      free(skin_data);
+      skin_data = NULL;
     } else {
       // SEPI: this is not implement yet, and i don't know if i will ever add
       // this feature!
@@ -164,6 +172,9 @@ static uintptr_t _qk_load_skins(qk_mdl *mdl, uintptr_t mem) {
   }
 
 cleanup:
+  if (skin_data)
+    free(skin_data);
+
   return mem;
 }
 
@@ -226,7 +237,7 @@ sqv_err qk_load_mdl(const char *path, qk_mdl *mdl) {
   assert(mdl->header.frames_count > 0);
 
   uintptr_t mem = ((uintptr_t)buf) + sizeof(qk_header);
-  mem = _qk_load_skins(mdl, ++mem);
+  mem = _qk_load_skins(mdl, mem);
 
 cleanup:
   if (buf) {
@@ -238,24 +249,4 @@ cleanup:
   }
   return err;
 }
-
-static void _qk_init_full_bright_palette(void) {
-  size_t i, j;
-  for (i = 0; i < 256; i++) {
-    if (!_qk_palette[i][0] && !_qk_palette[i][1] && !_qk_palette[i][2])
-      continue; // black can't be fullbright
-
-    for (j = 1; j < 64; j++)
-      if (_qk_colormap[i + j * 256] != _qk_colormap[i])
-        break;
-
-    if (j == 64) {
-      _qk_palette_full_bright[i / 32u] |= 1u << (i % 32u);
-    }
-  }
-}
-
-sqv_err qk_init(void) {
-  _qk_init_full_bright_palette();
-  return SQV_SUCCESS;
-}
+sqv_err qk_init(void) { return SQV_SUCCESS; }

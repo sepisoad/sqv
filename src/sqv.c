@@ -11,11 +11,11 @@
 #include "sokol_gfx.h"
 #include "sokol_glue.h"
 #include "sokol_log.h"
-#include "hmm.h"
+#include "util_hmm.h"
 
-#include "err.h"
+#include "glsl_default.h"
 #include "qk_mdl.h"
-#include "shader.h"
+#include "sqv_err.h"
 // clang-format on
 
 sqv_err qk_init(void);
@@ -41,6 +41,7 @@ void init(void) {
 
   err = qk_load_mdl(".keep/spike.mdl", &mdl);
   assert(err == SQV_SUCCESS);
+  exit(0); // SEPI:FUCK
 
   /* cube vertex buffer */
   float vertices[] = {

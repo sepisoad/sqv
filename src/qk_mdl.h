@@ -69,13 +69,14 @@ typedef struct {
 } qk_header;
 
 typedef struct {
-  qk_skintype type;
-  uint8_t *data;
+  uint32_t width;
+  uint32_t height;
+  uint8_t *pixels;
 } qk_skin;
 
 typedef struct {
   qk_header header;
-  qk_skin *skin_p;
+  qk_skin *skins;
 } qk_mdl;
 
 #endif // QK_MDL_HEADER_
