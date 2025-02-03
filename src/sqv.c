@@ -1,22 +1,16 @@
-// clang-format off
 #include <stdio.h>
 #include <assert.h>
 #include <stdbool.h>
 
-#define SOKOL_IMPL
-#define SOKOL_GLCORE
-#define HANDMADE_MATH_IMPLEMENTATION
-#define HANDMADE_MATH_NO_SSE
-#include "sokol_app.h"
-#include "sokol_gfx.h"
-#include "sokol_glue.h"
-#include "sokol_log.h"
-#include "util_hmm.h"
+#include "../deps/sokol_app.h"
+#include "../deps/sokol_gfx.h"
+#include "../deps/sokol_glue.h"
+#include "../deps/sokol_log.h"
+#include "../deps/hmm.h"
 
 #include "glsl_default.h"
 #include "qk_mdl.h"
 #include "sqv_err.h"
-// clang-format on
 
 sqv_err qk_init(void);
 sqv_err qk_deinit(qk_mdl *mdl);
@@ -26,6 +20,7 @@ static struct {
   float rx, ry;
   sg_pipeline pip;
   sg_bindings bind;
+  qk_mdl mdl;
 } state;
 
 void init(void) {
@@ -34,18 +29,11 @@ void init(void) {
       .logger.func = slog_func,
   });
 
-  qk_mdl mdl;
-  sqv_err err;
-
-  err = qk_init();
+  sqv_err err = qk_init();
   assert(err == SQV_SUCCESS);
 
-  err = qk_load_mdl(".keep/spike.mdl", &mdl);
+  err = qk_load_mdl(".keep/spike.mdl", &state.mdl);
   assert(err == SQV_SUCCESS);
-
-  err = qk_deinit(&mdl);
-  assert(err == SQV_SUCCESS);
-  exit(0); // SEPI:FUCK
 
   /* cube vertex buffer */
   float vertices[] = {
@@ -142,7 +130,12 @@ void frame(void) {
   sg_commit();
 }
 
-void cleanup(void) { sg_shutdown(); }
+void cleanup(void) {
+  sg_shutdown();
+
+  sqv_err err = qk_deinit(&state.mdl);
+  assert(err == SQV_SUCCESS);
+}
 
 sapp_desc sokol_main(int argc, char *argv[]) {
   (void)argc;

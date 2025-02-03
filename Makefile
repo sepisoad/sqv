@@ -9,26 +9,53 @@ ifndef verbose
 endif
 
 ifeq ($(config),debug)
-  Host_config = debug
+  mk_sokol_config = debug
+  mk_hmm_config = debug
+  mk_stb_config = debug
+  mk_sqv_config = debug
 endif
 ifeq ($(config),release)
-  Host_config = release
+  mk_sokol_config = release
+  mk_hmm_config = release
+  mk_stb_config = release
+  mk_sqv_config = release
 endif
 
-PROJECTS := Host
+PROJECTS := mk_sokol mk_hmm mk_stb mk_sqv
 
 .PHONY: all clean help $(PROJECTS) 
 
 all: $(PROJECTS)
 
-Host:
-ifneq (,$(Host_config))
-	@echo "==== Building Host ($(Host_config)) ===="
-	@${MAKE} --no-print-directory -C . -f Host.make config=$(Host_config)
+mk_sokol:
+ifneq (,$(mk_sokol_config))
+	@echo "==== Building mk_sokol ($(mk_sokol_config)) ===="
+	@${MAKE} --no-print-directory -C . -f mk_sokol.make config=$(mk_sokol_config)
+endif
+
+mk_hmm:
+ifneq (,$(mk_hmm_config))
+	@echo "==== Building mk_hmm ($(mk_hmm_config)) ===="
+	@${MAKE} --no-print-directory -C . -f mk_hmm.make config=$(mk_hmm_config)
+endif
+
+mk_stb:
+ifneq (,$(mk_stb_config))
+	@echo "==== Building mk_stb ($(mk_stb_config)) ===="
+	@${MAKE} --no-print-directory -C . -f mk_stb.make config=$(mk_stb_config)
+endif
+
+mk_sqv:
+ifneq (,$(mk_sqv_config))
+	@echo "==== Building mk_sqv ($(mk_sqv_config)) ===="
+	@${MAKE} --no-print-directory -C . -f mk_sqv.make config=$(mk_sqv_config)
 endif
 
 clean:
-	@${MAKE} --no-print-directory -C . -f Host.make clean
+	@${MAKE} --no-print-directory -C . -f mk_sokol.make clean
+	@${MAKE} --no-print-directory -C . -f mk_hmm.make clean
+	@${MAKE} --no-print-directory -C . -f mk_stb.make clean
+	@${MAKE} --no-print-directory -C . -f mk_sqv.make clean
 
 help:
 	@echo "Usage: make [config=name] [target]"
@@ -40,6 +67,9 @@ help:
 	@echo "TARGETS:"
 	@echo "   all (default)"
 	@echo "   clean"
-	@echo "   Host"
+	@echo "   mk_sokol"
+	@echo "   mk_hmm"
+	@echo "   mk_stb"
+	@echo "   mk_sqv"
 	@echo ""
 	@echo "For more information, see https://github.com/premake/premake-core/wiki"

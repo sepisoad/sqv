@@ -12,27 +12,27 @@ endif
 
 ifeq ($(config),debug)
   ifeq ($(origin CC), default)
-    CC = gcc-14.2.0
+    CC = gcc
   endif
   ifeq ($(origin CXX), default)
-    CXX = g++-14.2.0
+    CXX = g++
   endif
   ifeq ($(origin AR), default)
-    AR = ar-14.2.0
+    AR = ar
   endif
-  RESCOMP = windres-14.2.0
+  RESCOMP = windres
   TARGETDIR = .ignore/build
   TARGET = $(TARGETDIR)/sqv
-  OBJDIR = .ignore/build/obj/Debug
+  OBJDIR = .ignore/build/obj/Debug/mk_sqv
   DEFINES += -DDEBUG -D_POSIX_C_SOURCE=199309L
-  INCLUDES += -Isrc -Ires/shaders -I/usr/local/include
+  INCLUDES += -Isrc -Ideps -Ires/shaders
   FORCE_INCLUDE +=
   ALL_CPPFLAGS += $(CPPFLAGS) -MD -MP $(DEFINES) $(INCLUDES)
   ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -fsanitize=address -std=c2x
   ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -fsanitize=address -std=c2x
   ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-  LIBS += -lX11 -lXi -lXcursor -lGL -lm
-  LDDEPS +=
+  LIBS += .ignore/build/libstb.a .ignore/build/libsokol.a .ignore/build/libhmm.a -lX11 -lXi -lXcursor -lGL -lm
+  LDDEPS += .ignore/build/libstb.a .ignore/build/libsokol.a .ignore/build/libhmm.a
   ALL_LDFLAGS += $(LDFLAGS) -fsanitize=address
   LINKCMD = $(CC) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
   define PREBUILDCMDS
@@ -48,27 +48,27 @@ endif
 
 ifeq ($(config),release)
   ifeq ($(origin CC), default)
-    CC = gcc-14.2.0
+    CC = gcc
   endif
   ifeq ($(origin CXX), default)
-    CXX = g++-14.2.0
+    CXX = g++
   endif
   ifeq ($(origin AR), default)
-    AR = ar-14.2.0
+    AR = ar
   endif
-  RESCOMP = windres-14.2.0
+  RESCOMP = windres
   TARGETDIR = .ignore/build
   TARGET = $(TARGETDIR)/sqv
-  OBJDIR = .ignore/build/obj/Release
+  OBJDIR = .ignore/build/obj/Release/mk_sqv
   DEFINES += -DNDEBUG -D_POSIX_C_SOURCE=199309L
-  INCLUDES += -Isrc -Ires/shaders -I/usr/local/include
+  INCLUDES += -Isrc -Ideps -Ires/shaders
   FORCE_INCLUDE +=
   ALL_CPPFLAGS += $(CPPFLAGS) -MD -MP $(DEFINES) $(INCLUDES)
   ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O3 -std=c2x
   ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O3 -std=c2x
   ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-  LIBS += -lX11 -lXi -lXcursor -lGL -lm
-  LDDEPS +=
+  LIBS += .ignore/build/libstb.a .ignore/build/libsokol.a .ignore/build/libhmm.a -lX11 -lXi -lXcursor -lGL -lm
+  LDDEPS += .ignore/build/libstb.a .ignore/build/libsokol.a .ignore/build/libhmm.a
   ALL_LDFLAGS += $(LDFLAGS) -s
   LINKCMD = $(CC) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
   define PREBUILDCMDS
@@ -97,7 +97,7 @@ ifeq (.exe,$(findstring .exe,$(ComSpec)))
 endif
 
 $(TARGET): $(GCH) ${CUSTOMFILES} $(OBJECTS) $(LDDEPS) $(RESOURCES) | $(TARGETDIR)
-	@echo Linking Host
+	@echo Linking mk_sqv
 	$(SILENT) $(LINKCMD)
 	$(POSTBUILDCMDS)
 
@@ -120,7 +120,7 @@ else
 endif
 
 clean:
-	@echo Cleaning Host
+	@echo Cleaning mk_sqv
 ifeq (posix,$(SHELLTYPE))
 	$(SILENT) rm -f  $(TARGET)
 	$(SILENT) rm -rf $(OBJDIR)

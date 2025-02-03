@@ -7,6 +7,10 @@ typedef float qk_vectorf;
 
 typedef qk_vectorf qk_vector3f[3];
 
+typedef uint32_t qk_vertices_idx[3];
+
+typedef uint8_t qk_vertex3[3];
+
 typedef enum {
   QK_ST__UNKNOWN = -1,
 
@@ -75,8 +79,41 @@ typedef struct {
 } qk_skin;
 
 typedef struct {
+  uint32_t onseam;
+  uint32_t s;
+  uint32_t t;
+} qk_texcoords;
+
+typedef struct {
+  int frontface;
+  qk_vertices_idx vertices_idx;
+} qk_triangles_idx;
+
+typedef struct {
+  qk_vertex3 vertex[3];
+  uint8_t normal_idx;
+} qk_triangles;
+
+typedef struct {
   qk_header header;
+  // SEPI: 'skins' is a bad field, we need to upload skins as textures to GPU
+  // memory or get a id for it somehow so we don't need to keep this around for
+  // long, however we need to keep this fact in mind that sqv is going to be
+  // designed around loading a single MDL file, so maybe keeping this
+  // information around is not that bad, and it may even help with the
+  // separation of concerns so qk_mdl module will stay away from make GPU api
+  // calls
   qk_skin *skins;
+  qk_texcoords *texcoords;
+  qk_triangles_idx *triangles_idx;
+
+  // SEPI: maybe values here after can be stored in a separate type, because at
+  // this point we are starting the process of decoding the above values into
+  // usable information and they are application specific and they might not
+  // strictly follow quake way of thinking, although for decoding purpose we
+  // still need to follow quake logic, but what we do with the decoded data is
+  // up to us!
+  qk_triangles *triangles;
 } qk_mdl;
 
 #endif // QK_MDL_HEADER_

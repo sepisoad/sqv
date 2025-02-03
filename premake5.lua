@@ -1,7 +1,7 @@
 ---@diagnostic disable: undefined-global
 
 workspace "ProjectWorkspace"
-  toolset "gcc-14.2.0"
+  -- toolset "gcc-14.2.0"
   configurations { "Debug", "Release" }
   location "."
 
@@ -16,7 +16,43 @@ workspace "ProjectWorkspace"
     defines { "NDEBUG" }
     optimize "Speed"
 
-project "Host"
+project "mk_sokol"
+    kind "StaticLib"
+    language "C"
+    targetdir ".ignore/build/"
+    objdir ".ignore/build/obj"
+    targetname "sokol"
+  
+    files {
+      "deps/sokol.c",
+    }
+  
+    links { "X11", "Xi", "Xcursor", "GL", "m" }
+
+project "mk_hmm"
+    kind "StaticLib"
+    language "C"
+    targetdir ".ignore/build/"
+    objdir ".ignore/build/obj"
+    targetname "hmm"
+  
+    files {
+      "deps/hmm.c",
+    }
+
+
+project "mk_stb"
+    kind "StaticLib"
+    language "C"
+    targetdir ".ignore/build/"
+    objdir ".ignore/build/obj"
+    targetname "stb"
+  
+    files {
+      "deps/stb.c",
+    }
+
+project "mk_sqv"
   kind "ConsoleApp"
   language "C"
   targetdir ".ignore/build/"
@@ -29,11 +65,11 @@ project "Host"
 
   includedirs {
     "src",
+    "deps",
     "res/shaders",
-    "/usr/local/include",
   }
 
-  links { "X11", "Xi", "Xcursor", "GL", "m" }
+  links { "X11", "Xi", "Xcursor", "GL", "m", "mk_stb:static", "mk_sokol:static", "mk_hmm:static" }
 
   buildoptions { "-std=c2x" }
 

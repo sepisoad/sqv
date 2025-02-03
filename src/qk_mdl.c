@@ -6,11 +6,11 @@
 #include <assert.h>
 #include <string.h>
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
-
 #include "sqv_err.h"
 #include "qk_mdl.h"
+
+// TODO: make sure that when converting numbers from memory, memory alignment is
+// properly handled
 
 /*
  * external variables
@@ -102,12 +102,12 @@ static float _qk_to_lefloat(float num) {
 static sqv_err _qk_load_image(uint8_t *indices, uint32_t width, uint32_t height,
                               qk_skin *skin) {
   // SEPI: this function (so far) only supports loading of 'indexed' images and
-  // we suippose the image depth is always 1
+  // we suppose the image depth is always 1
 
   size_t size = width * height;
   skin->width = width;
   skin->height = height;
-  skin->pixels = (uint8_t *)malloc(size * 4); // SEPI:MEM: 4 => r, g, b, a
+  skin->pixels = (uint8_t *)malloc(size * 4); // SEPI: mem 4 => r, g, b, a
 
   for (size_t i = 0, j = 0; i < size; i++, j += 4) {
     uint8_t index = indices[i];
@@ -116,16 +116,6 @@ static sqv_err _qk_load_image(uint8_t *indices, uint32_t width, uint32_t height,
     skin->pixels[j + 1] = rgb[1]; // green
     skin->pixels[j + 2] = rgb[2]; // blue
     skin->pixels[j + 3] = 255;    // alpha, always opaque
-  }
-
-  // Each row has width * 4 bytes (RGBA format)
-  int stride = width * 4;
-
-  // Save as PNG
-  if (stbi_write_png("___skin.png", width, height, 4, skin->pixels, stride)) {
-    printf("Image saved successfully as %s\n", "___skin.png");
-  } else {
-    fprintf(stderr, "Error saving PNG file.\n");
   }
 
   return SQV_SUCCESS;
@@ -143,7 +133,7 @@ static uintptr_t _qk_load_skins(qk_mdl *mdl, uintptr_t mem) {
   uint8_t *skin_data = NULL;
   uint32_t skin_size = hdr.skin_width * hdr.skin_height;
 
-  // SEPI:MEM:
+  // SEPI: mem
   mdl->skins = (qk_skin *)malloc(sizeof(qk_skin) * hdr.skins_count);
   assert(mdl->skins != NULL);
 
@@ -157,25 +147,102 @@ static uintptr_t _qk_load_skins(qk_mdl *mdl, uintptr_t mem) {
       memcpy(skin_data, (uint8_t *)mem, skin_size);
 
       qk_skin skin;
-      _qk_load_image(skin_data, hdr.skin_width, hdr.skin_height,
-                     &(mdl->skins[i]));
+      sqv_err err = _qk_load_image(skin_data, hdr.skin_width, hdr.skin_height,
+                                   &(mdl->skins[i]));
+      assert(err == SQV_SUCCESS);
 
-      mem = mem + skin_size;
-
+      // we need to clean the memory here before it gets leaked
       free(skin_data);
       skin_data = NULL;
+
+      mem = mem + skin_size;
     } else {
       // SEPI: this is not implement yet, and i don't know if i will ever add
       // this feature!
-      assert(1 == 0);
+      abort();
     }
   }
 
 cleanup:
-  if (skin_data)
-    free(skin_data);
+  // SEPI: if we do a good job of cleaning memory, there should be no
+  // 'skin_data' at this stage, so maybe we should assert this as a fact
+  // however there is always the risk that we may set NULL to a pointer value
+  // but forget to actually free the memory, but we are using address sanitizer
+  // in debug mode, so if there are any memory leaks we should be able to detect
+  // it, hmmm (thinking face!)
+  assert(skin_data == NULL);
 
   return mem;
+}
+
+/*
+ * _qk_load_texcoords
+ *
+ * loads the texture coordinates from mdl buffer
+ */
+static uintptr_t _qk_load_texcoords(qk_mdl *mdl, uintptr_t mem) {
+  qk_header hdr = mdl->header;
+
+  // SEPI: mem
+  mdl->texcoords =
+      (qk_texcoords *)malloc(sizeof(qk_texcoords) * hdr.vertices_count);
+  assert(mdl->texcoords != NULL);
+
+  for (size_t i = 0; i < hdr.vertices_count; i++) {
+    qk_texcoords *ptr = (qk_texcoords *)mem;
+    mdl->texcoords[i].onseam = _qk_to_le32(ptr->onseam);
+    mdl->texcoords[i].s = _qk_to_le32(ptr->s);
+    mdl->texcoords[i].t = _qk_to_le32(ptr->t);
+    mem += sizeof(qk_texcoords);
+  }
+
+  return mem;
+}
+
+/*
+ * _qk_load_triangles_idx
+ *
+ * loads the triangles_idx data from mdl buffer
+ */
+static uintptr_t _qk_load_triangles_idx(qk_mdl *mdl, uintptr_t mem) {
+  qk_header hdr = mdl->header;
+
+  // SEPI: mem
+  mdl->triangles_idx = (qk_triangles_idx *)malloc(sizeof(qk_triangles_idx) *
+                                                  hdr.triangles_count);
+  assert(mdl->triangles_idx != NULL);
+
+  for (size_t i = 0; i < hdr.triangles_count; i++) {
+    qk_triangles_idx *ptr = (qk_triangles_idx *)mem;
+    mdl->triangles_idx[i].frontface = _qk_to_le32(ptr->frontface);
+    for (size_t j = 0; j < 3; j++) {
+      mdl->triangles_idx[i].vertices_idx[j] = _qk_to_le32(ptr->vertices_idx[j]);
+    }
+    mem += sizeof(qk_triangles_idx);
+  }
+
+  return mem;
+}
+
+/*
+ * _qk_calc_bounds
+ *
+ * loads the triangles_idx data from mdl buffer
+ */
+static sqv_err _qk_calc_bounds(qk_mdl *mdl) {
+  // TODO: implement this
+  return SQV_SUCCESS;
+}
+
+/*
+ * _qk_make_display_lists
+ *
+ * construct a GPU friendly list of vertices, omFg this is the hardest part of
+ * the quake code to fathem!
+ */
+static sqv_err _qk_make_display_lists(qk_mdl *mdl) {
+  // TODO: implement this
+  return SQV_SUCCESS;
 }
 
 /*
@@ -193,6 +260,7 @@ sqv_err qk_load_mdl(const char *path, qk_mdl *mdl) {
   size_t size = ftell(f);
   rewind(f);
 
+  // SEPI: can i use 'uintptr_t' here as well instead of 'uint8_t *' ?
   uint8_t *buf = (uint8_t *)malloc(sizeof(uint8_t) * size);
   assert(f != NULL);
 
@@ -227,6 +295,9 @@ sqv_err qk_load_mdl(const char *path, qk_mdl *mdl) {
   const int max_allowed_vertices_count = 2000;
   const int max_allowed_triangles_count = 4096;
 
+  // TODO: i guess asserts here make no sense because they are removed from
+  // release builds and when confronted with a malformed mdl file this will
+  // break silently, so maybe introduce some proper error handling
   assert(mdl->header.magic_codes == expected_magic_codes);
   assert(mdl->header.version == expected_version);
   assert(mdl->header.skin_height <= max_allowed_skin_height);
@@ -238,6 +309,14 @@ sqv_err qk_load_mdl(const char *path, qk_mdl *mdl) {
 
   uintptr_t mem = ((uintptr_t)buf) + sizeof(qk_header);
   mem = _qk_load_skins(mdl, mem);
+  mem = _qk_load_texcoords(mdl, mem);
+  mem = _qk_load_triangles_idx(mdl, mem);
+
+  err = _qk_calc_bounds(mdl);
+  assert(err == SQV_SUCCESS);
+
+  err = _qk_make_display_lists(mdl);
+  assert(err == SQV_SUCCESS);
 
 cleanup:
   if (buf) {
@@ -254,12 +333,26 @@ sqv_err qk_init(void) { return SQV_SUCCESS; }
 
 sqv_err qk_deinit(qk_mdl *mdl) {
   for (size_t i = 0; i < mdl->header.skins_count; i++) {
-    if (mdl->skins[i].pixels)
+    if (mdl->skins[i].pixels) {
       free(mdl->skins[i].pixels);
+      mdl->skins[i].pixels = NULL;
+    }
   }
 
-  if (mdl->skins)
+  if (mdl->skins) {
     free(mdl->skins);
+    mdl->skins = NULL;
+  }
+
+  if (mdl->texcoords) {
+    free(mdl->texcoords);
+    mdl->texcoords = NULL;
+  }
+
+  if (mdl->triangles_idx) {
+    free(mdl->triangles_idx);
+    mdl->triangles_idx = NULL;
+  }
 
   return SQV_SUCCESS;
 }
