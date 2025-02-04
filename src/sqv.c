@@ -1,12 +1,12 @@
-#include <stdio.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <stdio.h>
 
+#include "../deps/hmm.h"
 #include "../deps/sokol_app.h"
 #include "../deps/sokol_gfx.h"
 #include "../deps/sokol_glue.h"
 #include "../deps/sokol_log.h"
-#include "../deps/hmm.h"
 
 #include "glsl_default.h"
 #include "qk_mdl.h"
@@ -29,11 +29,11 @@ void init(void) {
       .logger.func = slog_func,
   });
 
-  sqv_err err = qk_init();
-  assert(err == SQV_SUCCESS);
+  // sqv_err err = qk_init();
+  // assert(err == SQV_SUCCESS);
 
-  err = qk_load_mdl(".keep/spike.mdl", &state.mdl);
-  assert(err == SQV_SUCCESS);
+  // err = qk_load_mdl(".keep/spike.mdl", &state.mdl);
+  // assert(err == SQV_SUCCESS);
 
   /* cube vertex buffer */
   float vertices[] = {
