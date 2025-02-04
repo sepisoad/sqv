@@ -312,6 +312,9 @@ sqv_err qk_load_mdl(const char *path, qk_mdl *mdl) {
   mem = _qk_load_texcoords(mdl, mem);
   mem = _qk_load_triangles_idx(mdl, mem);
 
+  // SEPI: what about loading frames? are we going to load them as part of
+  // '_qk_make_display_lists()' ?
+
   err = _qk_calc_bounds(mdl);
   assert(err == SQV_SUCCESS);
 
