@@ -1,0 +1,19 @@
+BasedOnStyle: WebKit
+
+ColumnLimit: 80
+IndentWidth: 2
+TabWidth: 2
+IndentCaseLabels: true
+
+ReflowCommentsStyle: Always
+BreakBeforeBraces: Attach
+
+AlignAfterOpenBracket: BlockIndent
+AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveDeclarations: true
+AlignConsecutiveBitFields: true
+ArrayInitializerAlignmentStyle: right
+
+SortIncludes: false
+AllowShortIfStatementsOnASingleLine: true
+AllowAllArgumentsOnNextLine: true

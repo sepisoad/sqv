@@ -1,113 +1,29 @@
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <assert.h>
 #include <string.h>
 
-#include "sqv_err.h"
 #include "qk_mdl.h"
+#include "sqv_err.h"
+#include "sqv_mdl.h"
+#include "utils.h"
 
 // TODO: make sure that when converting numbers from memory, memory alignment is
 // properly handled
 
-/*
- * external variables
- */
 extern const uint8_t _qk_palette[256][3];
 
-/*
- * _qk_is_little_endian
- *
- * decides whether we are on a little endian system
- */
-static int _qk_is_little_endian() {
-  uint16_t num = 0x1;
-  return (*(uint8_t *)&num == 1);
-}
-
-/*
- * _qk_to_le16
- *
- * handles the 16 bits integer endianness
- */
-static int16_t _qk_to_le16(int16_t num) {
-  if (_qk_is_little_endian()) {
-    return num;
-  } else {
-    return (int16_t)((num >> 8) | (num << 8));
-  }
-}
-
-/*
- * _qk_to_le32
- *
- * handles the 32 bits integer endianness
- */
-static int32_t _qk_to_le32(int32_t num) {
-  if (_qk_is_little_endian()) {
-    return num;
-  } else {
-    return (int32_t)((num >> 24) | ((num >> 8) & 0x0000FF00) |
-                     ((num << 8) & 0x00FF0000) | (num << 24));
-  }
-}
-
-/*
- * _qk_to_le64
- *
- * handles the 64 bits integer endianness
- */
-static int64_t _qk_to_le64(int64_t num) {
-  if (_qk_is_little_endian()) {
-    return num;
-  } else {
-    return (int64_t)((num >> 56) | ((num >> 40) & 0x000000000000FF00LL) |
-                     ((num >> 24) & 0x0000000000FF0000LL) |
-                     ((num >> 8) & 0x00000000FF000000LL) |
-                     ((num << 8) & 0x000000FF00000000LL) |
-                     ((num << 24) & 0x0000FF0000000000LL) |
-                     ((num << 40) & 0x00FF000000000000LL) | (num << 56));
-  }
-}
-
-/*
- * _qk_to_lefloat
- *
- * handles the float endianness
- */
-static float _qk_to_lefloat(float num) {
-  if (_qk_is_little_endian()) {
-    return num;
-  } else {
-    float result;
-    char *src = (char *)&num;
-    char *dst = (char *)&result;
-    dst[0] = src[3];
-    dst[1] = src[2];
-    dst[2] = src[1];
-    dst[3] = src[0];
-    return result;
-  }
-}
-
-/*
- * _qk_load_image
- *
- * loads texture data baked inside mdl receives indices and image width and
- * height and returns the texture image data
- */
-
-static sqv_err _qk_load_image(uint8_t *indices, uint32_t width, uint32_t height,
-                              qk_skin *skin) {
+static sqv_err load_image(uint8_t *indices, uint32_t width, uint32_t height,
+                          qk_skin *skin) {
   // SEPI: this function (so far) only supports loading of 'indexed' images and
   // we suppose the image depth is always 1
-
   size_t size = width * height;
   skin->width = width;
   skin->height = height;
   skin->pixels = (uint8_t *)malloc(size * 4); // SEPI: mem 4 => r, g, b, a
+  abortif(skin->pixels == NULL, "failed to allocate memory for skin image");
 
   for (size_t i = 0, j = 0; i < size; i++, j += 4) {
     uint8_t index = indices[i];
@@ -121,12 +37,7 @@ static sqv_err _qk_load_image(uint8_t *indices, uint32_t width, uint32_t height,
   return SQV_SUCCESS;
 }
 
-/*
- * _qk_load_skins
- *
- * loads the skin(s) data from mdl buffer
- */
-static uintptr_t _qk_load_skins(qk_mdl *mdl, uintptr_t mem) {
+static uintptr_t load_skins(qk_mdl *mdl, uintptr_t mem) {
   const uint32_t make_index_255_transparent = (1u << 14);
   qk_header hdr = mdl->header;
   qk_skintype *skin_type = NULL;
@@ -135,21 +46,21 @@ static uintptr_t _qk_load_skins(qk_mdl *mdl, uintptr_t mem) {
 
   // SEPI: mem
   mdl->skins = (qk_skin *)malloc(sizeof(qk_skin) * hdr.skins_count);
-  assert(mdl->skins != NULL);
+  abortif(mdl->skins != NULL, "failed to allocate memory for skins");
 
   for (size_t i = 0; i < hdr.skins_count; i++) {
     skin_type = (qk_skintype *)mem;
     if (*skin_type == QK_SKIN_SINGLE) {
       skin_data = (uint8_t *)malloc(skin_size);
-      assert(skin_data != NULL);
+      abortif(skin_data != NULL, "failed to allocate memory for a single skin data");
 
       mem = mem + sizeof(qk_skintype);
       memcpy(skin_data, (uint8_t *)mem, skin_size);
 
       qk_skin skin;
-      sqv_err err = _qk_load_image(skin_data, hdr.skin_width, hdr.skin_height,
-                                   &(mdl->skins[i]));
-      assert(err == SQV_SUCCESS);
+      sqv_err err = load_image(skin_data, hdr.skin_width, hdr.skin_height,
+                               &(mdl->skins[i]));
+      abortif(err == SQV_SUCCESS, "load_image() failed");
 
       // we need to clean the memory here before it gets leaked
       free(skin_data);
@@ -159,64 +70,48 @@ static uintptr_t _qk_load_skins(qk_mdl *mdl, uintptr_t mem) {
     } else {
       // SEPI: this is not implement yet, and i don't know if i will ever add
       // this feature!
-      abort();
+      abortif(false, "load_skin() does not support multi skin YET!");
     }
   }
 
 cleanup:
-  // SEPI: if we do a good job of cleaning memory, there should be no
-  // 'skin_data' at this stage, so maybe we should assert this as a fact
-  // however there is always the risk that we may set NULL to a pointer value
-  // but forget to actually free the memory, but we are using address sanitizer
-  // in debug mode, so if there are any memory leaks we should be able to detect
-  // it, hmmm (thinking face!)
-  assert(skin_data == NULL);
+  abortif(skin_data == NULL, "skin data is not cleaned up properly");
 
   return mem;
 }
 
-/*
- * _qk_load_texcoords
- *
- * loads the texture coordinates from mdl buffer
- */
-static uintptr_t _qk_load_texcoords(qk_mdl *mdl, uintptr_t mem) {
+static uintptr_t load_texcoords(qk_mdl *mdl, uintptr_t mem) {
   qk_header hdr = mdl->header;
 
   // SEPI: mem
   mdl->texcoords =
       (qk_texcoords *)malloc(sizeof(qk_texcoords) * hdr.vertices_count);
-  assert(mdl->texcoords != NULL);
+  abortif(mdl->texcoords != NULL, "failed to allocate memory for texture coordinates");
 
   for (size_t i = 0; i < hdr.vertices_count; i++) {
     qk_texcoords *ptr = (qk_texcoords *)mem;
-    mdl->texcoords[i].onseam = _qk_to_le32(ptr->onseam);
-    mdl->texcoords[i].s = _qk_to_le32(ptr->s);
-    mdl->texcoords[i].t = _qk_to_le32(ptr->t);
+    mdl->texcoords[i].onseam = endian_i32(ptr->onseam);
+    mdl->texcoords[i].s = endian_i32(ptr->s);
+    mdl->texcoords[i].t = endian_i32(ptr->t);
     mem += sizeof(qk_texcoords);
   }
 
   return mem;
 }
 
-/*
- * _qk_load_triangles_idx
- *
- * loads the triangles_idx data from mdl buffer
- */
-static uintptr_t _qk_load_triangles_idx(qk_mdl *mdl, uintptr_t mem) {
+static uintptr_t load_triangles_idx(qk_mdl *mdl, uintptr_t mem) {
   qk_header hdr = mdl->header;
 
   // SEPI: mem
   mdl->triangles_idx = (qk_triangles_idx *)malloc(sizeof(qk_triangles_idx) *
                                                   hdr.triangles_count);
-  assert(mdl->triangles_idx != NULL);
+  abortif(mdl->triangles_idx != NULL, "failed to allocate memory for triangle indices");
 
   for (size_t i = 0; i < hdr.triangles_count; i++) {
     qk_triangles_idx *ptr = (qk_triangles_idx *)mem;
-    mdl->triangles_idx[i].frontface = _qk_to_le32(ptr->frontface);
+    mdl->triangles_idx[i].frontface = endian_i32(ptr->frontface);
     for (size_t j = 0; j < 3; j++) {
-      mdl->triangles_idx[i].vertices_idx[j] = _qk_to_le32(ptr->vertices_idx[j]);
+      mdl->triangles_idx[i].vertices_idx[j] = endian_i32(ptr->vertices_idx[j]);
     }
     mem += sizeof(qk_triangles_idx);
   }
@@ -224,67 +119,153 @@ static uintptr_t _qk_load_triangles_idx(qk_mdl *mdl, uintptr_t mem) {
   return mem;
 }
 
-/*
- * _qk_calc_bounds
- *
- * loads the triangles_idx data from mdl buffer
- */
-static sqv_err _qk_calc_bounds(qk_mdl *mdl) {
+static uintptr_t load_frame_single(qk_mdl *mdl, uintptr_t mem) {
+  qk_frame_single frs;
+  qk_header hdr = mdl->header;
+  size_t nln = sizeof(frs.name);
+
+  qk_frame_single *tmp = (qk_frame_single *)mem;
+  for (size_t i = 0; i < 3; i++) {
+    frs.bbox_min.vertex[i] = tmp->bbox_min.vertex[i];
+    frs.bbox_max.vertex[i] = tmp->bbox_max.vertex[i];
+  }
+  strncpy(frs.name, tmp->name, nln);
+  mem += sizeof(qk_frame_single);
+  return mem;
+}
+
+static uintptr_t load_frames_group(qk_mdl *mdl, uintptr_t mem) {
+  qk_header hdr = mdl->header;
+  qk_frames_group *tmp = (qk_frames_group *)mem;
+  uint32_t cnt = endian_i32(tmp->frames_count);
+
+  qk_frames_group frg;
+  for (size_t i = 0; i < 3; i++) {
+    frg.bbox_min.vertex[i] = tmp->bbox_min.vertex[i];
+    frg.bbox_max.vertex[i] = tmp->bbox_max.vertex[i];
+  }
+  frg.frames_count = cnt;
+
+  qk_frame_interval *pfi = (qk_frame_interval *)(tmp + 1);
+  qk_frame_interval fi = {.interval = endian_f32(pfi->interval)};
+
+  pfi += cnt;
+  mem = (uintptr_t)pfi;
+
+  for (size_t i = 0; i < cnt; i++) {
+    qk_triangle_vertex *zzz =
+        (qk_triangle_vertex *)((qk_frame_single *)pfi + 1);
+    // posenum++;
+
+    mem = (uintptr_t)((qk_triangle_vertex *)((qk_frame_single *)pfi + 1) +
+                      hdr.frames_count);
+  }
+
+  return mem;
+}
+
+static uintptr_t load_frames(qk_mdl *mdl, uintptr_t mem) {
+  qk_header hdr = mdl->header;
+
+  // SEPI: i think there are two things associated with frames, first we have
+  // animations maybe also known as 'poses' and then we have frames in each
+  // pose, but in order to know which one is which, we keep track of each
+  // animation by a combination of 'animation frames count', and 'animation
+  // first frame', and again i think you need to extract the 'animation first
+  // frame' indirectly by counting how many poses exist in a mdl file and then
+  // how many frames are in that pose and then you need to keep it somewhere!
+
+  for (size_t i = 0; i < hdr.frames_count; i++) {
+    qk_frametype ft = endian_i32(*(qk_frametype *)mem);
+    mem += sizeof(qk_frametype);
+    if (ft == QK_FT_SINGLE) {
+      mem = load_frame_single(mdl, mem);
+    } else {
+      mem = load_frames_group(mdl, mem);
+    }
+  }
+
+  return mem;
+}
+
+static sqv_err calc_bounds(qk_mdl *mdl) {
   // TODO: implement this
   return SQV_SUCCESS;
 }
 
-/*
- * _qk_make_display_lists
- *
- * construct a GPU friendly list of vertices, omFg this is the hardest part of
- * the quake code to fathem!
- */
-static sqv_err _qk_make_display_lists(qk_mdl *mdl) {
-  // TODO: implement this
+static sqv_err make_display_lists(qk_mdl *mdl) {
+  qk_header hdr = mdl->header;
+  qk_triangles_idx *tip = mdl->triangles_idx;
+  // qk_triangle_vertex* tvp = mdl->triangles_vertices;
+  uint32_t vc = hdr.vertices_count;
+  uint32_t fc = hdr.frames_count;
+
+  // SEPI: mem
+  // tvp = (qk_triangle_vertex*)malloc(sizeof(qk_triangle_vertex) * vc * fc);
+  // assert(tvp != NULL);
+
+  // for (size_t i = 0; i < fc; i++) {
+  //   for (size_t j = 0; j < vc; j++) {
+  //     // tvp[i * hdr.vertices_count + j] = tip[i][j];
+  //     // TODO:
+  //   }
+  // }
+
   return SQV_SUCCESS;
 }
 
-/*
- * qk_load_mdl
- *
- * given a path and an header it will load the mdl file point by path
- * into a raw mdl header of type 'qk_header'
- */
-sqv_err qk_load_mdl(const char *path, qk_mdl *mdl) {
+// SEPI: i have changed my mind, i think we need to types of structs,
+// one that represent data as is in memory with 'qk_' prefix and another
+// one that represent the processed data with 'sqv_' prefix
+// for now ignore the `qk_mdl *mdl` and act like that you are simply
+// processing the data in this function and you will throw it away until
+// the types are completly know to you!
+sqv_err qk_load_mdl(const char *path, qk_mdl *_mdl_) {
   sqv_err err = SQV_SUCCESS;
   FILE *f = fopen(path, "rb");
-  assert(f != NULL);
+  abortif(f != NULL, "invalid mdl file");
 
   fseek(f, 0, SEEK_END);
-  size_t size = ftell(f);
+  size_t fsize = ftell(f);
   rewind(f);
 
   // SEPI: can i use 'uintptr_t' here as well instead of 'uint8_t *' ?
-  uint8_t *buf = (uint8_t *)malloc(sizeof(uint8_t) * size);
-  assert(f != NULL);
+  uint8_t *buf = (uint8_t *)malloc(sizeof(uint8_t) * fsize);
+  abortif(buf != NULL, "failed to allocate memory to mdl file");
 
-  size_t rsize = fread(buf, 1, size, f);
-  assert(rsize == size);
+  // uintptr_t mem = ((uintptr_t)buf) + sizeof(qk_header);
+  size_t rsize = fread(buf, 1, fsize, f);
+  abortif(rsize == fsize, "read size '%zu' did not match the file size '%zu'",
+          rsize, fsize);
 
-  qk_header *tmp = (qk_header *)buf;
-  mdl->header.magic_codes = _qk_to_le32(tmp->magic_codes);
-  mdl->header.version = _qk_to_le32(tmp->version);
-  mdl->header.skins_count = _qk_to_le32(tmp->skins_count);
-  mdl->header.skin_width = _qk_to_le32(tmp->skin_width);
-  mdl->header.skin_height = _qk_to_le32(tmp->skin_height);
-  mdl->header.vertices_count = _qk_to_le32(tmp->vertices_count);
-  mdl->header.triangles_count = _qk_to_le32(tmp->triangles_count);
-  mdl->header.frames_count = _qk_to_le32(tmp->frames_count);
-  mdl->header.flags = _qk_to_le32(tmp->flags);
-  mdl->header.bounding_radius = _qk_to_lefloat(tmp->bounding_radius);
-  mdl->header.size = _qk_to_lefloat(tmp->size);
+  uintptr_t mem = (uintptr_t)buf;
+  qk_header *qkhdr = (qk_header *)buf;
 
-  for (int i = 0; i < 3; i++) {
-    mdl->header.scale[i] = _qk_to_lefloat(tmp->scale[i]);
-    mdl->header.origin[i] = _qk_to_lefloat(tmp->origin[i]);
-    mdl->header.eye_position[i] = _qk_to_lefloat(tmp->eye_position[i]);
-  }
+  // TODO: verify these values for correctness
+  // also i don't know what 'flags' and 'size' are!
+  int32_t _magic_code = endian_i32(qkhdr->magic_codes);
+  int32_t _version = endian_i32(qkhdr->version);
+  int32_t _flags = endian_i32(qkhdr->flags);
+  int32_t _size = endian_f32(qkhdr->size);
+
+  sqv_mdl_header hdr = {
+      .radius = endian_f32(qkhdr->bounding_radius),
+      .skin_width = endian_i32(qkhdr->skin_width),
+      .skin_height = endian_i32(qkhdr->skin_height),
+      .skins_count = endian_i32(qkhdr->skins_count),
+      .vertices_count = endian_i32(qkhdr->vertices_count),
+      .triangles_count = endian_i32(qkhdr->triangles_count),
+      .frames_count = endian_i32(qkhdr->frames_count),
+      .scale = {.X = endian_f32(qkhdr->scale[0]),
+                .Y = endian_f32(qkhdr->scale[1]),
+                .Z = endian_f32(qkhdr->scale[2])},
+      .origin = {.X = endian_f32(qkhdr->origin[0]),
+                 .Y = endian_f32(qkhdr->origin[1]),
+                 .Z = endian_f32(qkhdr->origin[2])},
+      .eye = {.X = endian_f32(qkhdr->eye_position[0]),
+              .Y = endian_f32(qkhdr->eye_position[1]),
+              .Z = endian_f32(qkhdr->eye_position[2])},
+  };
 
   // SEPI: if the following constants are only relevant to this function
   // then by all means keep them here
@@ -295,31 +276,27 @@ sqv_err qk_load_mdl(const char *path, qk_mdl *mdl) {
   const int max_allowed_vertices_count = 2000;
   const int max_allowed_triangles_count = 4096;
 
-  // TODO: i guess asserts here make no sense because they are removed from
-  // release builds and when confronted with a malformed mdl file this will
-  // break silently, so maybe introduce some proper error handling
-  assert(mdl->header.magic_codes == expected_magic_codes);
-  assert(mdl->header.version == expected_version);
-  assert(mdl->header.skin_height <= max_allowed_skin_height);
-  assert(mdl->header.vertices_count <= max_allowed_vertices_count);
-  assert(mdl->header.triangles_count <= max_allowed_triangles_count);
-  assert(mdl->header.vertices_count > 0);
-  assert(mdl->header.triangles_count > 0);
-  assert(mdl->header.frames_count > 0);
+  abortif(_magic_code == expected_magic_codes, "wrong magic code");
+  abortif(_version == expected_version, "wrong version");
+  abortif(hdr.skin_height <= max_allowed_skin_height, "invalid skin height");
+  abortif(hdr.vertices_count <= max_allowed_vertices_count,
+          "invalid vertices count ");
+  abortif(hdr.triangles_count <= max_allowed_triangles_count,
+          "invalid triangles count");
+  abortif(hdr.vertices_count > 0, "invalid vertices count");
+  abortif(hdr.triangles_count > 0, "invalid triangles count");
+  abortif(hdr.frames_count > 0, "invalid frames count");
 
-  uintptr_t mem = ((uintptr_t)buf) + sizeof(qk_header);
-  mem = _qk_load_skins(mdl, mem);
-  mem = _qk_load_texcoords(mdl, mem);
-  mem = _qk_load_triangles_idx(mdl, mem);
+  mem = load_skins(_mdl_, mem);
+  mem = load_texcoords(_mdl_, mem);
+  mem = load_triangles_idx(_mdl_, mem);
+  mem = load_frames(_mdl_, mem);
 
-  // SEPI: what about loading frames? are we going to load them as part of
-  // '_qk_make_display_lists()' ?
+  err = calc_bounds(_mdl_);
+  abortif(err == SQV_SUCCESS, "calc_bound() failed");
 
-  err = _qk_calc_bounds(mdl);
-  assert(err == SQV_SUCCESS);
-
-  err = _qk_make_display_lists(mdl);
-  assert(err == SQV_SUCCESS);
+  err = make_display_lists(_mdl_);
+  abortif(err == SQV_SUCCESS, "make_display_lists() failed");
 
 cleanup:
   if (buf) {

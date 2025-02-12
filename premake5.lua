@@ -15,6 +15,24 @@ workspace "ProjectWorkspace"
     defines { "NDEBUG" }
     optimize "Speed"
 
+-- 🔹 Rxi Log Library
+project "mk_log"
+  kind "StaticLib"
+  language "C"
+  targetdir ".ignore/build/"
+  objdir ".ignore/build/obj"
+  targetname "log"
+  files {"deps/log.c"}
+
+-- 🔹 Rxi INI Library
+project "mk_ini"
+  kind "StaticLib"
+  language "C"
+  targetdir ".ignore/build/"
+  objdir ".ignore/build/obj"
+  targetname "ini"
+  files {"deps/ini.c"}
+  
 -- 🔹 Sokol Library
 project "mk_sokol"
   kind "StaticLib"
@@ -61,7 +79,7 @@ project "mk_sqv"
   targetname "sqv"
   files {"src/*.c"}
   includedirs {"src", "deps"}
-  links { "mk_stb:static", "mk_sokol:static", "mk_hmm:static" }
+  links { "mk_log:static", "mk_ini:static", "mk_stb:static", "mk_sokol:static", "mk_hmm:static" }
   buildoptions { "-std=c2x" }
   defines { "_POSIX_C_SOURCE=199309L" }  -- Needed for some C23 features
 
@@ -71,7 +89,7 @@ project "mk_sqv"
 
   filter "system:linux"
     defines { "SOKOL_GLCORE" }
-    links { "X11", "Xi", "Xcursor", "GL", "m", "mk_stb:static", "mk_sokol:static", "mk_hmm:static" }
+    links { "X11", "Xi", "Xcursor", "GL", "m" }
 
 -- 🔹 GLSL Shader Compilation Action
 newaction {
