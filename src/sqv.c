@@ -1,16 +1,19 @@
 #include <assert.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
-#include "../deps/log.h"
 #include "../deps/hmm.h"
+#include "../deps/log.h"
 #include "../deps/sokol_app.h"
 #include "../deps/sokol_gfx.h"
 #include "../deps/sokol_glue.h"
 #include "../deps/sokol_log.h"
 
+#define SQV_UTILS_IMPLEMENTATION
 #include "glsl_default.h"
 #include "qk_mdl.h"
 #include "sqv_err.h"
+#include "utils.h"
 
 sqv_err qk_init(void);
 sqv_err qk_deinit(qk_mdl* mdl);
@@ -32,12 +35,13 @@ void init(void) {
   });
 
   sqv_err err = qk_init();
-  assert(err == SQV_SUCCESS);
+  makesure(err == SQV_SUCCESS, "qk_init() failde");
 
-  // err = qk_load_mdl(".keep/boss.mdl", &state.mdl);
-  // assert(err == SQV_SUCCESS);
+  err = qk_load_mdl(".keep/soldier.mdl", &state.mdl);
+  makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
 
-  /* cube vertex buffer */
+  exit(-1);
+
   float vertices[] = {
     -1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 1.0, 1.0,  -1.0, -1.0, 1.0, 0.0, 0.0, 1.0,
     1.0,  1.0,  -1.0, 1.0, 0.0, 0.0, 1.0, -1.0, 1.0,  -1.0, 1.0, 0.0, 0.0, 1.0,
@@ -60,7 +64,6 @@ void init(void) {
   sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc
   ) { .data = SG_RANGE(vertices), .label = "cube-vertices" });
 
-  /* create an index buffer for the cube */
   uint16_t  indices[] = { 0,  1,  2,  0,  2,  3,  6,  5,  4,  7,  6,  4,
                           8,  9,  10, 8,  10, 11, 14, 13, 12, 15, 14, 12,
                           16, 17, 18, 16, 18, 19, 22, 21, 20, 23, 22, 20 };
@@ -69,25 +72,22 @@ void init(void) {
                                            .data  = SG_RANGE(indices),
                                            .label = "cube-indices" });
 
-  /* create shader */
   sg_shader shd = sg_make_shader(cube_shader_desc(sg_query_backend()));
 
-  /* create pipeline object */
-  state.pip = sg_make_pipeline(&(sg_pipeline_desc) {
-      .layout     = { /* test to provide buffer stride, but no attr offsets */
-                      .buffers[0].stride = 28,
-                      .attrs             = { [ATTR_cube_position].format = SG_VERTEXFORMAT_FLOAT3,
-                                             [ATTR_cube_color0].format   = SG_VERTEXFORMAT_FLOAT4 } },
-      .shader     = shd,
+  state.pip = sg_make_pipeline(&(sg_pipeline_desc){
+      .layout = {.buffers[0].stride = 28,
+                 .attrs = {[ATTR_cube_position].format = SG_VERTEXFORMAT_FLOAT3,
+                           [ATTR_cube_color0].format = SG_VERTEXFORMAT_FLOAT4}},
+      .shader = shd,
       .index_type = SG_INDEXTYPE_UINT16,
-      .cull_mode  = SG_CULLMODE_BACK,
-      .depth      = {
-               .write_enabled = true,
-               .compare       = SG_COMPAREFUNC_LESS_EQUAL,
-      },
-      .label = "cube-pipeline" });
+      .cull_mode = SG_CULLMODE_BACK,
+      .depth =
+          {
+              .write_enabled = true,
+              .compare = SG_COMPAREFUNC_LESS_EQUAL,
+          },
+      .label = "cube-pipeline"});
 
-  /* setup resource bindings */
   state.bind
       = (sg_bindings) { .vertex_buffers[0] = vbuf, .index_buffer = ibuf };
 }
@@ -110,12 +110,13 @@ void frame(void) {
   hmm_mat4 model = HMM_MultiplyMat4(rxm, rym);
   vs_params.mvp  = HMM_MultiplyMat4(view_proj, model);
 
-  sg_begin_pass(&(sg_pass) {
-      .action = {
-          .colors[0] = { .load_action = SG_LOADACTION_CLEAR,
-                         .clear_value = { 0.25f, 0.5f, 0.75f, 1.0f } },
-      },
-      .swapchain = sglue_swapchain() });
+  sg_begin_pass(&(sg_pass){
+      .action =
+          {
+              .colors[0] = {.load_action = SG_LOADACTION_CLEAR,
+                            .clear_value = {0.25f, 0.5f, 0.75f, 1.0f}},
+          },
+      .swapchain = sglue_swapchain()});
   sg_apply_pipeline(state.pip);
   sg_apply_bindings(&state.bind);
   sg_apply_uniforms(UB_vs_params, &SG_RANGE(vs_params));
@@ -139,10 +140,9 @@ sapp_desc sokol_main(int argc, char* argv[]) {
   (void)argv;
 
   return (sapp_desc) {
-    .init_cb    = init,
-    .frame_cb   = frame,
-    .cleanup_cb = cleanup,
-    // .event_cb = __dbgui_event,
+    .init_cb            = init,
+    .frame_cb           = frame,
+    .cleanup_cb         = cleanup,
     .width              = 50,
     .height             = 50,
     .sample_count       = 4,

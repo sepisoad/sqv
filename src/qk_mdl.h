@@ -3,143 +3,142 @@
 
 #include <stdint.h>
 
-typedef float qk_vectorf;
+#include "../deps/sokol_gfx.h"
+#include "../deps/hmm.h"
 
-typedef qk_vectorf qk_vector3f[3];
+/* RAW QUAKE TYPES AS THEY ARE STORED IN MDL FILE */
 
-typedef uint32_t qk_vertices_idx[3];
+typedef float qk_raw_vectorf;
 
-typedef uint8_t qk_vertex3[3];
+typedef qk_raw_vectorf qk_raw_vector3f[3];
+
+typedef int32_t qk_raw_vertices_idx[3];
+
+typedef uint8_t qk_raw_vertex3[3];
 
 typedef enum {
-  QK_ST__UNKNOWN = -1,
-
-  QK_ST_SYNC = 0,
+  QK_ST_UNKNOWN = -1,
+  QK_ST_SYNC    = 0,
   QK_ST_RAND,
   QK_ST_FRAMETIME,
-
-  QK_ST__MAX = 255,
 } qk_synctype;
 
 typedef enum {
-  QK_TEXFLG__UNKNOWN = -1,
-
-  QK_TEXFLG_NONE        = 0x0000,
-  QK_TEXFLG_MIPMAP      = 0x0001,
-  QK_TEXFLG_LINEAR      = 0x0002,
-  QK_TEXFLG_NEAREST     = 0x0004,
-  QK_TEXFLG_ALPHA       = 0x0008,
-  QK_TEXFLG_PAD         = 0x0010,
-  QK_TEXFLG_PERSIST     = 0x0020,
-  QK_TEXFLG_OVERWRITE   = 0x0040,
-  QK_TEXFLG_NOPICMIP    = 0x0080,
-  QK_TEXFLG_FULLBRIGHT  = 0x0100,
-  QK_TEXFLG_NOBRIGHT    = 0x0200,
-  QK_TEXFLG_CONCHARS    = 0x0400,
-  QK_TEXFLG_ARRAY       = 0x0800,
-  QK_TEXFLG_CUBEMAP     = 0x1000,
-  QK_TEXFLG_BINDLESS    = 0x2000,
-  QK_TEXFLG_ALPHABRIGHT = 0x4000,
-  QK_TEXFLG_CLAMP       = 0x8000,
-
-  QK_TEXFLG__MAX = 0x8000 // same as QK_TEXFLG_CLAMP!
-} qk_texture_flags;
-
-typedef enum {
-  QK_SKIN__UNKNOWN = -1,
-
-  QK_SKIN_SINGLE = 0,
+  QK_SKIN_UNKNOWN = -1,
+  QK_SKIN_SINGLE  = 0,
   QK_SKIN_GROUP,
-
-  QK_SKIN__MAX = 255
 } qk_skintype;
 
 typedef enum {
-  QK_FT__UNKNOWN = 0,
-
-  QK_FT_SINGLE = 0,
+  QK_FT_UNKNOWN = -1,
+  QK_FT_SINGLE  = 0,
   QK_FT_GROUP,
-
-  QK_FT___MAX = 255
 } qk_frametype;
 
 typedef struct {
-  int32_t     magic_codes;
-  int32_t     version;
-  qk_vector3f scale;
-  qk_vector3f origin;
-  float       bounding_radius;
-  qk_vector3f eye_position;
-  int32_t     skins_count;
-  int32_t     skin_width;
-  int32_t     skin_height;
-  int32_t     vertices_count;
-  int32_t     triangles_count;
-  int32_t     frames_count;
-  qk_synctype sync_type;
-  int32_t     flags;
-  float       size;
+  int32_t         magic_codes;
+  int32_t         version;
+  qk_raw_vector3f scale;
+  qk_raw_vector3f origin;
+  float           bounding_radius;
+  qk_raw_vector3f eye_position;
+  int32_t         skins_count;
+  int32_t         skin_width;
+  int32_t         skin_height;
+  int32_t         vertices_count;
+  int32_t         triangles_count;
+  int32_t         frames_count;
+  qk_synctype     sync_type;
+  int32_t         flags;
+  float           size;
+} qk_raw_header;
+
+typedef struct {
+  int32_t onseam;
+  int32_t s;
+  int32_t t;
+} qk_raw_texcoord;
+
+typedef struct {
+  int32_t             frontface;
+  qk_raw_vertices_idx vertices_idx;
+} qk_raw_triangles_idx;
+
+typedef struct {
+  qk_raw_vertex3 vertex;
+  uint8_t        normal_idx;
+} qk_raw_triangle_vertex;
+
+typedef struct {
+  qk_raw_triangle_vertex bbox_min;
+  qk_raw_triangle_vertex bbox_max;
+  char                   name[16];
+} qk_raw_frame_single;
+
+typedef struct {
+  int32_t                frames_count;
+  qk_raw_triangle_vertex bbox_min;
+  qk_raw_triangle_vertex bbox_max;
+} qk_raw_frames_group;
+
+typedef struct {
+  int32_t                first_pose;
+  int32_t                poses_count;
+  float                  interval;
+  qk_raw_triangle_vertex bbox_min;
+  qk_raw_triangle_vertex bbox_max;
+  int32_t                frame;
+  char                   name[16];
+} qk_raw_frame;
+
+/* PROCESSED QUAKE TYPES, USEFUL AT RUNTIME */
+
+typedef struct {
+  hmm_v3 vertex;
+  hmm_v3 normal;
+} qk_triangle;
+
+typedef struct {
+  hmm_v3       bbox_min;
+  hmm_v3       bbox_max;
+  qk_triangle* vertices;
+} qk_frame;
+
+typedef struct {
+  uint32_t   frames_count;
+  qk_frame** frames;
+  char       name[16];
+} qk_pose;
+
+typedef struct {
+  uint32_t  poses_count;
+  qk_pose** poses;
+} qk_animation;
+
+typedef struct {
+  float    radius; // bounding radius
+  int32_t  skin_width;
+  int32_t  skin_height;
+  int32_t  skins_count;
+  int32_t  vertices_count;
+  int32_t  triangles_count;
+  int32_t  frames_count;
+  hmm_vec3 scale; // model scale
+  hmm_vec3 origin; // model origin
+  hmm_vec3 eye; // eye position
 } qk_header;
 
 typedef struct {
-  uint32_t width;
-  uint32_t height;
-  uint8_t* pixels;
+  sg_image   image;
+  sg_sampler sampler;
 } qk_skin;
 
 typedef struct {
-  uint32_t onseam;
-  uint32_t s;
-  uint32_t t;
-} qk_texcoords;
-
-typedef struct {
-  int32_t         frontface;
-  qk_vertices_idx vertices_idx;
-} qk_triangles_idx;
-
-typedef struct {
-  qk_vertex3 vertex;
-  uint8_t    normal_idx;
-} qk_triangle_vertex;
-
-typedef struct {
-  qk_triangle_vertex bbox_min;
-  qk_triangle_vertex bbox_max;
-  char               name[16];
-} qk_frame_single;
-
-typedef struct {
-  uint32_t           frames_count;
-  qk_triangle_vertex bbox_min;
-  qk_triangle_vertex bbox_max;
-} qk_frames_group;
-
-typedef struct {
-  float interval;
-} qk_frame_interval;
-
-typedef struct {
   qk_header header;
-  // SEPI: 'skins' is a bad field, we need to upload skins as textures to GPU
-  // memory or get a id for it somehow so we don't need to keep this around for
-  // long, however we need to keep this fact in mind that sqv is going to be
-  // designed around loading a single MDL file, so maybe keeping this
-  // information around is not that bad, and it may even help with the
-  // separation of concerns so qk_mdl module will stay away from make GPU api
-  // calls
-  qk_skin*          skins;
-  qk_texcoords*     texcoords;
-  qk_triangles_idx* triangles_idx;
-  // qk_frames*        frames;
-
-  // SEPI: maybe values here after can be stored in a separate type, because at
-  // this point we are starting the process of decoding the above values into
-  // usable information and they are application specific and they might not
-  // strictly follow quake way of thinking, although for decoding purpose we
-  // still need to follow quake logic, but what we do with the decoded data is
-  // up to us!
-  // qk_triangle_vertex* triangles_vertices;
+  qk_skin*  skins;
+  // qk_raw_texcoord*      texcoords;
+  // qk_raw_triangles_idx* triangles_idx;
+  // qk_frames*            frames;
 } qk_mdl;
 
 #endif // QK_MDL_HEADER_
