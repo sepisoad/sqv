@@ -82,13 +82,14 @@ typedef struct {
 } qk_raw_frames_group;
 
 typedef struct {
-  int32_t                first_pose;
-  int32_t                poses_count;
-  float                  interval;
-  qk_raw_triangle_vertex bbox_min;
-  qk_raw_triangle_vertex bbox_max;
-  int32_t                frame;
-  char                   name[16];
+  int32_t                 first_pose;
+  int32_t                 poses_count;
+  float                   interval;
+  qk_raw_triangle_vertex  bbox_min;
+  qk_raw_triangle_vertex  bbox_max;
+  int32_t                 frame;
+  char                    name[16];
+  qk_raw_triangle_vertex* raw_vertices_ptr;
 } qk_raw_frame;
 
 /* PROCESSED QUAKE TYPES, USEFUL AT RUNTIME */

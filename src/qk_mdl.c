@@ -137,91 +137,52 @@ static uintptr_t load_raw_triangles_indices(
 }
 
 static uintptr_t load_frame_single(
-    const qk_header* hdr, qk_raw_frame* frm, uint32_t idx, uintptr_t mem
+    const qk_header* hdr, qk_raw_frame* frm, uint32_t* posidx, uintptr_t mem
 ) {
   qk_raw_frame_single* raw = (qk_raw_frame_single*)mem;
 
-  qk_frame* frame = (qk_frame*)malloc(sizeof(qk_frame));
-  makesure(frame != NULL, "failed to allocated memory for a frame");
+  strncpy(frm->name, raw->name, sizeof(raw->name));
+  frm->poses_count = 1;
+  frm->first_pose  = (*posidx);
+  (*posidx)++;
 
-  qk_pose* pose = (qk_pose*)malloc(sizeof(qk_pose));
-  makesure(pose != NULL, "failed to allocated memory for a pose");
-
-  qk_triangle* vertices
-      = (qk_triangle*)malloc(sizeof(qk_triangle) * hdr->vertices_count);
-  makesure(vertices != NULL, "failed to allocated memory for vertices");
-
-  strncpy(pose->name, raw->name, sizeof(raw->name) / sizeof(raw->name[0]));
-  pose->frames_count = 1;
-  if (pose->frames != NULL) {
-    pose->frames = (qk_frame**)realloc(pose->frames, sizeof(qk_frame*));
-  }
-  pose->frames = frame;
-
-  frame->bbox_min.X = raw->bbox_min.vertex[0];
-  frame->bbox_min.Y = raw->bbox_min.vertex[1];
-  frame->bbox_min.Z = raw->bbox_min.vertex[2];
-  frame->bbox_max.X = raw->bbox_max.vertex[0];
-  frame->bbox_max.Y = raw->bbox_max.vertex[1];
-  frame->bbox_max.Z = raw->bbox_max.vertex[2];
-  frame->vertices   = vertices;
-
-  mem = (uintptr_t)(raw + 1);
-  for (size_t i = 0; i < hdr->vertices_count; i++) {
-    qk_raw_triangle_vertex* ptr = (qk_raw_triangle_vertex*)mem;
-    vertices[i].vertex.X        = ptr->vertex[0];
-    vertices[i].vertex.Y        = ptr->vertex[1];
-    vertices[i].vertex.Z        = ptr->vertex[2];
-    vertices[i].normal.X        = _qk_normals[ptr->normal_idx][0];
-    vertices[i].normal.Y        = _qk_normals[ptr->normal_idx][1];
-    vertices[i].normal.Z        = _qk_normals[ptr->normal_idx][2];
-    mem                         = (uintptr_t)(ptr + 1);
+  for (uint8_t i = 0; i < 3; i++) {
+    frm->bbox_min.vertex[i] = raw->bbox_min.vertex[i];
+    frm->bbox_max.vertex[i] = raw->bbox_max.vertex[i];
   }
 
-  anim->poses_count++;
-  if (anim->poses == NULL) {
-    makesure(anim->poses_count == 1, "poses count must be one");
-    anim->poses = (qk_pose**)malloc(sizeof(qk_pose*) * anim->poses_count);
-  } else {
-    makesure(anim->poses_count > 1, "poses count must be bigger than one");
-    anim->poses
-        = (qk_pose**)realloc(anim->poses, sizeof(qk_pose*) * anim->poses_count);
-    makesure(
-        anim->poses != NULL, "failed to re-allocate memory to animation poses"
-    );
-  }
-
-  anim->poses[anim->poses_count] = pose;
+  frm->raw_vertices_ptr = (qk_raw_triangle_vertex*)(raw + 1);
+  mem = (uintptr_t)(frm->raw_vertices_ptr + hdr->vertices_count);
 
   return mem;
 }
 
 static uintptr_t load_frames_group(
-    const qk_header* hdr, qk_raw_frame* frm, uint32_t idx, uintptr_t mem
+    const qk_header* hdr, qk_raw_frame* frm, uint32_t* posidx, uintptr_t mem
 ) {
-  /* TODO: this function needs to be reviewed */
-  qk_raw_frames_group* grp = (qk_raw_frames_group*)mem;
-  uint32_t             cnt = endian_i32(grp->frames_count);
+  qk_raw_frames_group* raw = (qk_raw_frames_group*)mem;
 
-  qk_raw_frames_group frg;
-  for (size_t i = 0; i < 3; i++) {
-    frg.bbox_min.vertex[i] = grp->bbox_min.vertex[i];
-    frg.bbox_max.vertex[i] = grp->bbox_max.vertex[i];
+  frm->poses_count = raw->frames_count; /* don't let the naming confuse you */
+  frm->first_pose  = (*posidx);
+
+  for (uint8_t i = 0; i < 3; i++) {
+    frm->bbox_min.vertex[i] = raw->bbox_min.vertex[i];
+    frm->bbox_max.vertex[i] = raw->bbox_max.vertex[i];
   }
-  frg.frames_count = cnt;
 
-  mem += sizeof(qk_raw_frames_group);
-  float fi = endian_f32(*(float*)(mem));
-  /* SEPI: why do we need to multiply with frames count?*/
-  mem += (sizeof(float) * hdr->frames_count);
+  float* interval_ptr = (float*)(raw + 1);
+  frm->interval       = endian_f32(*interval_ptr);
 
-  for (size_t i = 0; i < cnt; i++) {
-    qk_raw_frame_single*    frm     = (qk_raw_frame_single*)mem;
-    qk_raw_triangle_vertex* trivert = (qk_raw_triangle_vertex*)(frm + 1);
-    /*
-     * do some stuff here, refer to 'Mod_LoadAliasGroup'
-     */
-    mem = (uintptr_t)(trivert + hdr->vertices_count);
+  interval_ptr += frm->poses_count;
+  mem = (uintptr_t)interval_ptr;
+
+  for (uint32_t i = 0; i < frm->poses_count; i++) {
+    frm->raw_vertices_ptr
+        = (qk_raw_triangle_vertex*)((qk_raw_frame_single*)mem + 1);
+    (*posidx)++;
+
+    mem = (uintptr_t)((qk_raw_triangle_vertex*)((qk_raw_frame_single*)mem + 1)
+                      + hdr->vertices_count);
   }
 
   return mem;
@@ -229,30 +190,16 @@ static uintptr_t load_frames_group(
 
 static uintptr_t
 load_raw_frames(const qk_header* hdr, qk_raw_frame** frms, uintptr_t mem) {
-
-  /*
-   * i think there are two things associated with frames, first we have
-   * animations maybe also known as 'poses' and then we have frames in each
-   * pose, but in order to know which one is which, we keep track of each
-   * animation by a combination of 'animation frames count', and 'animation
-   * first frame', and again i think you need to extract the 'animation first
-   * frame' indirectly by counting how many poses exist in a mdl file and then
-   * how many frames are in that pose and then you need to keep it somewhere !
-   */
-
+  uint32_t posidx = 0;
   *frms = (qk_raw_frame*)malloc(sizeof(qk_raw_frame) * hdr->frames_count);
-
-  // *anim                      = (qk_animation*)malloc(sizeof(qk_animation));
-  // (*anim)->poses_count = 0;
-  // (*anim)->poses       = NULL;
 
   for (uint32_t i = 0; i < hdr->frames_count; i++) {
     qk_frametype ft = endian_i32(*(qk_frametype*)mem);
     mem += sizeof(qk_frametype);
     if (ft == QK_FT_SINGLE) {
-      mem = load_frame_single(hdr, &(*frms)[i], i, mem);
+      mem = load_frame_single(hdr, &(*frms)[i], &posidx, mem);
     } else {
-      mem = load_frames_group(hdr, &(*frms)[i], i, mem);
+      mem = load_frames_group(hdr, &(*frms)[i], &posidx, mem);
     }
   }
 
@@ -367,6 +314,7 @@ sqv_err qk_load_mdl(const char* path, qk_mdl* _mdl_) {
   makesure(hdr.frames_count > 0, "invalid frames count");
   makesure(hdr.skins_count > 0, "invalid skins count");
 
+  /* TODO: free these memories */
   qk_skin*              skins          = NULL;
   qk_raw_texcoord*      raw_tex_coords = NULL;
   qk_raw_triangles_idx* raw_tris_idx   = NULL;
@@ -378,6 +326,7 @@ sqv_err qk_load_mdl(const char* path, qk_mdl* _mdl_) {
   mem = load_raw_triangles_indices(&hdr, &raw_tris_idx, mem);
   mem = load_raw_frames(&hdr, &raw_frames, mem);
 
+  // SEPI: VVVVVVVVVV
   err = calc_bounds(_mdl_);
   makesure(err == SQV_SUCCESS, "calc_bound() failed");
 

@@ -37,7 +37,7 @@ void init(void) {
   sqv_err err = qk_init();
   makesure(err == SQV_SUCCESS, "qk_init() failde");
 
-  err = qk_load_mdl(".keep/soldier.mdl", &state.mdl);
+  err = qk_load_mdl(".keep/boss.mdl", &state.mdl);
   makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
 
   exit(-1);
