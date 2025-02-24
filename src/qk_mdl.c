@@ -234,7 +234,7 @@ static uint32_t build_strip_length(
   sverts[2] = last->vertices_idx[(stv + 2) % 3];
 
   stris[0] = sidx;
-  (*count) = 1;
+  *count = 1;
 
   int32_t m1 = last->vertices_idx[(stv + 2) % 3];
   int32_t m2 = last->vertices_idx[(stv + 1) % 3];
@@ -247,7 +247,9 @@ nexttri:
     for (uint32_t k = 0; k < 3; k++) {
       if (check->vertices_idx[k] != m1) continue;
       if (check->vertices_idx[(k + 1) % 3] != m2) continue;
+
       if (used[triidx]) goto done;
+
       if ((*count) & 1)
         m2 = check->vertices_idx[(k + 2) % 3];
       else
@@ -282,7 +284,7 @@ static uint32_t build_fan_length(
   sverts[2] = last->vertices_idx[(stv + 2) % 3];
 
   stris[0] = sidx;
-  (*count) = 1;
+  *count = 1;
 
   int32_t m1 = last->vertices_idx[(stv + 0) % 3];
   int32_t m2 = last->vertices_idx[(stv + 2) % 3];
@@ -319,13 +321,13 @@ static sqv_err build_triangles(
     const qk_header* hdr, const qk_raw_texcoord* coords,
     const qk_raw_triangles_idx* tris
 ) {
-  int32_t is_used[MAX_STATIC_MEM] = { 0 }; // TODO: duh!
-  int32_t best_vertices[MAX_STATIC_MEM] = { 0 }; // TODO: duh!
-  int32_t best_triangles[MAX_STATIC_MEM] = { 0 }; // TODO: duh!
-  int32_t strip_vertices[MAX_STATIC_MEM] = { 0 }; // TODO: duh!
-  int32_t strip_triangles[MAX_STATIC_MEM] = { 0 }; // TODO: duh!
-  int32_t commands[MAX_STATIC_MEM * 7 + 1] = { 0 }; // TODO: duh!
-  int32_t vertex_order[MAX_STATIC_MEM * 3] = { 0 }; // TODO: duh!
+  int32_t is_used[MAX_STATIC_MEM] = { 0 };
+  int32_t best_vertices[MAX_STATIC_MEM] = { 0 };
+  int32_t best_triangles[MAX_STATIC_MEM] = { 0 };
+  int32_t strip_vertices[MAX_STATIC_MEM] = { 0 };
+  int32_t strip_triangles[MAX_STATIC_MEM] = { 0 };
+  int32_t commands[MAX_STATIC_MEM * 7 + 1] = { 0 };
+  int32_t vertex_order[MAX_STATIC_MEM * 3] = { 0 };
   uint32_t best_length;
   uint32_t best_type;
   uint32_t commands_count = 0;
@@ -338,69 +340,56 @@ static sqv_err build_triangles(
     best_length = 0;
     best_type = 0;
 
+    // Evaluate all strip and fan possibilities
     for (uint32_t type = 0; type < 2; type++) {
       for (uint32_t start_vec = 0; start_vec < 3; start_vec++) {
-        uint32_t length;
-        if (type == 1) {
-          length = build_strip_length(
-              hdr, tris, is_used, strip_vertices, strip_triangles,
-              &strips_count, i, start_vec
-          );
-
-        } else {
-          length = build_fan_length(
-              hdr, tris, is_used, strip_vertices, strip_triangles,
-              &strips_count, i, start_vec
-          );
-        }
+        uint32_t length = (type == 1)
+            ? build_strip_length(
+                  hdr, tris, is_used, strip_vertices, strip_triangles,
+                  &strips_count, i, start_vec
+              )
+            : build_fan_length(
+                  hdr, tris, is_used, strip_vertices, strip_triangles,
+                  &strips_count, i, start_vec
+              );
         if (length > best_length) {
           best_type = type;
           best_length = length;
-
-          for (uint32_t j = 0; j < best_length + 2; j++) {
+          for (uint32_t j = 0; j < best_length + 2; j++)
             best_vertices[j] = strip_vertices[j];
-          }
-
-          for (uint32_t j = 0; j < best_length; j++) {
+          for (uint32_t j = 0; j < best_length; j++)
             best_triangles[j] = strip_triangles[j];
-          }
         }
       }
+    }
 
-      for (uint32_t j = 0; j < best_length; j++)
-        is_used[best_triangles[j]] = 1;
+    // Now mark triangles as used and emit vertices *once*
+    for (uint32_t j = 0; j < best_length; j++)
+      is_used[best_triangles[j]] = 1;
 
-      if (best_type == 1)
-        commands[commands_count++] = (best_length + 2);
-      else
-        commands[commands_count++] = -(best_length + 2);
+    commands[commands_count++]
+        = (best_type == 1) ? (best_length + 2) : -(best_length + 2);
 
-      for (uint32_t j = 0; j < best_length + 2; j++) {
-        int tmp;
+    for (uint32_t j = 0; j < best_length + 2; j++) {
+      int tmp;
+      int32_t k = best_vertices[j];
+      vertex_order[orders_count++] = k;
 
-        int32_t k = best_vertices[j];
-        vertex_order[orders_count++] = k;
+      float s = coords[k].s;
+      float t = coords[k].t;
+      if (!tris[best_triangles[0]].frontface && coords[k].onseam)
+        s += hdr->skin_width / 2;
+      s = (s + 0.5f) / hdr->skin_width;
+      t = (t + 0.5f) / hdr->skin_height;
 
-        int32_t s = coords[k].s;
-        int32_t t = coords[k].t;
-
-        if (!tris[best_triangles[0]].frontface && coords[k].onseam)
-          s += hdr->skin_width / 2; // on back side
-        s = (s + 0.5) / hdr->skin_width;
-        t = (t + 0.5) / hdr->skin_height;
-
-        memcpy(&tmp, &s, 4);
-        commands[commands_count++] = tmp;
-        memcpy(&tmp, &t, 4);
-        commands[commands_count++] = tmp;
-      }
+      memcpy(&tmp, &s, 4);
+      commands[commands_count++] = tmp;
+      memcpy(&tmp, &t, 4);
+      commands[commands_count++] = tmp;
     }
   }
 
   commands[commands_count++] = 0;
-
-  // allverts += numorder;
-  // alltris += pheader->numtris;
 
   return SQV_SUCCESS;
 }
@@ -409,10 +398,10 @@ static sqv_err make_display_lists(
     const qk_header* hdr, const List* raw_frames, const qk_raw_texcoord* coords,
     const qk_raw_triangles_idx* tris
 ) {
+  build_triangles(hdr, coords, tris);
+
   uint32_t frames_count = list_length(raw_frames);
   makesure(frames_count == hdr->frames_count, "invalid frames count");
-
-  build_triangles(hdr, coords, tris);
 
   qk_triangle* triangles = (qk_triangle*)malloc(
       sizeof(qk_triangle) * hdr->poses_count * hdr->vertices_count
