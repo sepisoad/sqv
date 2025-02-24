@@ -29,14 +29,14 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 TARGETDIR = .ignore/build
-TARGET = $(TARGETDIR)/sqv
-INCLUDES += -Isrc -Ideps
+TARGET = $(TARGETDIR)/libvector.a
+INCLUDES +=
 FORCE_INCLUDE +=
 ALL_CPPFLAGS += $(CPPFLAGS) -MD -MP $(DEFINES) $(INCLUDES)
 ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-LIBS += .ignore/build/libvector.a .ignore/build/liblist.a .ignore/build/liblog.a .ignore/build/libini.a .ignore/build/libstb.a .ignore/build/libsokol.a .ignore/build/libhmm.a -framework Cocoa -framework OpenGL -framework IOKit
-LDDEPS += .ignore/build/libvector.a .ignore/build/liblist.a .ignore/build/liblog.a .ignore/build/libini.a .ignore/build/libstb.a .ignore/build/libsokol.a .ignore/build/libhmm.a
-LINKCMD = $(CC) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
+LIBS +=
+LDDEPS +=
+LINKCMD = $(AR) -rcs "$@" $(OBJECTS)
 define PREBUILDCMDS
 endef
 define PRELINKCMDS
@@ -45,17 +45,17 @@ define POSTBUILDCMDS
 endef
 
 ifeq ($(config),debug)
-OBJDIR = .ignore/build/obj/Debug/mk_sqv
-DEFINES += -DDEBUG -D_POSIX_C_SOURCE=199309L -DSOKOL_GLCORE
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -fsanitize=address -std=c2x
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -fsanitize=address -std=c2x
+OBJDIR = .ignore/build/obj/Debug/mk_vector
+DEFINES += -DDEBUG
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -fsanitize=address
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -fsanitize=address
 ALL_LDFLAGS += $(LDFLAGS) -fsanitize=address
 
 else ifeq ($(config),release)
-OBJDIR = .ignore/build/obj/Release/mk_sqv
-DEFINES += -DNDEBUG -D_POSIX_C_SOURCE=199309L -DSOKOL_GLCORE
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O3 -std=c2x
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O3 -std=c2x
+OBJDIR = .ignore/build/obj/Release/mk_vector
+DEFINES += -DNDEBUG
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O3
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O3
 ALL_LDFLAGS += $(LDFLAGS)
 
 endif
@@ -70,12 +70,8 @@ endif
 GENERATED :=
 OBJECTS :=
 
-GENERATED += $(OBJDIR)/qk_data.o
-GENERATED += $(OBJDIR)/qk_mdl.o
-GENERATED += $(OBJDIR)/sqv.o
-OBJECTS += $(OBJDIR)/qk_data.o
-OBJECTS += $(OBJDIR)/qk_mdl.o
-OBJECTS += $(OBJDIR)/sqv.o
+GENERATED += $(OBJDIR)/vector.o
+OBJECTS += $(OBJDIR)/vector.o
 
 # Rules
 # #############################################
@@ -85,7 +81,7 @@ all: $(TARGET)
 
 $(TARGET): $(GENERATED) $(OBJECTS) $(LDDEPS) | $(TARGETDIR)
 	$(PRELINKCMDS)
-	@echo Linking mk_sqv
+	@echo Linking mk_vector
 	$(SILENT) $(LINKCMD)
 	$(POSTBUILDCMDS)
 
@@ -106,7 +102,7 @@ else
 endif
 
 clean:
-	@echo Cleaning mk_sqv
+	@echo Cleaning mk_vector
 ifeq (posix,$(SHELLTYPE))
 	$(SILENT) rm -f  $(TARGET)
 	$(SILENT) rm -rf $(GENERATED)
@@ -139,13 +135,7 @@ endif
 # File Rules
 # #############################################
 
-$(OBJDIR)/qk_data.o: src/qk_data.c
-	@echo "$(notdir $<)"
-	$(SILENT) $(CC) $(ALL_CFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
-$(OBJDIR)/qk_mdl.o: src/qk_mdl.c
-	@echo "$(notdir $<)"
-	$(SILENT) $(CC) $(ALL_CFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
-$(OBJDIR)/sqv.o: src/sqv.c
+$(OBJDIR)/vector.o: deps/vector.c
 	@echo "$(notdir $<)"
 	$(SILENT) $(CC) $(ALL_CFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 

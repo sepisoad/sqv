@@ -9,6 +9,8 @@ ifndef verbose
 endif
 
 ifeq ($(config),debug)
+  mk_list_config = debug
+  mk_vector_config = debug
   mk_log_config = debug
   mk_ini_config = debug
   mk_sokol_config = debug
@@ -17,6 +19,8 @@ ifeq ($(config),debug)
   mk_sqv_config = debug
 
 else ifeq ($(config),release)
+  mk_list_config = release
+  mk_vector_config = release
   mk_log_config = release
   mk_ini_config = release
   mk_sokol_config = release
@@ -28,11 +32,23 @@ else
   $(error "invalid configuration $(config)")
 endif
 
-PROJECTS := mk_log mk_ini mk_sokol mk_hmm mk_stb mk_sqv
+PROJECTS := mk_list mk_vector mk_log mk_ini mk_sokol mk_hmm mk_stb mk_sqv
 
 .PHONY: all clean help $(PROJECTS) 
 
 all: $(PROJECTS)
+
+mk_list:
+ifneq (,$(mk_list_config))
+	@echo "==== Building mk_list ($(mk_list_config)) ===="
+	@${MAKE} --no-print-directory -C . -f mk_list.make config=$(mk_list_config)
+endif
+
+mk_vector:
+ifneq (,$(mk_vector_config))
+	@echo "==== Building mk_vector ($(mk_vector_config)) ===="
+	@${MAKE} --no-print-directory -C . -f mk_vector.make config=$(mk_vector_config)
+endif
 
 mk_log:
 ifneq (,$(mk_log_config))
@@ -71,6 +87,8 @@ ifneq (,$(mk_sqv_config))
 endif
 
 clean:
+	@${MAKE} --no-print-directory -C . -f mk_list.make clean
+	@${MAKE} --no-print-directory -C . -f mk_vector.make clean
 	@${MAKE} --no-print-directory -C . -f mk_log.make clean
 	@${MAKE} --no-print-directory -C . -f mk_ini.make clean
 	@${MAKE} --no-print-directory -C . -f mk_sokol.make clean
@@ -88,6 +106,8 @@ help:
 	@echo "TARGETS:"
 	@echo "   all (default)"
 	@echo "   clean"
+	@echo "   mk_list"
+	@echo "   mk_vector"
 	@echo "   mk_log"
 	@echo "   mk_ini"
 	@echo "   mk_sokol"

@@ -9,10 +9,10 @@ ReflowCommentsStyle: Always
 BreakBeforeBraces: Attach
 
 AlignAfterOpenBracket: BlockIndent
-AlignConsecutiveAssignments: Consecutive
-AlignConsecutiveDeclarations: true
-AlignConsecutiveBitFields: true
-ArrayInitializerAlignmentStyle: right
+# AlignConsecutiveAssignments: Consecutive
+# AlignConsecutiveDeclarations: true
+# AlignConsecutiveBitFields: true
+# ArrayInitializerAlignmentStyle: right
 
 SortIncludes: false
 AllowShortIfStatementsOnASingleLine: true

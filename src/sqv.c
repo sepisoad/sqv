@@ -20,10 +20,10 @@ sqv_err qk_deinit(qk_mdl* mdl);
 sqv_err qk_load_mdl(const char* path, qk_mdl* mdl);
 
 static struct {
-  float       rx, ry;
+  float rx, ry;
   sg_pipeline pip;
   sg_bindings bind;
-  qk_mdl      mdl;
+  qk_mdl mdl;
 } state;
 
 void init(void) {
@@ -37,7 +37,7 @@ void init(void) {
   sqv_err err = qk_init();
   makesure(err == SQV_SUCCESS, "qk_init() failde");
 
-  err = qk_load_mdl(".keep/boss.mdl", &state.mdl);
+  err = qk_load_mdl(".keep/spike.mdl", &state.mdl);
   makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
 
   exit(-1);
@@ -64,12 +64,12 @@ void init(void) {
   sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc
   ) { .data = SG_RANGE(vertices), .label = "cube-vertices" });
 
-  uint16_t  indices[] = { 0,  1,  2,  0,  2,  3,  6,  5,  4,  7,  6,  4,
-                          8,  9,  10, 8,  10, 11, 14, 13, 12, 15, 14, 12,
-                          16, 17, 18, 16, 18, 19, 22, 21, 20, 23, 22, 20 };
+  uint16_t indices[] = { 0,  1,  2,  0,  2,  3,  6,  5,  4,  7,  6,  4,
+                         8,  9,  10, 8,  10, 11, 14, 13, 12, 15, 14, 12,
+                         16, 17, 18, 16, 18, 19, 22, 21, 20, 23, 22, 20 };
   sg_buffer ibuf
-      = sg_make_buffer(&(sg_buffer_desc) { .type  = SG_BUFFERTYPE_INDEXBUFFER,
-                                           .data  = SG_RANGE(indices),
+      = sg_make_buffer(&(sg_buffer_desc) { .type = SG_BUFFERTYPE_INDEXBUFFER,
+                                           .data = SG_RANGE(indices),
                                            .label = "cube-indices" });
 
   sg_shader shd = sg_make_shader(cube_shader_desc(sg_query_backend()));
@@ -94,21 +94,21 @@ void init(void) {
 
 void frame(void) {
   vs_params_t vs_params;
-  const float w    = sapp_widthf();
-  const float h    = sapp_heightf();
-  const float t    = (float)(sapp_frame_duration() * 60.0);
-  hmm_mat4    proj = HMM_Perspective(60.0f, w / h, 0.01f, 10.0f);
-  hmm_mat4    view = HMM_LookAt(
+  const float w = sapp_widthf();
+  const float h = sapp_heightf();
+  const float t = (float)(sapp_frame_duration() * 60.0);
+  hmm_mat4 proj = HMM_Perspective(60.0f, w / h, 0.01f, 10.0f);
+  hmm_mat4 view = HMM_LookAt(
       HMM_Vec3(0.0f, 1.5f, 6.0f), HMM_Vec3(0.0f, 0.0f, 0.0f),
       HMM_Vec3(0.0f, 1.0f, 0.0f)
   );
   hmm_mat4 view_proj = HMM_MultiplyMat4(proj, view);
   state.rx += 1.0f * t;
   state.ry += 2.0f * t;
-  hmm_mat4 rxm   = HMM_Rotate(state.rx, HMM_Vec3(1.0f, 0.0f, 0.0f));
-  hmm_mat4 rym   = HMM_Rotate(state.ry, HMM_Vec3(0.0f, 1.0f, 0.0f));
+  hmm_mat4 rxm = HMM_Rotate(state.rx, HMM_Vec3(1.0f, 0.0f, 0.0f));
+  hmm_mat4 rym = HMM_Rotate(state.ry, HMM_Vec3(0.0f, 1.0f, 0.0f));
   hmm_mat4 model = HMM_MultiplyMat4(rxm, rym);
-  vs_params.mvp  = HMM_MultiplyMat4(view_proj, model);
+  vs_params.mvp = HMM_MultiplyMat4(view_proj, model);
 
   sg_begin_pass(&(sg_pass){
       .action =
@@ -140,14 +140,14 @@ sapp_desc sokol_main(int argc, char* argv[]) {
   (void)argv;
 
   return (sapp_desc) {
-    .init_cb            = init,
-    .frame_cb           = frame,
-    .cleanup_cb         = cleanup,
-    .width              = 50,
-    .height             = 50,
-    .sample_count       = 4,
-    .window_title       = "Cube (sokol-app)",
+    .init_cb = init,
+    .frame_cb = frame,
+    .cleanup_cb = cleanup,
+    .width = 50,
+    .height = 50,
+    .sample_count = 4,
+    .window_title = "Cube (sokol-app)",
     .icon.sokol_default = true,
-    .logger.func        = slog_func,
+    .logger.func = slog_func,
   };
 }
