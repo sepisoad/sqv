@@ -1,4 +1,4 @@
-#include <assert.h>
+m #include<assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
@@ -15,7 +15,7 @@
 #include "sqv_err.h"
 #include "utils.h"
 
-sqv_err qk_init(void);
+    sqv_err qk_init(void);
 sqv_err qk_deinit(qk_mdl* mdl);
 sqv_err qk_load_mdl(const char* path, qk_mdl* mdl);
 
@@ -29,7 +29,7 @@ static struct {
 void init(void) {
   log_info("initializing gpu ...");
 
-  sg_setup(&(sg_desc) {
+  sg_setup(&(sg_desc){
       .environment = sglue_environment(),
       .logger.func = slog_func,
   });
@@ -37,40 +37,58 @@ void init(void) {
   sqv_err err = qk_init();
   makesure(err == SQV_SUCCESS, "qk_init() failde");
 
+  err = qk_load_mdl(".keep/spike.mdl", &state.mdl);
+  makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
+  err = qk_load_mdl(".keep/dog.mdl", &state.mdl);
+  makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
+  err = qk_load_mdl(".keep/armor.mdl", &state.mdl);
+  makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
   err = qk_load_mdl(".keep/shambler.mdl", &state.mdl);
+  makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
+  err = qk_load_mdl(".keep/soldire.mdl", &state.mdl);
+  makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
+  err = qk_load_mdl(".keep/boss.mdl", &state.mdl);
   makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
 
   exit(-1);
 
   float vertices[] = {
-    -1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 1.0, 1.0,  -1.0, -1.0, 1.0, 0.0, 0.0, 1.0,
-    1.0,  1.0,  -1.0, 1.0, 0.0, 0.0, 1.0, -1.0, 1.0,  -1.0, 1.0, 0.0, 0.0, 1.0,
-
-    -1.0, -1.0, 1.0,  0.0, 1.0, 0.0, 1.0, 1.0,  -1.0, 1.0,  0.0, 1.0, 0.0, 1.0,
-    1.0,  1.0,  1.0,  0.0, 1.0, 0.0, 1.0, -1.0, 1.0,  1.0,  0.0, 1.0, 0.0, 1.0,
-
-    -1.0, -1.0, -1.0, 0.0, 0.0, 1.0, 1.0, -1.0, 1.0,  -1.0, 0.0, 0.0, 1.0, 1.0,
-    -1.0, 1.0,  1.0,  0.0, 0.0, 1.0, 1.0, -1.0, -1.0, 1.0,  0.0, 0.0, 1.0, 1.0,
-
-    1.0,  -1.0, -1.0, 1.0, 0.5, 0.0, 1.0, 1.0,  1.0,  -1.0, 1.0, 0.5, 0.0, 1.0,
-    1.0,  1.0,  1.0,  1.0, 0.5, 0.0, 1.0, 1.0,  -1.0, 1.0,  1.0, 0.5, 0.0, 1.0,
-
-    -1.0, -1.0, -1.0, 0.0, 0.5, 1.0, 1.0, -1.0, -1.0, 1.0,  0.0, 0.5, 1.0, 1.0,
-    1.0,  -1.0, 1.0,  0.0, 0.5, 1.0, 1.0, 1.0,  -1.0, -1.0, 0.0, 0.5, 1.0, 1.0,
-
-    -1.0, 1.0,  -1.0, 1.0, 0.0, 0.5, 1.0, -1.0, 1.0,  1.0,  1.0, 0.0, 0.5, 1.0,
-    1.0,  1.0,  1.0,  1.0, 0.0, 0.5, 1.0, 1.0,  1.0,  -1.0, 1.0, 0.0, 0.5, 1.0
+      -1.0, -1.0, -1.0, /* vertex */ 1.0, 0.0, 0.0, 1.0, /* color */
+      1.0,  -1.0, -1.0, /* vertex */ 1.0, 0.0, 0.0, 1.0, /* color */
+      1.0,  1.0,  -1.0, /* vertex */ 1.0, 0.0, 0.0, 1.0, /* color */
+      -1.0, 1.0,  -1.0, /* vertex */ 1.0, 0.0, 0.0, 1.0, /* color */
+      -1.0, -1.0, 1.0,  /* vertex */ 0.0, 1.0, 0.0, 1.0, /* color */
+      1.0,  -1.0, 1.0,  /* vertex */ 0.0, 1.0, 0.0, 1.0, /* color */
+      1.0,  1.0,  1.0,  /* vertex */ 0.0, 1.0, 0.0, 1.0, /* color */
+      -1.0, 1.0,  1.0,  /* vertex */ 0.0, 1.0, 0.0, 1.0, /* color */
+      -1.0, -1.0, -1.0, /* vertex */ 0.0, 0.0, 1.0, 1.0, /* color */
+      -1.0, 1.0,  -1.0, /* vertex */ 0.0, 0.0, 1.0, 1.0, /* color */
+      -1.0, 1.0,  1.0,  /* vertex */ 0.0, 0.0, 1.0, 1.0, /* color */
+      -1.0, -1.0, 1.0,  /* vertex */ 0.0, 0.0, 1.0, 1.0, /* color */
+      1.0,  -1.0, -1.0, /* vertex */ 1.0, 0.5, 0.0, 1.0, /* color */
+      1.0,  1.0,  -1.0, /* vertex */ 1.0, 0.5, 0.0, 1.0, /* color */
+      1.0,  1.0,  1.0,  /* vertex */ 1.0, 0.5, 0.0, 1.0, /* color */
+      1.0,  -1.0, 1.0,  /* vertex */ 1.0, 0.5, 0.0, 1.0, /* color */
+      -1.0, -1.0, -1.0, /* vertex */ 0.0, 0.5, 1.0, 1.0, /* color */
+      -1.0, -1.0, 1.0,  /* vertex */ 0.0, 0.5, 1.0, 1.0, /* color */
+      1.0,  -1.0, 1.0,  /* vertex */ 0.0, 0.5, 1.0, 1.0, /* color */
+      1.0,  -1.0, -1.0, /* vertex */ 0.0, 0.5, 1.0, 1.0, /* color */
+      -1.0, 1.0,  -1.0, /* vertex */ 1.0, 0.0, 0.5, 1.0, /* color */
+      -1.0, 1.0,  1.0,  /* vertex */ 1.0, 0.0, 0.5, 1.0, /* color */
+      1.0,  1.0,  1.0,  /* vertex */ 1.0, 0.0, 0.5, 1.0, /* color */
+      1.0,  1.0,  -1.0, /* vertex */ 1.0, 0.0, 0.5, 1.0  /* color */
   };
-  sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc
-  ) { .data = SG_RANGE(vertices), .label = "cube-vertices" });
 
-  uint16_t indices[] = { 0,  1,  2,  0,  2,  3,  6,  5,  4,  7,  6,  4,
-                         8,  9,  10, 8,  10, 11, 14, 13, 12, 15, 14, 12,
-                         16, 17, 18, 16, 18, 19, 22, 21, 20, 23, 22, 20 };
-  sg_buffer ibuf
-      = sg_make_buffer(&(sg_buffer_desc) { .type = SG_BUFFERTYPE_INDEXBUFFER,
-                                           .data = SG_RANGE(indices),
-                                           .label = "cube-indices" });
+  sg_buffer vbuf = sg_make_buffer(
+      &(sg_buffer_desc){.data = SG_RANGE(vertices), .label = "cube-vertices"});
+
+  uint16_t indices[] = {0,  1,  2,  0,  2,  3,  6,  5,  4,  7,  6,  4,
+                        8,  9,  10, 8,  10, 11, 14, 13, 12, 15, 14, 12,
+                        16, 17, 18, 16, 18, 19, 22, 21, 20, 23, 22, 20};
+  sg_buffer ibuf =
+      sg_make_buffer(&(sg_buffer_desc){.type = SG_BUFFERTYPE_INDEXBUFFER,
+                                       .data = SG_RANGE(indices),
+                                       .label = "cube-indices"});
 
   sg_shader shd = sg_make_shader(cube_shader_desc(sg_query_backend()));
 
@@ -88,8 +106,7 @@ void init(void) {
           },
       .label = "cube-pipeline"});
 
-  state.bind
-      = (sg_bindings) { .vertex_buffers[0] = vbuf, .index_buffer = ibuf };
+  state.bind = (sg_bindings){.vertex_buffers[0] = vbuf, .index_buffer = ibuf};
 }
 
 void frame(void) {
@@ -98,10 +115,9 @@ void frame(void) {
   const float h = sapp_heightf();
   const float t = (float)(sapp_frame_duration() * 60.0);
   hmm_mat4 proj = HMM_Perspective(60.0f, w / h, 0.01f, 10.0f);
-  hmm_mat4 view = HMM_LookAt(
-      HMM_Vec3(0.0f, 1.5f, 6.0f), HMM_Vec3(0.0f, 0.0f, 0.0f),
-      HMM_Vec3(0.0f, 1.0f, 0.0f)
-  );
+  hmm_mat4 view =
+      HMM_LookAt(HMM_Vec3(0.0f, 1.5f, 6.0f), HMM_Vec3(0.0f, 0.0f, 0.0f),
+                 HMM_Vec3(0.0f, 1.0f, 0.0f));
   hmm_mat4 view_proj = HMM_MultiplyMat4(proj, view);
   state.rx += 1.0f * t;
   state.ry += 2.0f * t;
@@ -113,10 +129,14 @@ void frame(void) {
   sg_begin_pass(&(sg_pass){
       .action =
           {
-              .colors[0] = {.load_action = SG_LOADACTION_CLEAR,
-                            .clear_value = {0.25f, 0.5f, 0.75f, 1.0f}},
+              .colors[0] =
+                  {
+                      .load_action = SG_LOADACTION_CLEAR,
+                      .clear_value = {0.25f, 0.5f, 0.75f, 1.0f},
+                  },
           },
-      .swapchain = sglue_swapchain()});
+      .swapchain = sglue_swapchain(),
+  });
   sg_apply_pipeline(state.pip);
   sg_apply_bindings(&state.bind);
   sg_apply_uniforms(UB_vs_params, &SG_RANGE(vs_params));
@@ -139,15 +159,15 @@ sapp_desc sokol_main(int argc, char* argv[]) {
   (void)argc;
   (void)argv;
 
-  return (sapp_desc) {
-    .init_cb = init,
-    .frame_cb = frame,
-    .cleanup_cb = cleanup,
-    .width = 50,
-    .height = 50,
-    .sample_count = 4,
-    .window_title = "Cube (sokol-app)",
-    .icon.sokol_default = true,
-    .logger.func = slog_func,
+  return (sapp_desc){
+      .init_cb = init,
+      .frame_cb = frame,
+      .cleanup_cb = cleanup,
+      .width = 50,
+      .height = 50,
+      .sample_count = 4,
+      .window_title = "Cube (sokol-app)",
+      .icon.sokol_default = true,
+      .logger.func = slog_func,
   };
 }

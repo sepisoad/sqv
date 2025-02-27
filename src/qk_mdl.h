@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 
+#include "../deps/hmm.h"
 #include "../deps/list.h"
 #include "../deps/sokol_gfx.h"
-#include "../deps/hmm.h"
 
 /* RAW QUAKE TYPES AS THEY ARE STORED IN MDL FILE */
 
@@ -117,17 +117,19 @@ typedef struct {
 } qk_animation;
 
 typedef struct {
-  float radius; // bounding radius
-  int32_t skin_width;
-  int32_t skin_height;
-  int32_t skins_count;
-  int32_t vertices_count;
-  int32_t triangles_count;
-  int32_t frames_count;
-  int32_t poses_count;
-  hmm_vec3 scale; // model scale
-  hmm_vec3 origin; // model origin
-  hmm_vec3 eye; // eye position
+  float radius;  // bounding radius
+  uint32_t skin_width;
+  uint32_t skin_height;
+  uint32_t skins_count;
+  uint32_t vertices_count;
+  uint32_t triangles_count;
+  uint32_t triangles_order_count;
+  uint32_t uv_count;
+  uint32_t frames_count;
+  uint32_t poses_count;
+  hmm_vec3 scale;   // model scale
+  hmm_vec3 origin;  // model origin
+  hmm_vec3 eye;     // eye position
 } qk_header;
 
 typedef struct {
@@ -136,11 +138,16 @@ typedef struct {
 } qk_skin;
 
 typedef struct {
+  int* uvs;
+} qk_texture_uvs;
+
+typedef struct {
   qk_header header;
   qk_skin* skins;
+  qk_texture_uvs* uvs;
   // qk_raw_texcoord*      texcoords;
   // qk_raw_triangles_idx* triangles_idx;
   // qk_frames*            frames;
 } qk_mdl;
 
-#endif // QK_MDL_HEADER_
+#endif  // QK_MDL_HEADER_

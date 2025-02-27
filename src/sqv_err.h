@@ -14,4 +14,4 @@ typedef enum {
   SQV__MAX = 256
 } sqv_err;
 
-#endif // SQV_ERR_HEADER_
+#endif  // SQV_ERR_HEADER_
