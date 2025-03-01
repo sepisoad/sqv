@@ -5,13 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../deps/list.h"
-#include "../deps/log.h"
-#include "../deps/vector.h"
-
 #ifdef DEBUG
 #include "../deps/stb_image_write.h"
 #endif
+#include "../deps/list.h"
 
 #include "qk_mdl.h"
 #include "sqv_err.h"
@@ -416,7 +413,7 @@ static sqv_err build_triangles(qk_mdl* mdl,
       float s = coords[k].s;
       float t = coords[k].t;
       if (!tris[best_triangles[0]].frontface && coords[k].onseam)
-        s += mdl->header.skin_width / 2;
+        s += (float)mdl->header.skin_width / 2;
       s = (s + 0.5f) / mdl->header.skin_width;
       t = (t + 0.5f) / mdl->header.skin_height;
 
@@ -431,7 +428,7 @@ static sqv_err build_triangles(qk_mdl* mdl,
 
   mdl->header.triangles_order_count = orders_count;
   mdl->header.uv_count = texture_uv_count;
-  mdl->uvs = texture_uvs;
+  mdl->uvs = (qk_texture_uvs*)texture_uvs;
 
   if (used)
     free(used);

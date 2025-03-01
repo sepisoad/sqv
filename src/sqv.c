@@ -1,6 +1,5 @@
-m #include<assert.h>
+#include <assert.h>
 #include <stdbool.h>
-#include <stdlib.h>
 
 #include "../deps/hmm.h"
 #include "../deps/log.h"
@@ -15,7 +14,7 @@ m #include<assert.h>
 #include "sqv_err.h"
 #include "utils.h"
 
-    sqv_err qk_init(void);
+sqv_err qk_init(void);
 sqv_err qk_deinit(qk_mdl* mdl);
 sqv_err qk_load_mdl(const char* path, qk_mdl* mdl);
 
@@ -39,18 +38,18 @@ void init(void) {
 
   err = qk_load_mdl(".keep/spike.mdl", &state.mdl);
   makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
-  err = qk_load_mdl(".keep/dog.mdl", &state.mdl);
-  makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
-  err = qk_load_mdl(".keep/armor.mdl", &state.mdl);
-  makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
-  err = qk_load_mdl(".keep/shambler.mdl", &state.mdl);
-  makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
-  err = qk_load_mdl(".keep/soldire.mdl", &state.mdl);
-  makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
-  err = qk_load_mdl(".keep/boss.mdl", &state.mdl);
-  makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
+  /* err = qk_load_mdl(".keep/dog.mdl", &state.mdl); */
+  /* makesure(err == SQV_SUCCESS, "qk_load_mdl() failed"); */
+  /* err = qk_load_mdl(".keep/armor.mdl", &state.mdl); */
+  /* makesure(err == SQV_SUCCESS, "qk_load_mdl() failed"); */
+  /* err = qk_load_mdl(".keep/shambler.mdl", &state.mdl); */
+  /* makesure(err == SQV_SUCCESS, "qk_load_mdl() failed"); */
+  /* err = qk_load_mdl(".keep/soldire.mdl", &state.mdl); */
+  /* makesure(err == SQV_SUCCESS, "qk_load_mdl() failed"); */
+  /* err = qk_load_mdl(".keep/boss.mdl", &state.mdl); */
+  /* makesure(err == SQV_SUCCESS, "qk_load_mdl() failed"); */
 
-  exit(-1);
+  /* exit(-1); */
 
   float vertices[] = {
       -1.0, -1.0, -1.0, /* vertex */ 1.0, 0.0, 0.0, 1.0, /* color */
@@ -150,7 +149,7 @@ void cleanup(void) {
 
   sg_shutdown();
   sqv_err err = qk_deinit(&state.mdl);
-  assert(err == SQV_SUCCESS);
+  makesure(err == SQV_SUCCESS, "failed to deinit sokol");
 }
 
 sapp_desc sokol_main(int argc, char* argv[]) {
