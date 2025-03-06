@@ -36,10 +36,10 @@ void init(void) {
   sqv_err err = qk_init();
   makesure(err == SQV_SUCCESS, "qk_init() failde");
 
-  err = qk_load_mdl(".keep/spike.mdl", &state.mdl);
+  //   err = qk_load_mdl(".keep/spike.mdl", &state.mdl);
+  //   makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
+  err = qk_load_mdl(".keep/dog.mdl", &state.mdl);
   makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
-  /* err = qk_load_mdl(".keep/dog.mdl", &state.mdl); */
-  /* makesure(err == SQV_SUCCESS, "qk_load_mdl() failed"); */
   /* err = qk_load_mdl(".keep/armor.mdl", &state.mdl); */
   /* makesure(err == SQV_SUCCESS, "qk_load_mdl() failed"); */
   /* err = qk_load_mdl(".keep/shambler.mdl", &state.mdl); */

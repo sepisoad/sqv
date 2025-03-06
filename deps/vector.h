@@ -19,22 +19,22 @@ extern "C" {
 // #define VECTOR_LOGGING_ENABLE
 
 #ifdef VECTOR_LOGGING_ENABLE
-#define VECTOR_LOG(fmt, ...)                                                   \
-  do {                                                                         \
-    fprintf(stderr, "[VECTOR LOG] " fmt "\n", ##__VA_ARGS__);                  \
+#define VECTOR_LOG(fmt, ...)                                  \
+  do {                                                        \
+    fprintf(stderr, "[VECTOR LOG] " fmt "\n", ##__VA_ARGS__); \
   } while (0)
 #else
-#define VECTOR_LOG(fmt, ...)                                                   \
-  do {                                                                         \
+#define VECTOR_LOG(fmt, ...) \
+  do {                       \
   } while (0)
 #endif
 
 typedef struct Vector Vector;
 
 typedef struct MemoryPoolVector {
-  void* pool; // Pointer to the memory pool
-  size_t poolSize; // Total size of the pool
-  size_t used; // Memory used so far
+  void* pool;       // Pointer to the memory pool
+  size_t poolSize;  // Total size of the pool
+  size_t used;      // Memory used so far
 } MemoryPoolVector;
 
 struct Vector {

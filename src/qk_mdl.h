@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #include "../deps/hmm.h"
-#include "../deps/list.h"
+#include "../deps/vector.h"
 #include "../deps/sokol_gfx.h"
 
 /* RAW QUAKE TYPES AS THEY ARE STORED IN MDL FILE */
@@ -49,9 +49,9 @@ typedef struct {
   int32_t vertices_count;
   int32_t triangles_count;
   int32_t frames_count;
-  qk_synctype sync_type;
-  int32_t flags;
-  float size;
+  qk_synctype sync_type;  // SEPI: what is this?
+  int32_t flags;          // SEPI: what is this?
+  float size;             // SEPI: what is this?
 } qk_raw_header;
 
 typedef struct {
@@ -89,7 +89,7 @@ typedef struct {
   qk_raw_triangle_vertex bbox_max;
   int32_t frame;
   char name[16];
-  List* raw_vertices_ptr;
+  Vector* raw_vertices_ptr;
 } qk_raw_frame;
 
 /* PROCESSED QUAKE TYPES, USEFUL AT RUNTIME */
@@ -97,12 +97,12 @@ typedef struct {
 typedef struct {
   hmm_v3 vertex;
   hmm_v3 normal;
-} qk_triangle;
+} qk_vertex;
 
 typedef struct {
   hmm_v3 bbox_min;
   hmm_v3 bbox_max;
-  qk_triangle* vertices;
+  qk_vertex* vertices;
 } qk_frame;
 
 typedef struct {
@@ -123,7 +123,7 @@ typedef struct {
   uint32_t skins_count;
   uint32_t vertices_count;
   uint32_t triangles_count;
-  uint32_t triangles_order_count;
+  uint32_t vertices_orders_count;
   uint32_t uv_count;
   uint32_t frames_count;
   uint32_t poses_count;
@@ -144,6 +144,8 @@ typedef struct {
 typedef struct {
   qk_header header;
   qk_skin* skins;
+  int32_t* vertices_order;
+  qk_vertex* vertices;
   qk_texture_uvs* uvs;
   // qk_raw_texcoord*      texcoords;
   // qk_raw_triangles_idx* triangles_idx;

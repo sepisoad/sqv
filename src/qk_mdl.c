@@ -5,10 +5,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../deps/log.h"
+#include "../deps/vector.h"
+
 #ifdef DEBUG
 #include "../deps/stb_image_write.h"
 #endif
-#include "../deps/list.h"
 
 #include "qk_mdl.h"
 #include "sqv_err.h"
@@ -157,7 +159,7 @@ static uintptr_t load_raw_triangles_indices(const qk_header* hdr,
 }
 
 static uintptr_t load_frame_single(const qk_header* hdr,
-                                   List* frms,
+                                   Vector* frms,
                                    uint32_t* posidx,
                                    uintptr_t mem) {
   qk_raw_frame_single* snl = (qk_raw_frame_single*)mem;
@@ -172,18 +174,18 @@ static uintptr_t load_frame_single(const qk_header* hdr,
     frm.bbox_max.vertex[i] = snl->bbox_max.vertex[i];
   }
 
-  frm.raw_vertices_ptr = list_create(sizeof(qk_raw_triangle_vertex*), NULL);
+  frm.raw_vertices_ptr = vector_create(sizeof(qk_raw_triangle_vertex*));
   qk_raw_triangle_vertex* ptr = (qk_raw_triangle_vertex*)(snl + 1);
 
-  list_push_back(frm.raw_vertices_ptr, ptr);
-  list_push_back(frms, &frm);
+  vector_push_back(frm.raw_vertices_ptr, ptr);
+  vector_push_back(frms, &frm);
 
   mem = (uintptr_t)(ptr + hdr->vertices_count);
   return mem;
 }
 
 static uintptr_t load_frames_group(const qk_header* hdr,
-                                   List* frms,
+                                   Vector* frms,
                                    uint32_t* posidx,
                                    uintptr_t mem) {
   qk_raw_frames_group* grp = (qk_raw_frames_group*)mem;
@@ -202,22 +204,22 @@ static uintptr_t load_frames_group(const qk_header* hdr,
   interval_ptr += grp->frames_count;
   mem = (uintptr_t)interval_ptr;
 
-  frm.raw_vertices_ptr = list_create(sizeof(qk_raw_triangle_vertex*), NULL);
+  frm.raw_vertices_ptr = vector_create(sizeof(qk_raw_triangle_vertex*));
   for (uint32_t i = 0; i < grp->frames_count; i++) {
     qk_raw_triangle_vertex* ptr =
         (qk_raw_triangle_vertex*)((qk_raw_frame_single*)mem + 1);
-    list_push_back(frm.raw_vertices_ptr, ptr);
+    vector_push_back(frm.raw_vertices_ptr, ptr);
 
     mem = (uintptr_t)(ptr + hdr->vertices_count);
     (*posidx)++;
   }
 
-  list_push_back(frms, &frm);
+  vector_push_back(frms, &frm);
 
   return mem;
 }
 
-static uintptr_t load_raw_frames(qk_header* hdr, List* frms, uintptr_t mem) {
+static uintptr_t load_raw_frames(qk_header* hdr, Vector* frms, uintptr_t mem) {
   uint32_t poses_count = 0;
 
   for (uint32_t i = 0; i < hdr->frames_count; i++) {
@@ -352,10 +354,11 @@ done:
 }
 
 static sqv_err build_triangles(qk_mdl* mdl,
+                               const Vector* frms,
                                const qk_raw_texcoord* coords,
                                const qk_raw_triangles_idx* tris) {
   int32_t triangles_count = mdl->header.triangles_count;
-  int32_t* used = (int32_t*)malloc(sizeof(int32_t) * triangles_count);
+  int32_t* used = (int32_t*)calloc(triangles_count, sizeof(int32_t));
   int32_t* best_vertices =
       (int32_t*)malloc(sizeof(int32_t) * (triangles_count + 2));
   int32_t* best_triangles = (int32_t*)malloc(sizeof(int32_t) * triangles_count);
@@ -364,12 +367,12 @@ static sqv_err build_triangles(qk_mdl* mdl,
       (int32_t*)malloc(sizeof(int32_t) * triangles_count);
   int32_t* texture_uvs =
       (int32_t*)malloc(sizeof(int32_t) * ((triangles_count * 7) + 1));
-  int32_t* vertex_order =
+  int32_t* vertices_order =
       (int32_t*)malloc(sizeof(int32_t) * (triangles_count * 3));
   uint32_t best_length;
   uint32_t best_type;
   uint32_t texture_uv_count = 0;
-  uint32_t orders_count = 0;
+  uint32_t vertices_orders_count = 0;
 
   for (uint32_t i = 0; i < triangles_count; i++) {
     if (used[i])
@@ -408,12 +411,12 @@ static sqv_err build_triangles(qk_mdl* mdl,
     for (uint32_t j = 0; j < best_length + 2; j++) {
       int tmp;
       int32_t k = best_vertices[j];
-      vertex_order[orders_count++] = k;
+      vertices_order[vertices_orders_count++] = k;
 
       float s = coords[k].s;
       float t = coords[k].t;
       if (!tris[best_triangles[0]].frontface && coords[k].onseam)
-        s += (float)mdl->header.skin_width / 2;
+        s += mdl->header.skin_width / 2;
       s = (s + 0.5f) / mdl->header.skin_width;
       t = (t + 0.5f) / mdl->header.skin_height;
 
@@ -426,8 +429,33 @@ static sqv_err build_triangles(qk_mdl* mdl,
 
   texture_uvs[texture_uv_count++] = 0;
 
-  mdl->header.triangles_order_count = orders_count;
+  size_t frames_count = vector_size(frms);
+  makesure(frames_count == mdl->header.frames_count, "invalid frames count");
+
+  mdl->vertices = (qk_vertex*)malloc(mdl->header.poses_count *
+                                     vertices_orders_count * sizeof(qk_vertex));
+  makesure(mdl->vertices != NULL, "malloc failed");
+
+  for (int32_t i = 0; i < mdl->header.poses_count; i++) {
+    for (int32_t j = 0; j < vertices_orders_count; j++) {
+      qk_raw_frame* frm = (qk_raw_frame*)vector_at(frms, i);
+      qk_raw_triangle_vertex* raw_vertex =
+          (qk_raw_triangle_vertex*)vector_at(frm->raw_vertices_ptr, j);
+      const float* normal = _qk_normals[raw_vertex->normal_idx];
+      uint8_t* vertex = raw_vertex->vertex;
+      mdl->vertices[i + j].normal.X = normal[0];
+      mdl->vertices[i + j].normal.Y = normal[1];
+      mdl->vertices[i + j].normal.Z = normal[2];
+
+      mdl->vertices[i + j].vertex.X = (float)vertex[0];
+      mdl->vertices[i + j].vertex.Y = (float)vertex[1];
+      mdl->vertices[i + j].vertex.Z = (float)vertex[2];
+    }
+  }
+
+  mdl->header.vertices_orders_count = vertices_orders_count;
   mdl->header.uv_count = texture_uv_count;
+  mdl->vertices_order = vertices_order;
   mdl->uvs = (qk_texture_uvs*)texture_uvs;
 
   if (used)
@@ -440,57 +468,57 @@ static sqv_err build_triangles(qk_mdl* mdl,
     free(strip_vertices);
   if (strip_triangles)
     free(strip_triangles);
-  if (texture_uvs)
-    free(texture_uvs);
-  if (vertex_order)
-    free(vertex_order);
+  // if (texture_uvs)
+  //   free(texture_uvs);
+  if (vertices_order)
+    free(vertices_order);
 
   return SQV_SUCCESS;
 }
 
 static sqv_err make_display_lists(qk_mdl* mdl,
-                                  const List* raw_frames,
+                                  const Vector* raw_frames,
                                   const qk_raw_texcoord* coords,
                                   const qk_raw_triangles_idx* tris) {
-  build_triangles(mdl, coords, tris);
+  build_triangles(mdl, raw_frames, coords, tris);
 
-  uint32_t frames_count = list_length(raw_frames);
-  makesure(frames_count == mdl->header.frames_count, "invalid frames count");
+  // uint32_t frames_count = list_length(raw_frames);
+  // makesure(frames_count == mdl->header.frames_count, "invalid frames count");
 
-  qk_triangle* triangles =
-      (qk_triangle*)malloc(sizeof(qk_triangle) * mdl->header.poses_count *
-                           mdl->header.vertices_count);
-  makesure(triangles != NULL, "malloc failed");
+  // qk_vertex* triangles = (qk_vertex*)malloc(
+  //     sizeof(qk_vertex) * mdl->header.poses_count *
+  //     mdl->header.vertices_count);
+  // makesure(triangles != NULL, "malloc failed");
 
-  uintptr_t* ptrs = (uintptr_t*)malloc(sizeof(uintptr_t*) * frames_count);
-  makesure(ptrs != NULL, "malloc failed");
+  // uintptr_t* ptrs = (uintptr_t*)malloc(sizeof(uintptr_t*) * frames_count);
+  // makesure(ptrs != NULL, "malloc failed");
 
-  Node* ptr = list_begin(raw_frames);
-  for (uint32_t i = 0; i < frames_count; i++) {
-    ptrs[i] = (uintptr_t)ptr->value;
-    ptr = ptr->next;
-  }
+  // Node* ptr = list_begin(raw_frames);
+  // for (uint32_t i = 0; i < frames_count; i++) {
+  //   ptrs[i] = (uintptr_t)ptr->value;
+  //   ptr = ptr->next;
+  // }
 
-  for (uint32_t i = 0; i < mdl->header.poses_count; i++) {
-    qk_raw_triangle_vertex* rawtri = (qk_raw_triangle_vertex*)(ptrs + i);
-    const float* normal = _qk_normals[rawtri->normal_idx];
-    triangles[i] = (qk_triangle){
-        .normal =
-            {
-                .X = normal[0],
-                .Y = normal[1],
-                .Z = normal[2],
-            },
-        .vertex =
-            {
-                .X = rawtri->vertex[0],
-                .Y = rawtri->vertex[1],
-                .Z = rawtri->vertex[2],
-            },
-    };
-  }
+  // for (uint32_t i = 0; i < mdl->header.poses_count; i++) {
+  //   qk_raw_triangle_vertex* rawtri = (qk_raw_triangle_vertex*)(ptrs + i);
+  //   const float* normal = _qk_normals[rawtri->normal_idx];
+  //   triangles[i] = (qk_vertex){
+  //       .normal =
+  //           {
+  //               .X = normal[0],
+  //               .Y = normal[1],
+  //               .Z = normal[2],
+  //           },
+  //       .vertex =
+  //           {
+  //               .X = rawtri->vertex[0],
+  //               .Y = rawtri->vertex[1],
+  //               .Z = rawtri->vertex[2],
+  //           },
+  //   };
+  // }
 
-  free(ptrs);
+  // free(ptrs);
 
   return SQV_SUCCESS;
 }
@@ -544,7 +572,7 @@ sqv_err qk_load_mdl(const char* path, qk_mdl* _) {
   qk_skin* skins = NULL;
   qk_raw_texcoord* raw_tex_coords = NULL;
   qk_raw_triangles_idx* raw_tris_idx = NULL;
-  List* raw_frames = list_create(sizeof(qk_raw_frame), NULL);
+  Vector* raw_frames = vector_create(sizeof(qk_raw_frame));
 
   mem += sizeof(qk_raw_header);
   mem = load_skins(&mdl.header, &skins, mem);
@@ -571,17 +599,14 @@ cleanup:
     free(raw_tris_idx);
   }
 
-  Node* node = list_begin(raw_frames);
   for (uint32_t i = 0; i < mdl.header.frames_count; i++) {
-    qk_raw_frame* frame = (qk_raw_frame*)node->value;
-    List* list = frame->raw_vertices_ptr;
-    list_deallocate(list);
-
-    node = node->next;
+    qk_raw_frame* frame = (qk_raw_frame*)vector_at(raw_frames, i);
+    Vector* vector = frame->raw_vertices_ptr;
+    vector_deallocate(vector);
   }
 
   if (raw_frames) {
-    list_deallocate(raw_frames);
+    vector_deallocate(raw_frames);
   }
 
   return err;
