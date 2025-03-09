@@ -4,5 +4,6 @@
 #include "arena.h"
 #include "endian.h"
 #include "macros.h"
+#include "io.h"
 
 #endif  // UTILS_HEADER_

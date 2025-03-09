@@ -13,16 +13,27 @@
 #define ALIGNMENT 16                      // Default alignment
 
 typedef struct {
-  uint8_t* base;  // Start of allocated memory
-  size_t offset;  // Current offset in arena
-  size_t size;    // Total size of the arena
+  uint8_t* base;    // Start of allocated memory (NULL during estimation phase)
+  size_t offset;    // Current offset in arena
+  size_t size;      // Total size of the arena
+  size_t estimate;  // Memory estimate during pre-allocation phase
 } arena;
 
 /* ****************** utils::arena API ****************** */
-arena arena_create(size_t size);
+
+// Arena initialization and destruction
+void arena_create(arena* a, size_t size);
+void arena_destroy(arena* a);
+
+// Arena allocation
 void* arena_alloc(arena* a, size_t size, size_t alignment);
 void arena_reset(arena* a);
-void arena_destroy(arena* a);
+
+// Memory estimation API
+void arena_begin_estimate(arena* a);
+void arena_estimate_add(arena* a, size_t size, size_t alignment);
+size_t arena_end_estimate(arena* a);
+
 /* ****************** utils::arena API ****************** */
 
 #ifdef UTILS_ARENA_IMPLEMENTATION
@@ -36,24 +47,40 @@ void arena_destroy(arena* a);
 //             | |
 //             |_|
 
+// Helper function to align memory addresses
 static inline size_t align_up(size_t ptr, size_t alignment) {
   return (ptr + (alignment - 1)) & ~(alignment - 1);
 }
 
-arena arena_create(size_t size) {
-  size_t aligned_size = align_up(size, ALIGNMENT);  // Ensure alignment
+/* ****************** Arena Initialization & Destruction ****************** */
 
-  void* mem = calloc(1, aligned_size);  // Zero-initialized memory
-  makesure(mem != NULL, "arena_creat failed");
+void arena_create(arena* a, size_t size) {
+  size_t aligned_size = align_up(size, ALIGNMENT);
+  a->base = (uint8_t*)calloc(1, aligned_size);  // Allocate and zero-initialize
+  makesure(a->base != NULL, "arena_create failed");
 
-  arena a = {.base = (uint8_t*)mem, .offset = 0, .size = aligned_size};
-  return a;
+  a->offset = 0;
+  a->size = aligned_size;
+  a->estimate = 0;  // Not used after allocation phase
 }
+
+void arena_destroy(arena* a) {
+  free(a->base);
+  a->base = NULL;
+  a->offset = 0;
+  a->size = 0;
+  a->estimate = 0;
+}
+
+/* ****************** Arena Allocation API ****************** */
 
 void* arena_alloc(arena* a, size_t size, size_t alignment) {
   size_t aligned_offset = align_up((size_t)(a->base + a->offset), alignment);
   size_t padding = aligned_offset - (size_t)(a->base + a->offset);
-  makesure(a->offset + padding + size <= a->size, "arena out of memory !");
+
+  if (a->offset + padding + size > a->size) {
+    return NULL;
+  }
 
   void* ptr = a->base + a->offset + padding;
   a->offset += padding + size;
@@ -64,11 +91,28 @@ void arena_reset(arena* a) {
   a->offset = 0;
 }
 
-void arena_destroy(arena* a) {
-  free(a->base);
-  a->base = NULL;
+/* ****************** Memory Estimation API ****************** */
+
+void arena_begin_estimate(arena* a) {
+  a->estimate = 0;  // Reset estimation phase
+  a->base = NULL;   // Ensure we're in estimation mode
+}
+
+void arena_estimate_add(arena* a, size_t size, size_t alignment) {
+  size_t aligned_offset = align_up(a->estimate, alignment);
+  a->estimate = aligned_offset + size;
+}
+
+size_t arena_end_estimate(arena* a) {
+  size_t final_size =
+      align_up(a->estimate, ALIGNMENT);       // Ensure final alignment
+  a->base = (uint8_t*)calloc(1, final_size);  // Allocate memory
+  makesure(a->base != NULL, "arena_end_estimate failed");
+
   a->offset = 0;
-  a->size = 0;
+  a->size = final_size;
+  a->estimate = 0;  // No longer needed
+  return final_size;
 }
 
 #endif  // UTILS_ARENA_IMPLEMENTATION

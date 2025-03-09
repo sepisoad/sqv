@@ -9,16 +9,13 @@
 
 #define UTILS_ENDIAN_IMPLEMENTATION
 #define UTILS_ARENA_IMPLEMENTATION
+#define UTILS_ENDIAN_IMPLEMENTATION
 #define QK_MDL_IMPLEMENTATION
 
 #include "glsl/default.h"
 #include "quake/mdl.h"
 #include "errors.h"
 #include "utils/all.h"
-
-qk_err qk_init(void);
-qk_err qk_deinit(qk_mdl*);
-qk_err qk_load_mdl(const char*, qk_mdl*, arena*);
 
 static struct {
   float rx, ry;
@@ -36,13 +33,19 @@ void init(void) {
       .logger.func = slog_func,
   });
 
-  qk_err err = qk_init();
-  makesure(err == QK_ERR_SUCCESS, "qk_init() failde");
+  uint8_t* mdlbuf = NULL;
+  size_t mdlbufsz = load_file(".keep/dog.mdl", &mdlbuf);
+  makesure(mdlbufsz > 0, "loadfile return size is zero");
 
-  //   err = qk_load_mdl(".keep/spike.mdl", &state.mdl);
-  //   makesure(err == QK_ERR_SUCCESS, "qk_load_mdl() failed");
-  err = qk_load_mdl(".keep/dog.mdl", &state.mdl, &state.qk_memory);
-  makesure(err == QK_ERR_SUCCESS, "qk_load_mdl() failed");
+  qk_err err = qk_init();
+  makesure(err == QK_ERR_SUCCESS, "qk_init failde");
+
+  err = qk_load_mdl(&state.qk_memory, mdlbuf, mdlbufsz, &state.mdl);
+  makesure(err == QK_ERR_SUCCESS, "qk_load_mdl failed");
+  free(mdlbuf);
+
+  /* err = qk_load_mdl(".keep/spike.mdl", &state.mdl); */
+  /* makesure(err == QK_ERR_SUCCESS, "qk_load_mdl() failed"); */
   /* err = qk_load_mdl(".keep/armor.mdl", &state.mdl); */
   /* makesure(err == QK_ERR_SUCCESS, "qk_load_mdl() failed"); */
   /* err = qk_load_mdl(".keep/shambler.mdl", &state.mdl); */
@@ -153,9 +156,8 @@ void cleanup(void) {
   qk_err err = qk_deinit(&state.mdl);
   makesure(err == QK_ERR_SUCCESS, "failed to deinit sokol");
 
-  if (&state.qk_memory) {
-    arena_destroy(&state.qk_memory);
-  }
+  arena_reset(&state.qk_memory);
+  arena_destroy(&state.qk_memory);
 
   sg_shutdown();
 }
