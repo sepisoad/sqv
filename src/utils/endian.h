@@ -1,27 +1,26 @@
-#ifndef UTILS_HEADER_
-#define UTILS_HEADER_
+#ifndef UTILS_ENDIAN_HEADER_
+#define UTILS_ENDIAN_HEADER_
 
 #include <stdint.h>
 #include <stdlib.h>
 
-// int isle();
+/* ****************** utils::endian API ****************** */
 int16_t endian_i16(int16_t num);
 int32_t endian_i32(int32_t num);
 int64_t endian_i64(int64_t num);
 float endian_f32(float num);
+/* ****************** utils::endian API ****************** */
 
-#define makesure(expr, msg, ...)                                    \
-  do {                                                              \
-    if (!(expr)) {                                                  \
-      fprintf(stderr, "Fatal error: " msg "\nFile: %s\nLine: %d\n", \
-              ##__VA_ARGS__, __FILE__, __LINE__);                   \
-      abort();                                                      \
-    }                                                               \
-  } while (0)
+#ifdef UTILS_ENDIAN_IMPLEMENTATION
 
-#endif  // UTILS_HEADER_
-
-#ifdef SQV_UTILS_IMPLEMENTATION
+//  _                 _                           _        _   _
+// (_)               | |                         | |      | | (_)
+//  _ _ __ ___  _ __ | | ___ _ __ ___   ___ _ __ | |_ __ _| |_ _  ___  _ __
+// | | '_ ` _ \| '_ \| |/ _ \ '_ ` _ \ / _ \ '_ \| __/ _` | __| |/ _ \| '_ \
+// | | | | | | | |_) | |  __/ | | | | |  __/ | | | || (_| | |_| | (_) | | | |
+// |_|_| |_| |_| .__/|_|\___|_| |_| |_|\___|_| |_|\__\__,_|\__|_|\___/|_| |_|
+//             | |
+//             |_|
 
 static inline int isle() {
   uint16_t num = 0x1;
@@ -61,4 +60,5 @@ float endian_f32(float num) {
   return result;
 }
 
-#endif  // SQV_UTILS_IMPLEMENTATION
+#endif  // UTILS_ENDIAN_IMPLEMENTATION
+#endif  // UTILS_ENDIAN_HEADER_

@@ -86,18 +86,17 @@ project "mk_sqv"
   targetdir ".ignore/build/"
   objdir ".ignore/build/obj"
   targetname "sqv"
-  files {"src/*.c"}
+  files {"src/*.c", "src/qk/*.c"}
   includedirs {"src", "deps"}
   links { "mk_vector:static", "mk_log:static", "mk_ini:static", "mk_stb:static", "mk_sokol:static", "mk_hmm:static" }
   buildoptions { "-std=c2x" }
+  defines { "SOKOL_GLCORE" }
   defines { "_POSIX_C_SOURCE=199309L" }  -- Needed for some C23 features
-
+  
   filter "system:macosx"
-    defines { "SOKOL_GLCORE" }
     links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
 
-  filter "system:linux"
-    defines { "SOKOL_GLCORE" }
+  filter "system:linux"    
     links { "X11", "Xi", "Xcursor", "GL", "m" }
 
 -- 🔹 GLSL Shader Compilation Action
@@ -105,7 +104,7 @@ newaction {
   trigger = "glsl",
   description = "Compile shaders into C headers",
   execute = function()
-    os.execute("sokol-shdc -i res/shaders/default.glsl -l glsl410 -f sokol -o src/glsl_default.h")
+    os.execute("sokol-shdc -i res/shaders/default.glsl -l glsl410 -f sokol -o src/glsl/default.h")
   end
 }
 

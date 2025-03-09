@@ -46,14 +46,14 @@ endef
 
 ifeq ($(config),debug)
 OBJDIR = .ignore/build/obj/Debug/mk_sqv
-DEFINES += -DDEBUG -D_POSIX_C_SOURCE=199309L -DSOKOL_GLCORE
+DEFINES += -DDEBUG -DSOKOL_GLCORE -D_POSIX_C_SOURCE=199309L
 ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -fsanitize=address -std=c2x
 ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -fsanitize=address -std=c2x
 ALL_LDFLAGS += $(LDFLAGS) -fsanitize=address
 
 else ifeq ($(config),release)
 OBJDIR = .ignore/build/obj/Release/mk_sqv
-DEFINES += -DNDEBUG -D_POSIX_C_SOURCE=199309L -DSOKOL_GLCORE
+DEFINES += -DNDEBUG -DSOKOL_GLCORE -D_POSIX_C_SOURCE=199309L
 ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O3 -std=c2x
 ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O3 -std=c2x
 ALL_LDFLAGS += $(LDFLAGS)
@@ -70,11 +70,7 @@ endif
 GENERATED :=
 OBJECTS :=
 
-GENERATED += $(OBJDIR)/qk_data.o
-GENERATED += $(OBJDIR)/qk_mdl.o
 GENERATED += $(OBJDIR)/sqv.o
-OBJECTS += $(OBJDIR)/qk_data.o
-OBJECTS += $(OBJDIR)/qk_mdl.o
 OBJECTS += $(OBJDIR)/sqv.o
 
 # Rules
@@ -139,12 +135,6 @@ endif
 # File Rules
 # #############################################
 
-$(OBJDIR)/qk_data.o: src/qk_data.c
-	@echo "$(notdir $<)"
-	$(SILENT) $(CC) $(ALL_CFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
-$(OBJDIR)/qk_mdl.o: src/qk_mdl.c
-	@echo "$(notdir $<)"
-	$(SILENT) $(CC) $(ALL_CFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/sqv.o: src/sqv.c
 	@echo "$(notdir $<)"
 	$(SILENT) $(CC) $(ALL_CFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"

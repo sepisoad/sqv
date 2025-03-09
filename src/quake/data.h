@@ -1,3 +1,6 @@
+#ifndef QK_DATA_HEADER_
+#define QK_DATA_HEADER_
+
 #include <stdint.h>
 
 const uint8_t _qk_palette[256][3] = {
@@ -423,3 +426,5 @@ const float _qk_normals[162][3] = {
     {-0.587785f, -0.425325f, -0.688191f}, /* */
     {-0.688191f, -0.587785f, -0.425325f}, /* */
 };
+
+#endif  // QK_DATA_HEADER_

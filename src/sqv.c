@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <stdbool.h>
 
 #include "../deps/hmm.h"
@@ -8,20 +7,24 @@
 #include "../deps/sokol_glue.h"
 #include "../deps/sokol_log.h"
 
-#define SQV_UTILS_IMPLEMENTATION
-#include "glsl_default.h"
-#include "qk_mdl.h"
-#include "sqv_err.h"
-#include "utils.h"
+#define UTILS_ENDIAN_IMPLEMENTATION
+#define UTILS_ARENA_IMPLEMENTATION
+#define QK_MDL_IMPLEMENTATION
 
-sqv_err qk_init(void);
-sqv_err qk_deinit(qk_mdl* mdl);
-sqv_err qk_load_mdl(const char* path, qk_mdl* mdl);
+#include "glsl/default.h"
+#include "quake/mdl.h"
+#include "errors.h"
+#include "utils/all.h"
+
+qk_err qk_init(void);
+qk_err qk_deinit(qk_mdl*);
+qk_err qk_load_mdl(const char*, qk_mdl*, arena*);
 
 static struct {
   float rx, ry;
   sg_pipeline pip;
   sg_bindings bind;
+  arena qk_memory;
   qk_mdl mdl;
 } state;
 
@@ -33,21 +36,21 @@ void init(void) {
       .logger.func = slog_func,
   });
 
-  sqv_err err = qk_init();
-  makesure(err == SQV_SUCCESS, "qk_init() failde");
+  qk_err err = qk_init();
+  makesure(err == QK_ERR_SUCCESS, "qk_init() failde");
 
   //   err = qk_load_mdl(".keep/spike.mdl", &state.mdl);
-  //   makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
-  err = qk_load_mdl(".keep/dog.mdl", &state.mdl);
-  makesure(err == SQV_SUCCESS, "qk_load_mdl() failed");
+  //   makesure(err == QK_ERR_SUCCESS, "qk_load_mdl() failed");
+  err = qk_load_mdl(".keep/dog.mdl", &state.mdl, &state.qk_memory);
+  makesure(err == QK_ERR_SUCCESS, "qk_load_mdl() failed");
   /* err = qk_load_mdl(".keep/armor.mdl", &state.mdl); */
-  /* makesure(err == SQV_SUCCESS, "qk_load_mdl() failed"); */
+  /* makesure(err == QK_ERR_SUCCESS, "qk_load_mdl() failed"); */
   /* err = qk_load_mdl(".keep/shambler.mdl", &state.mdl); */
-  /* makesure(err == SQV_SUCCESS, "qk_load_mdl() failed"); */
+  /* makesure(err == QK_ERR_SUCCESS, "qk_load_mdl() failed"); */
   /* err = qk_load_mdl(".keep/soldire.mdl", &state.mdl); */
-  /* makesure(err == SQV_SUCCESS, "qk_load_mdl() failed"); */
+  /* makesure(err == QK_ERR_SUCCESS, "qk_load_mdl() failed"); */
   /* err = qk_load_mdl(".keep/boss.mdl", &state.mdl); */
-  /* makesure(err == SQV_SUCCESS, "qk_load_mdl() failed"); */
+  /* makesure(err == QK_ERR_SUCCESS, "qk_load_mdl() failed"); */
 
   /* exit(-1); */
 
@@ -147,9 +150,14 @@ void frame(void) {
 void cleanup(void) {
   log_info("shuting down");
 
+  qk_err err = qk_deinit(&state.mdl);
+  makesure(err == QK_ERR_SUCCESS, "failed to deinit sokol");
+
+  if (&state.qk_memory) {
+    arena_destroy(&state.qk_memory);
+  }
+
   sg_shutdown();
-  sqv_err err = qk_deinit(&state.mdl);
-  makesure(err == SQV_SUCCESS, "failed to deinit sokol");
 }
 
 sapp_desc sokol_main(int argc, char* argv[]) {
