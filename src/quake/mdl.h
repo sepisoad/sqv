@@ -168,8 +168,6 @@ typedef struct {
 
 /* ****************** quake::mdl API ****************** */
 qk_err qk_load_mdl(arena*, const uint8_t*, size_t, qk_mdl*);
-qk_err qk_init(void);
-qk_err qk_deinit(qk_mdl* mdl);
 /* ****************** quake::mdl API ****************** */
 
 //  _                 _                           _        _   _
@@ -623,27 +621,8 @@ qk_err qk_load_mdl(arena* mem, const uint8_t* buf, size_t bufsz, qk_mdl* mdl) {
       estimate_memory(mem, rhdr, bufsz, &mdl->header, &total_frames_count,
                       &total_vertices_count);
 
-  // DEBUG ====================================== {
-  printf("Estimated memory: %zu bytes\n", estimated_memory);
-  printf("Arena will be created with: %zu bytes\n",
-         estimated_memory + 1024 * 1024);
-
-  printf("Total frames count: %u\n", total_frames_count);
-  printf("Total vertices count: %u\n", total_vertices_count);
-  printf("Trying to allocate frames: %zu bytes\n",
-         sizeof(qk_frame) * total_frames_count);
-  printf("Trying to allocate vertices: %zu bytes\n",
-         sizeof(qk_vertex) * total_vertices_count);
-  // DEBUG ====================================== }
-
   mdl->frames = (qk_frame*)arena_alloc(
       mem, sizeof(qk_frame) * total_frames_count, alignof(qk_frame));
-
-  // DEBUG ====================================== {
-  printf("Arena remaining size: %zu\n", mem->size - mem->offset);
-  printf("Trying to allocate: %zu bytes\n",
-         sizeof(qk_frame) * total_frames_count);
-  // DEBUG ====================================== }
 
   makesure(mdl->frames != NULL, "arena out of memory!");
 
@@ -665,19 +644,6 @@ qk_err qk_load_mdl(arena* mem, const uint8_t* buf, size_t bufsz, qk_mdl* mdl) {
   makesure(err == QK_ERR_SUCCESS, "make_display_lists() failed");
 
   return err;
-}
-
-qk_err qk_init(void) {
-  return QK_ERR_SUCCESS;
-}
-
-qk_err qk_deinit(qk_mdl* mdl) {
-  if (mdl->skins) {
-    free(mdl->skins);
-    mdl->skins = NULL;
-  }
-
-  return QK_ERR_SUCCESS;
 }
 
 #endif  // QK_MDL_IMPLEMENTATION

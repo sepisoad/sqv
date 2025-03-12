@@ -34,6 +34,9 @@ void arena_begin_estimate(arena* a);
 void arena_estimate_add(arena* a, size_t size, size_t alignment);
 size_t arena_end_estimate(arena* a);
 
+// Debug API
+void arena_print(arena* a);
+
 /* ****************** utils::arena API ****************** */
 
 #ifdef UTILS_ARENA_IMPLEMENTATION
@@ -94,8 +97,9 @@ void arena_reset(arena* a) {
 /* ****************** Memory Estimation API ****************** */
 
 void arena_begin_estimate(arena* a) {
-  a->estimate = 0;  // Reset estimation phase
-  a->base = NULL;   // Ensure we're in estimation mode
+  a->offset = 0;
+  a->estimate = 0;
+  a->base = NULL;
 }
 
 void arena_estimate_add(arena* a, size_t size, size_t alignment) {
@@ -104,15 +108,23 @@ void arena_estimate_add(arena* a, size_t size, size_t alignment) {
 }
 
 size_t arena_end_estimate(arena* a) {
-  size_t final_size =
-      align_up(a->estimate, ALIGNMENT);       // Ensure final alignment
-  a->base = (uint8_t*)calloc(1, final_size);  // Allocate memory
+  size_t final_size = align_up(a->estimate, ALIGNMENT);
+  a->base = (uint8_t*)calloc(1, final_size);
   makesure(a->base != NULL, "arena_end_estimate failed");
 
   a->offset = 0;
   a->size = final_size;
-  a->estimate = 0;  // No longer needed
   return final_size;
+}
+
+/* ****************** Debug API ****************** */
+
+void arena_print(arena* a) {
+  printf("==========================\n");
+  printf("== size:     %zu \n", a->size);
+  printf("== estimate: %zu \n", a->estimate);
+  printf("== offset:   %zu \n", a->offset);
+  printf("==========================\n");
 }
 
 #endif  // UTILS_ARENA_IMPLEMENTATION

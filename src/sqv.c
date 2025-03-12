@@ -21,9 +21,19 @@ static struct {
   float rx, ry;
   sg_pipeline pip;
   sg_bindings bind;
-  arena qk_memory;
-  qk_mdl mdl;
+  arena qkmem;
+  qk_mdl qkmdl;
 } state;
+
+void load_mdl_file(const char* path) {
+  uint8_t* mdlbuf = NULL;
+  size_t mdlbufsz = load_file(path, &mdlbuf);
+  makesure(mdlbufsz > 0, "loadfile return size is zero");
+
+  qk_err err = qk_load_mdl(&state.qkmem, mdlbuf, mdlbufsz, &state.qkmdl);
+  makesure(err == QK_ERR_SUCCESS, "qk_load_mdl failed");
+  free(mdlbuf);
+}
 
 void init(void) {
   log_info("initializing gpu ...");
@@ -33,16 +43,29 @@ void init(void) {
       .logger.func = slog_func,
   });
 
-  uint8_t* mdlbuf = NULL;
-  size_t mdlbufsz = load_file(".keep/dog.mdl", &mdlbuf);
-  makesure(mdlbufsz > 0, "loadfile return size is zero");
+  load_mdl_file(".keep/dog.mdl");
+  arena_print(&state.qkmem);
+  arena_destroy(&state.qkmem);
 
-  qk_err err = qk_init();
-  makesure(err == QK_ERR_SUCCESS, "qk_init failde");
+  load_mdl_file(".keep/spike.mdl");
+  arena_print(&state.qkmem);
+  arena_destroy(&state.qkmem);
 
-  err = qk_load_mdl(&state.qk_memory, mdlbuf, mdlbufsz, &state.mdl);
-  makesure(err == QK_ERR_SUCCESS, "qk_load_mdl failed");
-  free(mdlbuf);
+  load_mdl_file(".keep/armor.mdl");
+  arena_print(&state.qkmem);
+  arena_destroy(&state.qkmem);
+
+  load_mdl_file(".keep/shambler.mdl");
+  arena_print(&state.qkmem);
+  arena_destroy(&state.qkmem);
+
+  load_mdl_file(".keep/soldier.mdl");
+  arena_print(&state.qkmem);
+  arena_destroy(&state.qkmem);
+
+  load_mdl_file(".keep/boss.mdl");
+  arena_print(&state.qkmem);
+  arena_destroy(&state.qkmem);
 
   /* err = qk_load_mdl(".keep/spike.mdl", &state.mdl); */
   /* makesure(err == QK_ERR_SUCCESS, "qk_load_mdl() failed"); */
@@ -153,11 +176,8 @@ void frame(void) {
 void cleanup(void) {
   log_info("shuting down");
 
-  qk_err err = qk_deinit(&state.mdl);
-  makesure(err == QK_ERR_SUCCESS, "failed to deinit sokol");
-
-  arena_reset(&state.qk_memory);
-  arena_destroy(&state.qk_memory);
+  arena_reset(&state.qkmem);
+  arena_destroy(&state.qkmem);
 
   sg_shutdown();
 }

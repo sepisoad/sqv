@@ -34,8 +34,8 @@ INCLUDES += -Isrc -Ideps
 FORCE_INCLUDE +=
 ALL_CPPFLAGS += $(CPPFLAGS) -MD -MP $(DEFINES) $(INCLUDES)
 ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-LIBS += .ignore/build/libvector.a .ignore/build/liblog.a .ignore/build/libini.a .ignore/build/libstb.a .ignore/build/libsokol.a .ignore/build/libhmm.a -framework Cocoa -framework OpenGL -framework IOKit
-LDDEPS += .ignore/build/libvector.a .ignore/build/liblog.a .ignore/build/libini.a .ignore/build/libstb.a .ignore/build/libsokol.a .ignore/build/libhmm.a
+LIBS += .ignore/build/liblog.a .ignore/build/libini.a .ignore/build/libstb.a .ignore/build/libsokol.a .ignore/build/libhmm.a -framework Cocoa -framework OpenGL -framework IOKit
+LDDEPS += .ignore/build/liblog.a .ignore/build/libini.a .ignore/build/libstb.a .ignore/build/libsokol.a .ignore/build/libhmm.a
 LINKCMD = $(CC) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
 define PREBUILDCMDS
 endef

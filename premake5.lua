@@ -15,15 +15,6 @@ workspace "ProjectWorkspace"
     defines { "NDEBUG" }
     optimize "Speed"
 
--- 🔹 Vector Library
-project "mk_vector"
-  kind "StaticLib"
-  language "C"
-  targetdir ".ignore/build/"
-  objdir ".ignore/build/obj"
-  targetname "vector"
-  files {"deps/vector.c"}
-
 -- 🔹 Rxi Log Library
 project "mk_log"
   kind "StaticLib"
@@ -88,7 +79,7 @@ project "mk_sqv"
   targetname "sqv"
   files {"src/*.c", "src/qk/*.c"}
   includedirs {"src", "deps"}
-  links { "mk_vector:static", "mk_log:static", "mk_ini:static", "mk_stb:static", "mk_sokol:static", "mk_hmm:static" }
+  links { "mk_log:static", "mk_ini:static", "mk_stb:static", "mk_sokol:static", "mk_hmm:static" }
   buildoptions { "-std=c2x" }
   defines { "SOKOL_GLCORE" }
   defines { "_POSIX_C_SOURCE=199309L" }  -- Needed for some C23 features
