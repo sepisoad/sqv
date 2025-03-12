@@ -52,7 +52,8 @@ void arena_print(arena* a);
 
 // Helper function to align memory addresses
 static inline size_t align_up(size_t ptr, size_t alignment) {
-  return (ptr + (alignment - 1)) & ~(alignment - 1);
+  size_t align = (ptr + (alignment - 1)) & ~(alignment - 1);
+  return align;
 }
 
 /* ****************** Arena Initialization & Destruction ****************** */
@@ -68,7 +69,8 @@ void arena_create(arena* a, size_t size) {
 }
 
 void arena_destroy(arena* a) {
-  free(a->base);
+  if (a->base)
+    free(a->base);
   a->base = NULL;
   a->offset = 0;
   a->size = 0;

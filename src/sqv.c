@@ -21,7 +21,6 @@ static struct {
   float rx, ry;
   sg_pipeline pip;
   sg_bindings bind;
-  arena qkmem;
   qk_mdl qkmdl;
 } state;
 
@@ -30,7 +29,7 @@ void load_mdl_file(const char* path) {
   size_t mdlbufsz = load_file(path, &mdlbuf);
   makesure(mdlbufsz > 0, "loadfile return size is zero");
 
-  qk_err err = qk_load_mdl(&state.qkmem, mdlbuf, mdlbufsz, &state.qkmdl);
+  qk_err err = qk_load_mdl(mdlbuf, mdlbufsz, &state.qkmdl);
   makesure(err == QK_ERR_SUCCESS, "qk_load_mdl failed");
   free(mdlbuf);
 }
@@ -44,41 +43,28 @@ void init(void) {
   });
 
   load_mdl_file(".keep/dog.mdl");
-  arena_print(&state.qkmem);
-  arena_destroy(&state.qkmem);
+  arena_print(&state.qkmdl.mem);
+  qk_unload_mdl(&state.qkmdl);
 
   load_mdl_file(".keep/spike.mdl");
-  arena_print(&state.qkmem);
-  arena_destroy(&state.qkmem);
+  arena_print(&state.qkmdl.mem);
+  qk_unload_mdl(&state.qkmdl);
 
   load_mdl_file(".keep/armor.mdl");
-  arena_print(&state.qkmem);
-  arena_destroy(&state.qkmem);
+  arena_print(&state.qkmdl.mem);
+  qk_unload_mdl(&state.qkmdl);
 
   load_mdl_file(".keep/shambler.mdl");
-  arena_print(&state.qkmem);
-  arena_destroy(&state.qkmem);
+  arena_print(&state.qkmdl.mem);
+  qk_unload_mdl(&state.qkmdl);
 
   load_mdl_file(".keep/soldier.mdl");
-  arena_print(&state.qkmem);
-  arena_destroy(&state.qkmem);
+  arena_print(&state.qkmdl.mem);
+  qk_unload_mdl(&state.qkmdl);
 
   load_mdl_file(".keep/boss.mdl");
-  arena_print(&state.qkmem);
-  arena_destroy(&state.qkmem);
-
-  /* err = qk_load_mdl(".keep/spike.mdl", &state.mdl); */
-  /* makesure(err == QK_ERR_SUCCESS, "qk_load_mdl() failed"); */
-  /* err = qk_load_mdl(".keep/armor.mdl", &state.mdl); */
-  /* makesure(err == QK_ERR_SUCCESS, "qk_load_mdl() failed"); */
-  /* err = qk_load_mdl(".keep/shambler.mdl", &state.mdl); */
-  /* makesure(err == QK_ERR_SUCCESS, "qk_load_mdl() failed"); */
-  /* err = qk_load_mdl(".keep/soldire.mdl", &state.mdl); */
-  /* makesure(err == QK_ERR_SUCCESS, "qk_load_mdl() failed"); */
-  /* err = qk_load_mdl(".keep/boss.mdl", &state.mdl); */
-  /* makesure(err == QK_ERR_SUCCESS, "qk_load_mdl() failed"); */
-
-  /* exit(-1); */
+  arena_print(&state.qkmdl.mem);
+  qk_unload_mdl(&state.qkmdl);
 
   float vertices[] = {
       -1.0, -1.0, -1.0, /* vertex */ 1.0, 0.0, 0.0, 1.0, /* color */
@@ -175,10 +161,6 @@ void frame(void) {
 
 void cleanup(void) {
   log_info("shuting down");
-
-  arena_reset(&state.qkmem);
-  arena_destroy(&state.qkmem);
-
   sg_shutdown();
 }
 
