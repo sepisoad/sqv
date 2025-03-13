@@ -296,7 +296,7 @@ static qk_err estimate_memory(arena* mem,
   arena_estimate_add(mem, verticesz, alignof(qk_vertex));
 
   // 🔹 Add mesh memory estimation
-  size_t meshsz = sizeof(qk_mesh) * hdr->vertices_count * 2;
+  size_t meshsz = sizeof(qk_mesh) * hdr->vertices_count;
   arena_estimate_add(mem, meshsz, alignof(qk_mesh));
 
   // 🔹 Add indices memory estimation
@@ -545,24 +545,7 @@ static void make_display_lists(arena* mem,
                                qk_mdl* mdl,
                                const qk_raw_texcoord* coords,
                                const qk_raw_triangles_idx* trisidx) {
-  /*
-   * ok sepi, i don't need the bullshit triangle strips or fans
-   * they were used by quake engine because old systems had
-   * limmitted memory and cpu bandwith so it would be nice to
-   * reduce the number of vertices to be sent to gpu
-   * but now with modern gpus and cpus we just don't simply care
-   * and the amount of performance gain is negligible
-   * so instead what we do is simple, we create a buffer of all
-   * triangles in correct order, and also texture uvs in order
-   * and we may even merge them together and then return back
-   * to sokol and ask it to send it to gpu as 'SG_PRIMITIVETYPE_TRIANGLES'
-   * which behind the scene uses 'GL_TRIANGLES' because we use opengl 3.3
-   * or basically we don't care about the backend.
-   *
-   * now we need to
-   */
-
-  size_t memsz = sizeof(qk_mesh) * mdl->header.vertices_count * 2;
+  size_t memsz = sizeof(qk_mesh) * mdl->header.vertices_count;
   qk_mesh* mesh = (qk_mesh*)arena_alloc(mem, memsz, alignof(qk_mesh));
   makesure(mesh != NULL, "arena out of memory!");
 
@@ -570,7 +553,7 @@ static void make_display_lists(arena* mem,
   uint32_t* indices = (uint32_t*)arena_alloc(mem, memsz, alignof(uint32_t));
   makesure(indices != NULL, "arena out of memory!");
 
-  uint32_t mesh_count = 0;
+  uint32_t mesh_count = mdl->header.vertices_count;
   uint32_t indices_count = 0;
 
   for (uint32_t triidx = 0; triidx < mdl->header.triangles_count; triidx++) {
@@ -586,9 +569,9 @@ static void make_display_lists(arena* mem,
       s = (s + 0.5) / mdl->header.skin_width;
       t = (t + 0.5) / mdl->header.skin_height;
 
-      mesh[mesh_count].vertex_idx = vertidx;
-      mesh[mesh_count].uv.U = s;
-      mesh[mesh_count].uv.V = t;
+      mesh[vertidx].vertex_idx = vertidx;
+      mesh[vertidx].uv.U = s;
+      mesh[vertidx].uv.V = t;
 
       indices[indices_count++] = vertidx;
     }
@@ -655,17 +638,15 @@ void qk_get_frame_vertices(qk_mdl* mdl,
   qk_frame* frm = &mdl->frames[frmidx];
   makesure(frm->vertices != NULL, "frame vertices are NULL");
 
-  *verts = (float*)malloc(sizeof(float) * frm->vertices_count * 3);
+  *verts = (float*)malloc(sizeof(float) * frm->vertices_count *
+                          (3 /*vertices*/ + 2 /*UVs*/));
   makesure(*verts != NULL, "malloc failed!");
 
-  *vertsz = frm->vertices_count * 3;
+  *vertsz = frm->vertices_count * 5;
   printf("----------------------\nvertices {");
-  for (uint32_t bi = 0, vi = 0; bi < *vertsz; bi += 3, vi++) {
+  for (uint32_t bi = 0, vi = 0; bi < *vertsz; bi += 5, vi++) {
     makesure(vi < frm->vertices_count, "vertex index out of bounds!");
 
-    // (*verts)[bi + 0] = frm->vertices[vi].vertex.X;
-    // (*verts)[bi + 1] = frm->vertices[vi].vertex.Y;
-    // (*verts)[bi + 2] = frm->vertices[vi].vertex.Z;
     (*verts)[bi + 0] = (frm->vertices[vi].vertex.X * mdl->header.scale.X) +
                        mdl->header.translate.X;
     (*verts)[bi + 1] = (frm->vertices[vi].vertex.Y * mdl->header.scale.Y) +
@@ -673,12 +654,12 @@ void qk_get_frame_vertices(qk_mdl* mdl,
     (*verts)[bi + 2] = (frm->vertices[vi].vertex.Z * mdl->header.scale.Z) +
                        mdl->header.translate.Z;
 
-    printf("%f, %f, %f\n", (*verts)[bi + 0], (*verts)[bi + 1],
-           (*verts)[bi + 2]);
-  }
+    (*verts)[bi + 3] = (mdl->mesh[vi].uv.U);
+    (*verts)[bi + 4] = (mdl->mesh[vi].uv.U);
 
-  // memcpy(bbox_min, &frm->bbox_min, sizeof(hmm_vec3));
-  // memcpy(bbox_min, &frm->bbox_min, sizeof(hmm_vec3));
+    printf("vert{%f, %f, %f} uv{%f, %f}\n", (*verts)[bi + 0], (*verts)[bi + 1],
+           (*verts)[bi + 2], (*verts)[bi + 3], (*verts)[bi + 4]);
+  }
 
   bbox_min->X =
       (frm->bbox_min.X * mdl->header.scale.X) + mdl->header.translate.X;

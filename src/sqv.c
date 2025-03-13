@@ -18,7 +18,6 @@
 #include "utils/all.h"
 
 static struct {
-  float rx, ry;
   sg_pipeline pip;
   sg_bindings bind;
   qk_mdl qkmdl;
@@ -54,7 +53,7 @@ void init(void) {
   state.indices = NULL;
   size_t verticesz = 0;
 
-  load_mdl_file(".keep/dog.mdl");
+  load_mdl_file(".keep/player.mdl");
   arena_print(&state.qkmdl.mem);
 
   memcpy(&state.scale, &state.qkmdl.header.scale, sizeof(state.scale));
@@ -64,11 +63,9 @@ void init(void) {
                         &state.bbox_min, &state.bbox_max);
 
   sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc){
-      .size = state.qkmdl.header.vertices_count * 3 *
-              sizeof(float),  // Corrected size
-      .data = {.ptr = state.vertices,
-               .size = state.qkmdl.header.vertices_count * 3 * sizeof(float)},
-  });
+      .size = verticesz * sizeof(float),
+      .data = {.ptr = state.vertices, .size = verticesz * sizeof(float)},
+      .label = "mdl-vertices"});
 
   sg_buffer ibuf = sg_make_buffer(&(sg_buffer_desc){
       .type = SG_BUFFERTYPE_INDEXBUFFER,
@@ -81,8 +78,14 @@ void init(void) {
       .label = "cube-indices"});
 
   state.pip = sg_make_pipeline(&(sg_pipeline_desc){
-      .layout = {.attrs = {[ATTR_cube_position].format = SG_VERTEXFORMAT_FLOAT3,
-                           [ATTR_cube_position].buffer_index = 0}},
+      .layout =
+          {
+              .attrs =
+                  {[ATTR_cube_position] = {.format = SG_VERTEXFORMAT_FLOAT3,
+                                           .buffer_index = 0},
+                   [ATTR_cube_texcoord0] = {.format = SG_VERTEXFORMAT_FLOAT2,
+                                            .buffer_index = 0}},
+          },
       .shader = shd,
       .index_type = SG_INDEXTYPE_UINT32,
       .primitive_type = SG_PRIMITIVETYPE_TRIANGLES,
@@ -92,27 +95,21 @@ void init(void) {
               .write_enabled = true,
               .compare = SG_COMPAREFUNC_LESS_EQUAL,
           },
-      .label = "cube-pipeline"});
-
-  // ===============================================
+      .label = "mdl-pipeline"});
 
   state.bind = (sg_bindings){.vertex_buffers[0] = vbuf, .index_buffer = ibuf};
+  state.bind.images[IMG_tex] = state.qkmdl.skins[0].image;
+  state.bind.samplers[SMP_smp] = state.qkmdl.skins[0].sampler;
 }
 
 void frame(void) {
+  static float rotation_angle = 0.0f;
+  rotation_angle += 1.0f;
+
   vs_params_t vs_params;
 
   float w = sapp_widthf();
   float h = sapp_heightf();
-
-  // Transform the bounding box using scale and translate
-  // hmm_vec3 bbox_min = HMM_AddVec3(HMM_MultiplyVec3(state.bbox_min,
-  // state.scale),
-  //                                 state.qkmdl.header.translate);
-
-  // hmm_vec3 bbox_max = HMM_AddVec3(HMM_MultiplyVec3(state.bbox_max,
-  // state.scale),
-  //                                 state.qkmdl.header.translate);
 
   hmm_vec3 bbox_min = state.bbox_min;
   hmm_vec3 bbox_max = state.bbox_max;
@@ -122,7 +119,6 @@ void frame(void) {
   float dz = bbox_max.Z - bbox_min.Z;
   float radius = 0.5f * sqrtf(dx * dx + dy * dy + dz * dz);
 
-  // Compute proper camera distance
   float fov = 60.0f;
   float aspect = w / h;
   float cam_dist = (radius / sinf(HMM_ToRadians(fov) * 0.5f)) * 1.5f;
@@ -133,7 +129,25 @@ void frame(void) {
   hmm_mat4 proj = HMM_Perspective(fov, aspect, 0.1f, cam_dist * 4.0f);
   hmm_mat4 view = HMM_LookAt(eye_pos, center, up);
   hmm_mat4 view_proj = HMM_MultiplyMat4(proj, view);
-  vs_params.mvp = HMM_MultiplyMat4(view_proj, HMM_Mat4d(1.0f));
+
+  // Step 1: Move the model to the origin
+  hmm_mat4 translate_to_origin =
+      HMM_Translate(HMM_MultiplyVec3f(center, -1.0f));
+
+  // Step 2: Apply rotation
+  hmm_mat4 rxm = HMM_Rotate(90, HMM_Vec3(-1.0f, 0.0f, 0.0f));
+  hmm_mat4 rym = HMM_Rotate(0, HMM_Vec3(0.0f, 1.0f, 0.0f));
+  hmm_mat4 rzm = HMM_Rotate(rotation_angle, HMM_Vec3(0.0f, 0.0f, -1.0f));
+  hmm_mat4 rotation = HMM_MultiplyMat4(HMM_MultiplyMat4(rxm, rym), rzm);
+
+  // Step 3: Move the model back to its original position
+  hmm_mat4 translate_back = HMM_Translate(center);
+
+  // Final transformation: Translate -> Rotate -> Translate back
+  hmm_mat4 model = HMM_MultiplyMat4(
+      translate_back, HMM_MultiplyMat4(rotation, translate_to_origin));
+
+  vs_params.mvp = HMM_MultiplyMat4(view_proj, model);
 
   sg_begin_pass(&(sg_pass){
       .action =
