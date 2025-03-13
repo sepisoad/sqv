@@ -33,6 +33,7 @@ typedef enum {
   QK_ERR_FILE_OPEN,
   QK_ERR_MEM_ALLOC,
   QK_ERR_READ_SIZE,
+  QK_ERR_RAME_IDX,
   QK_ERR_INVALID,
 } qk_err;
 
@@ -59,7 +60,7 @@ typedef struct {
   int32_t magic_codes;
   int32_t version;
   qk_raw_vector3f scale;
-  qk_raw_vector3f origin;
+  qk_raw_vector3f translate;
   float bounding_radius;
   qk_raw_vector3f eye_position;
   int32_t skins_count;
@@ -101,15 +102,6 @@ typedef struct {
   qk_raw_triangle_vertex bbox_max;
 } qk_raw_frames_group;
 
-typedef struct {
-  int32_t first_pose;
-  float interval;
-  qk_raw_triangle_vertex bbox_min;
-  qk_raw_triangle_vertex bbox_max;
-  int32_t frame;
-  char name[16];
-} qk_raw_frame;
-
 /* PROCESSED QUAKE TYPES, USEFUL AT RUNTIME */
 
 typedef struct {
@@ -147,9 +139,9 @@ typedef struct {
   uint32_t indices_count;
   uint32_t frames_count;
   uint32_t poses_count;
-  hmm_vec3 scale;   // model scale
-  hmm_vec3 origin;  // model origin
-  hmm_vec3 eye;     // eye position
+  hmm_vec3 scale;      // model scale
+  hmm_vec3 translate;  // model translate
+  hmm_vec3 eye;        // eye position
 } qk_header;
 
 typedef struct {
@@ -169,6 +161,12 @@ typedef struct {
 
 /* ****************** quake::mdl API ****************** */
 qk_err qk_load_mdl(const uint8_t*, size_t, qk_mdl*);
+void qk_get_frame_vertices(qk_mdl*,
+                           uint32_t,
+                           float**,
+                           size_t*,
+                           hmm_vec3*,
+                           hmm_vec3*);
 void qk_unload_mdl(qk_mdl*);
 /* ****************** quake::mdl API ****************** */
 
@@ -201,8 +199,8 @@ static qk_err estimate_memory(arena* mem,
                               const qk_raw_header* rhdr,
                               size_t bufsz,
                               const qk_header* hdr,
-                              uint32_t* total_frames_count,
-                              uint32_t* total_vertices_count) {
+                              uint32_t* frames_count,
+                              uint32_t* verts_count) {
   arena_begin_estimate(mem);
 
   // 🔹 Estimate memory for skins pixels
@@ -222,8 +220,8 @@ static qk_err estimate_memory(arena* mem,
   size_t rtriidxsz = sizeof(qk_raw_triangles_idx) * hdr->triangles_count;
   arena_estimate_add(mem, rtriidxsz, alignof(qk_raw_triangles_idx));
 
-  *total_frames_count = 0;
-  *total_vertices_count = 0;
+  *frames_count = 0;
+  *verts_count = 0;
 
   const uint8_t* ptr = (const uint8_t*)rhdr + sizeof(qk_raw_header);
   const uint8_t* data_end = (const uint8_t*)rhdr + bufsz;
@@ -255,8 +253,8 @@ static qk_err estimate_memory(arena* mem,
     ptr += sizeof(qk_frametype);
 
     if (ft == QK_FT_SINGLE) {
-      *total_frames_count += 1;
-      *total_vertices_count += hdr->vertices_count;
+      *frames_count += 1;
+      *verts_count += hdr->vertices_count;
 
       if (ptr + sizeof(qk_raw_frame_single) +
               (hdr->vertices_count * sizeof(qk_raw_triangle_vertex)) >
@@ -273,8 +271,8 @@ static qk_err estimate_memory(arena* mem,
 
       const qk_raw_frames_group* grp = (const qk_raw_frames_group*)ptr;
       uint32_t frame_count = grp->frames_count;
-      *total_frames_count += frame_count;
-      *total_vertices_count += frame_count * hdr->vertices_count;
+      *frames_count += frame_count;
+      *verts_count += frame_count * hdr->vertices_count;
 
       ptr += sizeof(qk_raw_frames_group) + sizeof(float) * frame_count;
 
@@ -290,11 +288,11 @@ static qk_err estimate_memory(arena* mem,
   }
 
   // 🔹 Add frame memory estimation
-  size_t framesz = sizeof(qk_frame) * (*total_frames_count);
+  size_t framesz = sizeof(qk_frame) * (*frames_count);
   arena_estimate_add(mem, framesz, alignof(qk_frame));
 
   // 🔹 Add vertices memory estimation
-  size_t verticesz = sizeof(qk_vertex) * (*total_vertices_count);
+  size_t verticesz = sizeof(qk_vertex) * (*verts_count);
   arena_estimate_add(mem, verticesz, alignof(qk_vertex));
 
   // 🔹 Add mesh memory estimation
@@ -322,16 +320,15 @@ static void load_image(const uint8_t* ptr, uint8_t* pixels, size_t size) {
   }
 }
 
-static const uint8_t* load_skins(arena* mem,
-                                 const uint8_t* ptr,
-                                 const qk_header* hdr,
-                                 qk_skin** skins) {
+static const uint8_t* load_skins(qk_mdl* mdl, const uint8_t* ptr) {
+  const qk_header* hdr = &mdl->header;
+  arena* mem = &mdl->mem;
   uint32_t width = hdr->skin_width;
   uint32_t height = hdr->skin_height;
   size_t skin_size = width * height;
 
   size_t memsz = sizeof(qk_skin) * hdr->skins_count;
-  *skins = (qk_skin*)arena_alloc(mem, memsz, alignof(qk_skin));
+  qk_skin* skins = (qk_skin*)arena_alloc(mem, memsz, alignof(qk_skin));
   makesure(skins != NULL, "arena out of memory!");
 
   for (size_t i = 0; i < hdr->skins_count; i++) {
@@ -351,12 +348,12 @@ static const uint8_t* load_skins(arena* mem,
       stbi_write_png(skin_name, width, height, 4, pixels, width * 4);
 #endif
 
-      (*skins)[i].image = sg_alloc_image();
-      (*skins)[i].sampler = sg_make_sampler(&(sg_sampler_desc){
+      skins[i].image = sg_alloc_image();
+      skins[i].sampler = sg_make_sampler(&(sg_sampler_desc){
           .min_filter = SG_FILTER_LINEAR,
           .mag_filter = SG_FILTER_LINEAR,
       });
-      sg_init_image((*skins)[i].image,
+      sg_init_image(skins[i].image,
                     &(sg_image_desc){.width = width,
                                      .height = height,
                                      .pixel_format = SG_PIXELFORMAT_RGBA8,
@@ -376,13 +373,15 @@ static const uint8_t* load_skins(arena* mem,
     }
   }
 
+  mdl->skins = skins;
   return ptr;
 }
 
-static const uint8_t* load_raw_uv_coordinates(arena* mem,
+static const uint8_t* load_raw_uv_coordinates(qk_mdl* mdl,
                                               const uint8_t* ptr,
-                                              const qk_header* hdr,
                                               qk_raw_texcoord** coords) {
+  arena* mem = &mdl->mem;
+  const qk_header* hdr = &mdl->header;
   size_t memsz = sizeof(qk_raw_texcoord) * hdr->vertices_count;
   *coords = (qk_raw_texcoord*)arena_alloc(mem, memsz, alignof(qk_raw_texcoord));
   makesure(coords != NULL, "arena out of memory!");
@@ -428,7 +427,7 @@ static const uint8_t* load_frame_single(const qk_header* hdr,
                                         qk_frame* frame,
                                         uint32_t* posidx,
                                         uint32_t* vertex_offset,
-                                        qk_vertex* vertices_block,
+                                        qk_vertex* vertices,
                                         const uint8_t* ptr) {
   qk_raw_frame_single* snl = (qk_raw_frame_single*)ptr;
 
@@ -443,7 +442,7 @@ static const uint8_t* load_frame_single(const qk_header* hdr,
   frame->bbox_max.Y = snl->bbox_max.vertex[1];
   frame->bbox_max.Z = snl->bbox_max.vertex[2];
 
-  frame->vertices = &vertices_block[*vertex_offset];
+  frame->vertices = &vertices[*vertex_offset];
   frame->vertices_count = hdr->vertices_count;
 
   qk_raw_triangle_vertex* raw_verts = (qk_raw_triangle_vertex*)(snl + 1);
@@ -465,7 +464,7 @@ static const uint8_t* load_frames_group(const qk_header* hdr,
                                         qk_frame* frames,
                                         uint32_t* posidx,
                                         uint32_t* vertex_offset,
-                                        qk_vertex* vertices_block,
+                                        qk_vertex* vertices,
                                         const uint8_t* ptr) {
   qk_raw_frames_group* grp = (qk_raw_frames_group*)ptr;
   uint32_t frames_count = endian_i32(grp->frames_count);
@@ -484,7 +483,7 @@ static const uint8_t* load_frames_group(const qk_header* hdr,
     frame->bbox_max.Y = grp->bbox_max.vertex[1];
     frame->bbox_max.Z = grp->bbox_max.vertex[2];
 
-    frame->vertices = &vertices_block[*vertex_offset];
+    frame->vertices = &vertices[*vertex_offset];
     frame->vertices_count = hdr->vertices_count;
 
     qk_raw_triangle_vertex* raw_verts = (qk_raw_triangle_vertex*)ptr;
@@ -506,22 +505,32 @@ static const uint8_t* load_frames_group(const qk_header* hdr,
   return ptr;
 }
 
-static const uint8_t* load_raw_frames(const uint8_t* ptr,
-                                      const qk_header* hdr,
-                                      qk_mdl* mdl,
-                                      qk_vertex* vertices_block) {
+static const uint8_t* load_raw_frames(qk_mdl* mdl,
+                                      const uint8_t* ptr,
+                                      uint32_t frames_count,
+                                      uint32_t verts_count) {
+  arena* mem = &mdl->mem;
+  const qk_header* hdr = &mdl->header;
+
+  size_t framesz = sizeof(qk_frame) * frames_count;
+  mdl->frames = (qk_frame*)arena_alloc(mem, framesz, alignof(qk_frame));
+  makesure(mdl->frames != NULL, "arena out of memory!");
+
+  size_t verticesz = sizeof(qk_vertex) * verts_count;
+  mdl->vertices = (qk_vertex*)arena_alloc(mem, verticesz, alignof(qk_vertex));
+  makesure(mdl->vertices != NULL, "arena out of memory!");
+
   uint32_t frame_index = 0, vertex_offset = 0;
   for (uint32_t i = 0; i < mdl->header.frames_count; i++) {
     qk_frametype ft = endian_i32(*(qk_frametype*)ptr);
     ptr += sizeof(qk_frametype);
 
     if (ft == QK_FT_SINGLE) {
-      ptr =
-          load_frame_single(&mdl->header, &mdl->frames[frame_index],
-                            &frame_index, &vertex_offset, vertices_block, ptr);
+      ptr = load_frame_single(&mdl->header, &mdl->frames[frame_index],
+                              &frame_index, &vertex_offset, mdl->vertices, ptr);
     } else {
       ptr = load_frames_group(&mdl->header, mdl->frames, &frame_index,
-                              &vertex_offset, vertices_block, ptr);
+                              &vertex_offset, mdl->vertices, ptr);
     }
   }
 
@@ -532,10 +541,10 @@ static qk_err calc_bounds(qk_header* hdr) {
   return QK_ERR_SUCCESS;
 }
 
-static qk_err make_display_lists(arena* mem,
-                                 qk_mdl* mdl,
-                                 const qk_raw_texcoord* coords,
-                                 const qk_raw_triangles_idx* trisidx) {
+static void make_display_lists(arena* mem,
+                               qk_mdl* mdl,
+                               const qk_raw_texcoord* coords,
+                               const qk_raw_triangles_idx* trisidx) {
   /*
    * ok sepi, i don't need the bullshit triangle strips or fans
    * they were used by quake engine because old systems had
@@ -590,13 +599,13 @@ static qk_err make_display_lists(arena* mem,
 
   mdl->header.indices_count = indices_count;
   mdl->indices = indices;
-
-  return QK_ERR_SUCCESS;
 }
 
 qk_err qk_load_mdl(const uint8_t* buf, size_t bufsz, qk_mdl* mdl) {
   const uint8_t* ptr = buf;
   const qk_raw_header* rhdr = (qk_raw_header*)buf;
+
+  memset(mdl, 0, sizeof(qk_mdl));
 
   mdl->header = (qk_header){
       .radius = endian_f32(rhdr->bounding_radius),
@@ -609,9 +618,9 @@ qk_err qk_load_mdl(const uint8_t* buf, size_t bufsz, qk_mdl* mdl) {
       .scale = {.X = endian_f32(rhdr->scale[0]),
                 .Y = endian_f32(rhdr->scale[1]),
                 .Z = endian_f32(rhdr->scale[2])},
-      .origin = {.X = endian_f32(rhdr->origin[0]),
-                 .Y = endian_f32(rhdr->origin[1]),
-                 .Z = endian_f32(rhdr->origin[2])},
+      .translate = {.X = endian_f32(rhdr->translate[0]),
+                    .Y = endian_f32(rhdr->translate[1]),
+                    .Z = endian_f32(rhdr->translate[2])},
       .eye = {.X = endian_f32(rhdr->eye_position[0]),
               .Y = endian_f32(rhdr->eye_position[1]),
               .Z = endian_f32(rhdr->eye_position[2])},
@@ -620,32 +629,87 @@ qk_err qk_load_mdl(const uint8_t* buf, size_t bufsz, qk_mdl* mdl) {
   const qk_header* hdr = &mdl->header;
   arena* mem = &mdl->mem;
   uint32_t frames_count, verts_count;
-
-  estimate_memory(mem, rhdr, bufsz, hdr, &frames_count, &verts_count);
-
-  mdl->frames = (qk_frame*)arena_alloc(mem, sizeof(qk_frame) * frames_count,
-                                       alignof(qk_frame));
-
-  makesure(mdl->frames != NULL, "arena out of memory!");
-
-  qk_vertex* vertices_block = (qk_vertex*)arena_alloc(
-      mem, sizeof(qk_vertex) * verts_count, alignof(qk_vertex));
-  makesure(vertices_block != NULL, "arena out of memory!");
-
-  qk_skin* skins = NULL;
   qk_raw_texcoord* raw_tex_coords = NULL;
   qk_raw_triangles_idx* raw_tris_idx = NULL;
 
+  estimate_memory(mem, rhdr, bufsz, hdr, &frames_count, &verts_count);
+
   ptr += sizeof(qk_raw_header);
-  ptr = load_skins(mem, ptr, hdr, &skins);
-  ptr = load_raw_uv_coordinates(mem, ptr, hdr, &raw_tex_coords);
+  ptr = load_skins(mdl, ptr);
+  ptr = load_raw_uv_coordinates(mdl, ptr, &raw_tex_coords);
   ptr = load_raw_triangles_indices(mem, ptr, hdr, &raw_tris_idx);
-  ptr = load_raw_frames(ptr, hdr, mdl, vertices_block);
+  ptr = load_raw_frames(mdl, ptr, frames_count, verts_count);
 
-  qk_err err = make_display_lists(mem, mdl, raw_tex_coords, raw_tris_idx);
-  makesure(err == QK_ERR_SUCCESS, "make_display_lists() failed");
-
+  make_display_lists(mem, mdl, raw_tex_coords, raw_tris_idx);
   return QK_ERR_SUCCESS;
+}
+
+void qk_get_frame_vertices(qk_mdl* mdl,
+                           uint32_t frmidx,
+                           float** verts,
+                           size_t* vertsz,
+                           hmm_vec3* bbox_min,
+                           hmm_vec3* bbox_max) {
+  makesure(frmidx < mdl->header.frames_count, "frame index out of bound");
+
+  qk_frame* frm = &mdl->frames[frmidx];
+  makesure(frm->vertices != NULL, "frame vertices are NULL");
+
+  *verts = (float*)malloc(sizeof(float) * frm->vertices_count * 3);
+  makesure(*verts != NULL, "malloc failed!");
+
+  *vertsz = frm->vertices_count * 3;
+  printf("----------------------\nvertices {");
+  for (uint32_t bi = 0, vi = 0; bi < *vertsz; bi += 3, vi++) {
+    makesure(vi < frm->vertices_count, "vertex index out of bounds!");
+
+    // (*verts)[bi + 0] = frm->vertices[vi].vertex.X;
+    // (*verts)[bi + 1] = frm->vertices[vi].vertex.Y;
+    // (*verts)[bi + 2] = frm->vertices[vi].vertex.Z;
+    (*verts)[bi + 0] = (frm->vertices[vi].vertex.X * mdl->header.scale.X) +
+                       mdl->header.translate.X;
+    (*verts)[bi + 1] = (frm->vertices[vi].vertex.Y * mdl->header.scale.Y) +
+                       mdl->header.translate.Y;
+    (*verts)[bi + 2] = (frm->vertices[vi].vertex.Z * mdl->header.scale.Z) +
+                       mdl->header.translate.Z;
+
+    printf("%f, %f, %f\n", (*verts)[bi + 0], (*verts)[bi + 1],
+           (*verts)[bi + 2]);
+  }
+
+  // memcpy(bbox_min, &frm->bbox_min, sizeof(hmm_vec3));
+  // memcpy(bbox_min, &frm->bbox_min, sizeof(hmm_vec3));
+
+  bbox_min->X =
+      (frm->bbox_min.X * mdl->header.scale.X) + mdl->header.translate.X;
+  bbox_min->Y =
+      (frm->bbox_min.Y * mdl->header.scale.Y) + mdl->header.translate.Y;
+  bbox_min->Z =
+      (frm->bbox_min.Z * mdl->header.scale.Z) + mdl->header.translate.Z;
+
+  bbox_max->X =
+      (frm->bbox_max.X * mdl->header.scale.X) + mdl->header.translate.X;
+  bbox_max->Y =
+      (frm->bbox_max.Y * mdl->header.scale.Y) + mdl->header.translate.Y;
+  bbox_max->Z =
+      (frm->bbox_max.Z * mdl->header.scale.Z) + mdl->header.translate.Z;
+
+  printf("}\n----------------------\nindices {");
+  for (uint32_t i = 0; i < mdl->header.indices_count; i++) {
+    printf("%d, ", mdl->indices[i]);
+  }
+  printf("}\n----------------------\n ");
+  printf("eye: (%f, %f, %f)\n", mdl->header.eye.X, mdl->header.eye.Y,
+         mdl->header.eye.Z);
+  printf("scale: (%f, %f, %f)\n", mdl->header.scale.X, mdl->header.scale.Y,
+         mdl->header.scale.Z);
+  printf("translate: (%f, %f, %f)\n", mdl->header.translate.X,
+         mdl->header.translate.Y, mdl->header.translate.Z);
+  printf("bbox min: (%f, %f, %f)\n", frm->bbox_min.X, frm->bbox_min.Y,
+         frm->bbox_min.Z);
+  printf("bbox max: (%f, %f, %f)\n", frm->bbox_max.X, frm->bbox_max.Y,
+         frm->bbox_max.Z);
+  printf("----------------------\n");
 }
 
 void qk_unload_mdl(qk_mdl* mdl) {
