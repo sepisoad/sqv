@@ -14,8 +14,8 @@
 #endif
 
 #include "../utils/all.h"
-#include "../deps/hmm.h"
-#include "../deps/sokol_gfx.h"
+#include "../../deps/hmm.h"
+#include "../../deps/sokol_gfx.h"
 
 /* RAW QUAKE TYPES AS THEY ARE STORED IN MDL FILE */
 
