@@ -3,6 +3,7 @@
 #include "../deps/hmm.h"
 #include "../deps/log.h"
 #include "../deps/sokol_app.h"
+#include "../deps/sokol_args.h"
 #include "../deps/sokol_gfx.h"
 #include "../deps/sokol_glue.h"
 #include "../deps/sokol_log.h"
@@ -13,9 +14,8 @@
 #define QK_MDL_IMPLEMENTATION
 
 #include "glsl/default.h"
-#include "quake/mdl.h"
-#include "errors.h"
 #include "utils/all.h"
+#include "quake/mdl.h"
 
 static struct {
   sg_pipeline pip;
@@ -42,6 +42,8 @@ void load_mdl_file(const char* path) {
 void init(void) {
   log_info("initializing gpu ...");
 
+  const char* mdl_file_path = (const char*)sapp_userdata();
+
   sg_setup(&(sg_desc){
       .environment = sglue_environment(),
       .logger.func = slog_func,
@@ -53,7 +55,7 @@ void init(void) {
   state.indices = NULL;
   size_t verticesz = 0;
 
-  load_mdl_file(".keep/player.mdl");
+  load_mdl_file(mdl_file_path);
   arena_print(&state.qkmdl.mem);
 
   memcpy(&state.scale, &state.qkmdl.header.scale, sizeof(state.scale));
@@ -172,15 +174,30 @@ void frame(void) {
 void cleanup(void) {
   log_info("shuting down");
   sg_shutdown();
+  sargs_shutdown();
 }
 
 sapp_desc sokol_main(int argc, char* argv[]) {
   log_info("starting");
 
-  (void)argc;
-  (void)argv;
+  sargs_setup(&(sargs_desc){
+      .argc = argc,
+      .argv = argv,
+  });
+
+  const char* _mdl = NULL;
+  if (sargs_exists("-m")) {
+    _mdl = sargs_value("-m");
+  } else if (sargs_exists("--model")) {
+    _mdl = sargs_value("--model");
+  } else {
+    makesure(false,
+             "you need to provide either '-m' or '--model' to define the path "
+             "to the MDL model");
+  }
 
   return (sapp_desc){
+      .user_data = (void*)_mdl,
       .init_cb = init,
       .frame_cb = frame,
       .cleanup_cb = cleanup,

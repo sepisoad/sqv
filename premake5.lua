@@ -19,9 +19,9 @@ workspace "ProjectWorkspace"
 project "mk_log"
   kind "StaticLib"
   language "C"
-  location ".ignore"
-  targetdir ".ignore/build/"
-  objdir ".ignore/build/obj"
+  location "BUILD"
+  targetdir "BUILD/build/"
+  objdir "BUILD/build/obj"
   targetname "log"
   files {"deps/log.c"}
 
@@ -29,9 +29,9 @@ project "mk_log"
 project "mk_ini"
   kind "StaticLib"
   language "C"
-  location ".ignore"
-  targetdir ".ignore/build/"
-  objdir ".ignore/build/obj"
+  location "BUILD"
+  targetdir "BUILD/build/"
+  objdir "BUILD/build/obj"
   targetname "ini"
   files {"deps/ini.c"}
   
@@ -39,9 +39,9 @@ project "mk_ini"
 project "mk_sokol"
   kind "StaticLib"
   language "C"
-  location ".ignore"
-  targetdir ".ignore/build/"
-  objdir ".ignore/build/obj"
+  location "BUILD"
+  targetdir "BUILD/build/"
+  objdir "BUILD/build/obj"
   targetname "sokol"
   files {"deps/sokol.c"}
 
@@ -58,9 +58,9 @@ project "mk_sokol"
 project "mk_hmm"
   kind "StaticLib"
   language "C"
-  location ".ignore"
-  targetdir ".ignore/build/"
-  objdir ".ignore/build/obj"
+  location "BUILD"
+  targetdir "BUILD/build/"
+  objdir "BUILD/build/obj"
   targetname "hmm"
   files {"deps/hmm.c"}
 
@@ -68,9 +68,9 @@ project "mk_hmm"
 project "mk_stb"
   kind "StaticLib"
   language "C"
-  location ".ignore"
-  targetdir ".ignore/build/"
-  objdir ".ignore/build/obj"
+  location "BUILD"
+  targetdir "BUILD/build/"
+  objdir "BUILD/build/obj"
   targetname "stb"
   buildoptions { "-Wno-deprecated-declarations" }
   files {"deps/stb.c"}
@@ -79,9 +79,9 @@ project "mk_stb"
 project "mk_sqv"
   kind "ConsoleApp"
   language "C"
-  location ".ignore"
-  targetdir ".ignore/build/"
-  objdir ".ignore/build/obj"
+  location "BUILD"
+  targetdir "BUILD/build/"
+  objdir "BUILD/build/obj"
   targetname "sqv"
   files {"src/*.c", "src/qk/*.c"}
   includedirs {"src", "deps"}
@@ -108,8 +108,13 @@ newaction {
 -- 🔹 Run Action
 newaction {
   trigger = "run",
-  description = "Execute the program",
+  description = "Execute the program with optional arguments",
   execute = function()
-    os.execute(".ignore/build/sqv")
+    -- Capture additional command-line arguments
+    local args = _ARGS
+    local args_str = table.concat(args, " ")
+    
+    -- Execute the program with arguments
+    os.execute("BUILD/build/sqv " .. args_str)
   end
 }

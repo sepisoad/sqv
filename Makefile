@@ -37,46 +37,46 @@ all: $(PROJECTS)
 mk_log:
 ifneq (,$(mk_log_config))
 	@echo "==== Building mk_log ($(mk_log_config)) ===="
-	@${MAKE} --no-print-directory -C .ignore -f mk_log.make config=$(mk_log_config)
+	@${MAKE} --no-print-directory -C BUILD -f mk_log.make config=$(mk_log_config)
 endif
 
 mk_ini:
 ifneq (,$(mk_ini_config))
 	@echo "==== Building mk_ini ($(mk_ini_config)) ===="
-	@${MAKE} --no-print-directory -C .ignore -f mk_ini.make config=$(mk_ini_config)
+	@${MAKE} --no-print-directory -C BUILD -f mk_ini.make config=$(mk_ini_config)
 endif
 
 mk_sokol:
 ifneq (,$(mk_sokol_config))
 	@echo "==== Building mk_sokol ($(mk_sokol_config)) ===="
-	@${MAKE} --no-print-directory -C .ignore -f mk_sokol.make config=$(mk_sokol_config)
+	@${MAKE} --no-print-directory -C BUILD -f mk_sokol.make config=$(mk_sokol_config)
 endif
 
 mk_hmm:
 ifneq (,$(mk_hmm_config))
 	@echo "==== Building mk_hmm ($(mk_hmm_config)) ===="
-	@${MAKE} --no-print-directory -C .ignore -f mk_hmm.make config=$(mk_hmm_config)
+	@${MAKE} --no-print-directory -C BUILD -f mk_hmm.make config=$(mk_hmm_config)
 endif
 
 mk_stb:
 ifneq (,$(mk_stb_config))
 	@echo "==== Building mk_stb ($(mk_stb_config)) ===="
-	@${MAKE} --no-print-directory -C .ignore -f mk_stb.make config=$(mk_stb_config)
+	@${MAKE} --no-print-directory -C BUILD -f mk_stb.make config=$(mk_stb_config)
 endif
 
 mk_sqv:
 ifneq (,$(mk_sqv_config))
 	@echo "==== Building mk_sqv ($(mk_sqv_config)) ===="
-	@${MAKE} --no-print-directory -C .ignore -f mk_sqv.make config=$(mk_sqv_config)
+	@${MAKE} --no-print-directory -C BUILD -f mk_sqv.make config=$(mk_sqv_config)
 endif
 
 clean:
-	@${MAKE} --no-print-directory -C .ignore -f mk_log.make clean
-	@${MAKE} --no-print-directory -C .ignore -f mk_ini.make clean
-	@${MAKE} --no-print-directory -C .ignore -f mk_sokol.make clean
-	@${MAKE} --no-print-directory -C .ignore -f mk_hmm.make clean
-	@${MAKE} --no-print-directory -C .ignore -f mk_stb.make clean
-	@${MAKE} --no-print-directory -C .ignore -f mk_sqv.make clean
+	@${MAKE} --no-print-directory -C BUILD -f mk_log.make clean
+	@${MAKE} --no-print-directory -C BUILD -f mk_ini.make clean
+	@${MAKE} --no-print-directory -C BUILD -f mk_sokol.make clean
+	@${MAKE} --no-print-directory -C BUILD -f mk_hmm.make clean
+	@${MAKE} --no-print-directory -C BUILD -f mk_stb.make clean
+	@${MAKE} --no-print-directory -C BUILD -f mk_sqv.make clean
 
 help:
 	@echo "Usage: make [config=name] [target]"
