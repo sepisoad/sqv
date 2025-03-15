@@ -136,6 +136,7 @@ static void frame(void) {
                             .clear_value = {0.25f, 0.5f, 0.75f, 1.0f}},
           },
       .swapchain = sglue_swapchain()});
+
   sg_apply_pipeline(S.pip);
   sg_apply_bindings(&S.bind);
   sg_apply_uniforms(UB_vs_params, &SG_RANGE(vs_params));

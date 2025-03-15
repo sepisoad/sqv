@@ -1,22 +1,24 @@
-# SQV
+# SQV - Sepi's Quake Viewer
 
-!!!!!!
-SEPI: when you are back from georgia
-consider using odin + raylib + caly
-!!!!!!
+SQV (Sepi's Quake Viewer) is a lightweight program that renders Quake 1 `.MDL` files.  
 
-## REFS:
+## Features  
+- Portable: Runs on all major desktop operating systems.  
+- Self-contained: Comes with all necessary dependencies as source files—no need to install external packages.  
+- Written in pure `C`, utilizing `sokol` for window creation and graphics.  
 
-- https://book.leveldesignbook.com/appendix/resources/formats/mdl
-- https://formats.kaitai.io/quake_mdl/quake_mdl.svg
-- https://github.com/TheEnbyWitch/LunarViewer (******)
-- https://github.com/Paril/qmdlr
-- https://github.com/matthewearl/pyquake/blob/master/pyquake/mdl.py
+## Status  
+SQV is still in early development, but I have some exciting ideas for its future evolution.  
 
-## TODO:
+## Building  
+To build SQV, you need [`premake5`](https://premake.github.io/) installed on your system.  
 
-- my c code does not handle 'endianness'
+1. Generate the Makefiles:  
+   ```sh
+   premake5 gmake2
+   ```
 
-
-## MUSIC:
-- Constantijn Lange - Barefoot
+2. Build the source code
+   ```sh
+   make
+   ```
