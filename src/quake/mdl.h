@@ -164,7 +164,7 @@ qk_err qk_load_mdl(const uint8_t*, size_t, qk_mdl*);
 void qk_get_frame_vertices(qk_mdl*,
                            uint32_t,
                            float**,
-                           size_t*,
+                           uint32_t*,
                            hmm_vec3*,
                            hmm_vec3*);
 void qk_unload_mdl(qk_mdl*);
@@ -630,7 +630,7 @@ qk_err qk_load_mdl(const uint8_t* buf, size_t bufsz, qk_mdl* mdl) {
 void qk_get_frame_vertices(qk_mdl* mdl,
                            uint32_t frmidx,
                            float** verts,
-                           size_t* vertsz,
+                           uint32_t* verts_cn,
                            hmm_vec3* bbox_min,
                            hmm_vec3* bbox_max) {
   makesure(frmidx < mdl->header.frames_count, "frame index out of bound");
@@ -642,9 +642,9 @@ void qk_get_frame_vertices(qk_mdl* mdl,
                           (3 /*vertices*/ + 2 /*UVs*/));
   makesure(*verts != NULL, "malloc failed!");
 
-  *vertsz = frm->vertices_count * 5;
+  *verts_cn = frm->vertices_count * 5;
   printf("----------------------\nvertices {");
-  for (uint32_t bi = 0, vi = 0; bi < *vertsz; bi += 5, vi++) {
+  for (uint32_t bi = 0, vi = 0; bi < *verts_cn; bi += 5, vi++) {
     makesure(vi < frm->vertices_count, "vertex index out of bounds!");
 
     (*verts)[bi + 0] = (frm->vertices[vi].vertex.X * mdl->header.scale.X) +
