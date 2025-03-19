@@ -1,14 +1,16 @@
 #ifndef UTILS_ENDIAN_HEADER_
 #define UTILS_ENDIAN_HEADER_
 
-#include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
+
+#include "types.h"
 
 /* ****************** utils::endian API ****************** */
-int16_t endian_i16(int16_t num);
-int32_t endian_i32(int32_t num);
-int64_t endian_i64(int64_t num);
-float endian_f32(float num);
+i16 endian_i16(i16 num);
+i32 endian_i32(i32 num);
+i64 endian_i64(i64 num);
+f32 endian_f32(f32 num);
 /* ****************** utils::endian API ****************** */
 
 #ifdef UTILS_ENDIAN_IMPLEMENTATION
@@ -22,35 +24,35 @@ float endian_f32(float num);
 //             | |
 //             |_|
 
-static inline int isle() {
-  uint16_t num = 0x1;
-  return (*(uint8_t*)&num == 1);
+static inline bool isle() {
+  u16 num = 0x1;
+  return (*(u8*)&num == 1);
 }
 
-int16_t endian_i16(int16_t num) {
-  return isle() ? num : (int16_t)((num >> 8) | (num << 8));
+i16 endian_i16(i16 num) {
+  return isle() ? num : (i16)((num >> 8) | (num << 8));
 }
 
-int32_t endian_i32(int32_t num) {
+i32 endian_i32(i32 num) {
   return isle() ? num
-                : (int32_t)((num >> 24) | ((num >> 8) & 0x0000FF00) |
-                            ((num << 8) & 0x00FF0000) | (num << 24));
+                : (i32)((num >> 24) | ((num >> 8) & 0x0000FF00) |
+                        ((num << 8) & 0x00FF0000) | (num << 24));
 }
 
-int64_t endian_i64(int64_t num) {
+i64 endian_i64(i64 num) {
   return isle() ? num
-                : (int64_t)((num >> 56) | ((num >> 40) & 0x000000000000FF00LL) |
-                            ((num >> 24) & 0x0000000000FF0000LL) |
-                            ((num >> 8) & 0x00000000FF000000LL) |
-                            ((num << 8) & 0x000000FF00000000LL) |
-                            ((num << 24) & 0x0000FF0000000000LL) |
-                            ((num << 40) & 0x00FF000000000000LL) | (num << 56));
+                : (i64)((num >> 56) | ((num >> 40) & 0x000000000000FF00LL) |
+                        ((num >> 24) & 0x0000000000FF0000LL) |
+                        ((num >> 8) & 0x00000000FF000000LL) |
+                        ((num << 8) & 0x000000FF00000000LL) |
+                        ((num << 24) & 0x0000FF0000000000LL) |
+                        ((num << 40) & 0x00FF000000000000LL) | (num << 56));
 }
 
-float endian_f32(float num) {
+f32 endian_f32(f32 num) {
   if (isle())
     return num;
-  float result;
+  f32 result;
   char* src = (char*)&num;
   char* dst = (char*)&result;
   dst[0] = src[3];

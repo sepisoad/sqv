@@ -2,8 +2,9 @@
 #define QK_DATA_HEADER_
 
 #include <stdint.h>
+#include "../utils/types.h"
 
-const uint8_t _qk_palette[256][3] = {
+const u8 _qk_palette[256][3] = {
     {0, 0, 0},       /* */
     {15, 15, 15},    /* */
     {31, 31, 31},    /* */

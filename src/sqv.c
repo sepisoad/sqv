@@ -15,6 +15,7 @@
 
 #include "glsl/default.h"
 #include "quake/mdl.h"
+#include "utils/types.h"
 
 #define FOV 60.0f
 
@@ -29,20 +30,20 @@ static struct {
   } qk;
 } S;
 
-static void _load(const char* path) {
-  uint8_t* buf = NULL;
-  size_t buf_sz = load_file(path, &buf);
-  makesure(buf_sz > 0, "loadfile return size is zero");
+static void _load(cstr path) {
+  u8* bf = NULL;
+  sz bfsz = load_file(path, &bf);
+  makesure(bfsz > 0, "loadfile return size is zero");
 
-  qk_err err = qk_load_mdl(buf, buf_sz, &S.qk.mdl);
+  qk_err err = qk_load_mdl(bf, bfsz, &S.qk.mdl);
   makesure(err == QK_ERR_SUCCESS, "qk_load_mdl failed");
-  free(buf);
+  free(bf);
 }
 
 static void init(void) {
   log_info("initializing gpu ...");
 
-  const char* mdl_file_path = (const char*)sapp_userdata();
+  cstr mdl_file_path = (cstr)sapp_userdata();
   log_info("loading '%s' model", mdl_file_path);
 
   sg_setup(&(sg_desc){
@@ -52,10 +53,10 @@ static void init(void) {
 
   _load(mdl_file_path);
 
-  float* verts = NULL;
-  uint32_t verts_cn = 0;
-  uint32_t* inds = S.qk.mdl.indices;
-  uint32_t inds_cn = S.qk.mdl.header.indices_count;
+  f32* verts = NULL;
+  u32 verts_cn = 0;
+  u32* inds = S.qk.mdl.indices;
+  u32 inds_cn = S.qk.mdl.header.indices_count;
 
   qk_get_frame_vertices(&S.qk.mdl, 0, &verts, &verts_cn, &S.qk.bbmin,
                         &S.qk.bbmax);
@@ -64,12 +65,12 @@ static void init(void) {
 
   sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc){
       .type = SG_BUFFERTYPE_VERTEXBUFFER,
-      .data = {.ptr = verts, .size = verts_cn * sizeof(float)},
+      .data = {.ptr = verts, .size = verts_cn * sizeof(f32)},
   });
 
   sg_buffer ibuf = sg_make_buffer(&(sg_buffer_desc){
       .type = SG_BUFFERTYPE_INDEXBUFFER,
-      .data = {.ptr = inds, .size = inds_cn * sizeof(uint32_t)},
+      .data = {.ptr = inds, .size = inds_cn * sizeof(u32)},
   });
 
   S.pip = sg_make_pipeline(&(sg_pipeline_desc){
@@ -97,13 +98,13 @@ static void frame(void) {
 
   hmm_vec3 center =
       HMM_MultiplyVec3f(HMM_AddVec3(S.qk.bbmin, S.qk.bbmax), 0.5f);
-  float dx = S.qk.bbmax.X - S.qk.bbmin.X;
-  float dy = S.qk.bbmax.Y - S.qk.bbmin.Y;
-  float dz = S.qk.bbmax.Z - S.qk.bbmin.Z;
-  float radius = 0.5f * sqrtf(dx * dx + dy * dy + dz * dz);
+  f32 dx = S.qk.bbmax.X - S.qk.bbmin.X;
+  f32 dy = S.qk.bbmax.Y - S.qk.bbmin.Y;
+  f32 dz = S.qk.bbmax.Z - S.qk.bbmin.Z;
+  f32 radius = 0.5f * sqrtf(dx * dx + dy * dy + dz * dz);
 
-  float aspect = sapp_widthf() / sapp_heightf();
-  float cam_dist = (radius / sinf(HMM_ToRadians(FOV) * 0.5f)) * 1.5f;
+  f32 aspect = sapp_widthf() / sapp_heightf();
+  f32 cam_dist = (radius / sinf(HMM_ToRadians(FOV) * 0.5f)) * 1.5f;
 
   hmm_vec3 eye_pos = HMM_AddVec3(center, HMM_Vec3(0.0f, 0.0f, cam_dist));
   hmm_vec3 up = HMM_Vec3(0.0f, 1.0f, 0.0f);
@@ -152,7 +153,7 @@ static void cleanup(void) {
   sargs_shutdown();
 }
 
-sapp_desc sokol_main(int argc, char* argv[]) {
+sapp_desc sokol_main(i32 argc, char* argv[]) {
   log_info("starting");
 
   sargs_setup(&(sargs_desc){
@@ -160,7 +161,7 @@ sapp_desc sokol_main(int argc, char* argv[]) {
       .argv = argv,
   });
 
-  const char* _mdl = NULL;
+  cstr _mdl = NULL;
   if (sargs_exists("-m")) {
     _mdl = sargs_value("-m");
   } else if (sargs_exists("--model")) {
@@ -172,7 +173,7 @@ sapp_desc sokol_main(int argc, char* argv[]) {
   }
 
   return (sapp_desc){
-      .user_data = (void*)_mdl,
+      .user_data = (rptr)_mdl,
       .init_cb = init,
       .frame_cb = frame,
       .cleanup_cb = cleanup,
