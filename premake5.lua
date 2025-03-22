@@ -118,3 +118,12 @@ newaction {
     os.execute("BUILD/build/sqv " .. args_str)
   end
 }
+
+-- 🔹 Quick Run Action
+newaction {
+  trigger = "r",
+  description = "Execute the program with optional arguments",
+  execute = function()
+    os.execute("BUILD/build/sqv -m=KEEP/armor.mdl")
+  end
+}
