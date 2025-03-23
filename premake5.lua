@@ -15,7 +15,7 @@ workspace "ProjectWorkspace"
     defines { "NDEBUG" }
     optimize "Speed"
 
--- 🔹 Rxi Log Library
+-- Rxi Log Library
 project "mk_log"
   kind "StaticLib"
   language "C"
@@ -25,7 +25,7 @@ project "mk_log"
   targetname "log"
   files {"deps/log.c"}
 
--- 🔹 Rxi INI Library
+-- Rxi INI Library
 project "mk_ini"
   kind "StaticLib"
   language "C"
@@ -35,7 +35,7 @@ project "mk_ini"
   targetname "ini"
   files {"deps/ini.c"}
   
--- 🔹 Sokol Library
+-- Sokol Library
 project "mk_sokol"
   kind "StaticLib"
   language "C"
@@ -54,7 +54,7 @@ project "mk_sokol"
     defines { "SOKOL_GLCORE" }
     links { "X11", "Xi", "Xcursor", "GL", "m" }
 
--- 🔹 Handmade Math (HMM) Library
+-- Handmade Math (HMM) Library
 project "mk_hmm"
   kind "StaticLib"
   language "C"
@@ -64,7 +64,7 @@ project "mk_hmm"
   targetname "hmm"
   files {"deps/hmm.c"}
 
--- 🔹 STB Library
+-- STB Library
 project "mk_stb"
   kind "StaticLib"
   language "C"
@@ -75,7 +75,7 @@ project "mk_stb"
   buildoptions { "-Wno-deprecated-declarations" }
   files {"deps/stb.c"}
 
--- 🔹 Main Application
+-- Main Application
 project "mk_sqv"
   kind "ConsoleApp"
   language "C"
@@ -96,7 +96,7 @@ project "mk_sqv"
   filter "system:linux"    
     links { "X11", "Xi", "Xcursor", "GL", "m" }
 
--- 🔹 GLSL Shader Compilation Action
+-- GLSL Shader Compilation Action
 newaction {
   trigger = "glsl",
   description = "Compile shaders into C headers",
@@ -105,21 +105,16 @@ newaction {
   end
 }
 
--- 🔹 Run Action
+-- Clean SQV Action
 newaction {
-  trigger = "run",
+  trigger = "c",
   description = "Execute the program with optional arguments",
   execute = function()
-    -- Capture additional command-line arguments
-    local args = _ARGS
-    local args_str = table.concat(args, " ")
-    
-    -- Execute the program with arguments
-    os.execute("BUILD/build/sqv " .. args_str)
+    os.execute("make --no-print-directory -C BUILD -f mk_sqv.make clean")
   end
 }
 
--- 🔹 Quick Run Action
+-- Run Action 1
 newaction {
   trigger = "r",
   description = "Execute the program with optional arguments",
@@ -127,3 +122,18 @@ newaction {
     os.execute("BUILD/build/sqv -m=KEEP/armor.mdl")
   end
 }
+
+-- Run Action 2
+newaction {
+  trigger = "rr",
+  description = "Execute the program with optional arguments",
+  execute = function()
+    -- Capture additional command-line arguments
+    local args = _ARGS
+    local args_str = table.concat(args, " ")
+    
+    -- Execute the program with arguments
+    os.execute("BUILD/build/sqv -m=" .. args_str)
+  end
+}
+
