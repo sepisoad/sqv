@@ -20,8 +20,8 @@ project "mk_log"
   kind "StaticLib"
   language "C"
   location "BUILD"
-  targetdir "BUILD/build/"
-  objdir "BUILD/build/obj"
+  targetdir "BUILD/"
+  objdir "BUILD/obj"
   targetname "log"
   files {"deps/log.c"}
 
@@ -30,8 +30,8 @@ project "mk_ini"
   kind "StaticLib"
   language "C"
   location "BUILD"
-  targetdir "BUILD/build/"
-  objdir "BUILD/build/obj"
+  targetdir "BUILD/"
+  objdir "BUILD/obj"
   targetname "ini"
   files {"deps/ini.c"}
   
@@ -40,8 +40,8 @@ project "mk_sokol"
   kind "StaticLib"
   language "C"
   location "BUILD"
-  targetdir "BUILD/build/"
-  objdir "BUILD/build/obj"
+  targetdir "BUILD/"
+  objdir "BUILD/obj"
   targetname "sokol"
   files {"deps/sokol.c"}
 
@@ -59,8 +59,8 @@ project "mk_hmm"
   kind "StaticLib"
   language "C"
   location "BUILD"
-  targetdir "BUILD/build/"
-  objdir "BUILD/build/obj"
+  targetdir "BUILD/"
+  objdir "BUILD/obj"
   targetname "hmm"
   files {"deps/hmm.c"}
 
@@ -69,8 +69,8 @@ project "mk_stb"
   kind "StaticLib"
   language "C"
   location "BUILD"
-  targetdir "BUILD/build/"
-  objdir "BUILD/build/obj"
+  targetdir "BUILD/"
+  objdir "BUILD/obj"
   targetname "stb"
   buildoptions { "-Wno-deprecated-declarations" }
   files {"deps/stb.c"}
@@ -80,8 +80,8 @@ project "mk_sqv"
   kind "ConsoleApp"
   language "C"
   location "BUILD"
-  targetdir "BUILD/build/"
-  objdir "BUILD/build/obj"
+  targetdir "BUILD/"
+  objdir "BUILD/obj"
   targetname "sqv"
   files {"src/*.c", "src/qk/*.c"}
   includedirs {"src", "deps"}
@@ -117,16 +117,16 @@ newaction {
 -- Run Action 1
 newaction {
   trigger = "r",
-  description = "Execute the program with optional arguments",
+  description = "quick execute",
   execute = function()
-    os.execute("BUILD/build/sqv -m=KEEP/armor.mdl")
+    os.execute("BUILD/sqv -m=KEEP/armor.mdl")
   end
 }
 
 -- Run Action 2
 newaction {
   trigger = "rr",
-  description = "Execute the program with optional arguments",
+  description = "execute with args",
   execute = function()
     -- Capture additional command-line arguments
     local args = _ARGS

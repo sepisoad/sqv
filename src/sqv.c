@@ -24,7 +24,7 @@ static struct {
   sg_bindings bind;
   float roty;
   struct {
-    qk_mdl mdl;
+    qk_model mdl;
     hmm_vec3 bbmin;
     hmm_vec3 bbmax;
   } qk;
@@ -35,7 +35,7 @@ static void _load(cstr path) {
   sz bfsz = load_file(path, &bf);
   makesure(bfsz > 0, "loadfile return size is zero");
 
-  qk_err err = qk_load_mdl(bf, bfsz, &S.qk.mdl);
+  qk_error err = qk_load_mdl(bf, bfsz, &S.qk.mdl);
   makesure(err == QK_ERR_SUCCESS, "qk_load_mdl failed");
   free(bf);
 }
