@@ -119,7 +119,7 @@ newaction {
   trigger = "r",
   description = "quick execute",
   execute = function()
-    os.execute("BUILD/sqv -m=KEEP/armor.mdl")
+    os.execute("BUILD/sqv -m=KEEP/spike.mdl")
   end
 }
 
@@ -133,7 +133,7 @@ newaction {
     local args_str = table.concat(args, " ")
     
     -- Execute the program with arguments
-    os.execute("BUILD/build/sqv -m=" .. args_str)
+    os.execute("BUILD/sqv -m=" .. args_str)
   end
 }
 
