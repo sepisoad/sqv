@@ -531,8 +531,6 @@ static void md1_make_display_list(qk_model* mdl,
 
         const qk_vertex* vrts = mdl->vertices + (vrt_len * frm_idx);
 
-        /* u32 idx = 0; */
-
         f32 x = (vrts[tri_abc].vertex.X * scl->X) + trn->X;
         f32 y = (vrts[tri_abc].vertex.Y * scl->Y) + trn->Y;
         f32 z = (vrts[tri_abc].vertex.Z * scl->Z) + trn->Z;

@@ -4,6 +4,8 @@
 #include "../deps/sokol_app.h"
 #include "../deps/sokol_args.h"
 #include "../deps/sokol_gfx.h"
+#include "../deps/nuklear.h"
+#include "../deps/sokol_nuklear.h"
 #include "../deps/sokol_glue.h"
 #include "../deps/sokol_log.h"
 
@@ -50,6 +52,12 @@ static void init(void) {
       .logger.func = slog_func,
   });
 
+  snk_setup(&(snk_desc_t){
+      .enable_set_mouse_cursor = true,
+      .dpi_scale = sapp_dpi_scale(),
+      .logger.func = slog_func,
+  });
+
   _load(mdl_file_path);
 
   qk_get_frame_vertices(&S.qk.mdl, 0, 0, &S.qk.vbuf, &S.qk.vbuf_len);
@@ -90,7 +98,7 @@ static void frame(void) {
   f32 dx = bbmax->X - bbmin->X;
   f32 dy = bbmax->Y - bbmin->Y;
   f32 dz = bbmax->Z - bbmin->Z;
-  f32 radius = 0.5f * sqrtf(dx * dx + dy * dy + dz * dz);
+  f32 radius = 0.3f * sqrtf(dx * dx + dy * dy + dz * dz);
 
   f32 aspect = sapp_widthf() / sapp_heightf();
   f32 cam_dist = (radius / sinf(HMM_ToRadians(FOV) * 0.5f)) * 1.5f;
@@ -131,13 +139,19 @@ static void frame(void) {
   sg_apply_bindings(&S.bind);
   sg_apply_uniforms(UB_vs_params, &SG_RANGE(vs_params));
   sg_draw(0, S.qk.vbuf_len, 1);
+  snk_render(sapp_width(), sapp_height());  // <====
   sg_end_pass();
   sg_commit();
+}
+
+static void input(const sapp_event* ev) {
+  snk_handle_event(ev);
 }
 
 static void cleanup(void) {
   log_info("shuting down");
   qk_unload_mdl(&S.qk.mdl);
+  snk_shutdown();
   sg_shutdown();
   sargs_shutdown();
 }
@@ -165,6 +179,7 @@ sapp_desc sokol_main(i32 argc, char* argv[]) {
       .user_data = (rptr)_mdl,
       .init_cb = init,
       .frame_cb = frame,
+      .event_cb = input,
       .cleanup_cb = cleanup,
       .width = 400,
       .height = 400,

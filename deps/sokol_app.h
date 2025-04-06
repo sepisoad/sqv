@@ -340,9 +340,9 @@
 
         int sapp_gl_get_major_version(void)
         int sapp_gl_get_minor_version(void)
-            Returns the major and minor version of the GL context
-            (only for SOKOL_GLCORE, all other backends return zero here,
-   including SOKOL_GLES3)
+        bool sapp_gl_is_gles(void)
+            Returns the major and minor version of the GL context and
+            whether the GL context is a GLES context
 
         const void* sapp_android_get_native_activity(void);
             On Android, get the native activity ANativeActivity pointer,
@@ -1970,8 +1970,8 @@ typedef struct sapp_desc {
   sapp_logger logger;  // logging callback override (default: NO LOGGING!)
 
   // backend-specific options
-  int gl_major_version;  // override GL major and minor version (the default GL
-                         // version is 4.1 on macOS, 4.3 elsewhere)
+  int gl_major_version;  // override GL/GLES major and minor version (defaults:
+                         // GL4.1 (macOS) or GL4.3, GLES3.1 (Android) or GLES3.0
   int gl_minor_version;
   bool win32_console_utf8;  // if true, set the output console codepage to UTF-8
   bool win32_console_create;  // if true, attach stdout/stderr to a new console
@@ -2205,10 +2205,12 @@ SOKOL_APP_API_DECL const void* sapp_wgpu_get_depth_stencil_view(void);
 
 /* GL: get framebuffer object */
 SOKOL_APP_API_DECL uint32_t sapp_gl_get_framebuffer(void);
-/* GL: get major version (only valid for desktop GL) */
+/* GL: get major version */
 SOKOL_APP_API_DECL int sapp_gl_get_major_version(void);
-/* GL: get minor version (only valid for desktop GL) */
+/* GL: get minor version */
 SOKOL_APP_API_DECL int sapp_gl_get_minor_version(void);
+/* GL: return true if the context is GLES */
+SOKOL_APP_API_DECL bool sapp_gl_is_gles(void);
 
 /* X11: get Window */
 SOKOL_APP_API_DECL const void* sapp_x11_get_window(void);
@@ -2492,14 +2494,20 @@ inline void sapp_run(const sapp_desc& desc) {
 // this is ARC compatible
 #if defined(__cplusplus)
 #define _SAPP_CLEAR_ARC_STRUCT(type, item) \
-  { item = type(); }
+  {                                        \
+    item = type();                         \
+  }
 #else
 #define _SAPP_CLEAR_ARC_STRUCT(type, item) \
-  { item = (type){0}; }
+  {                                        \
+    item = (type){0};                      \
+  }
 #endif
 #else
 #define _SAPP_CLEAR_ARC_STRUCT(type, item) \
-  { _sapp_clear(&item, sizeof(item)); }
+  {                                        \
+    _sapp_clear(&item, sizeof(item));      \
+  }
 #endif
 
 // ███████ ██████   █████  ███    ███ ███████     ████████ ██ ███    ███ ██ ███
@@ -3450,17 +3458,21 @@ _SOKOL_PRIVATE sapp_desc _sapp_desc_defaults(const sapp_desc* desc) {
   sapp_desc res = *desc;
   res.sample_count = _sapp_def(res.sample_count, 1);
   res.swap_interval = _sapp_def(res.swap_interval, 1);
-  // NOTE: can't patch the default for gl_major_version and gl_minor_version
-  // independently, because a desired version 4.0 would be patched to 4.2
-  // (or expressed differently: zero is a valid value for gl_minor_version
-  // and can't be used to indicate 'default')
   if (0 == res.gl_major_version) {
-#if defined(_SAPP_APPLE)
+#if defined(SOKOL_GLCORE)
     res.gl_major_version = 4;
+#if defined(_SAPP_APPLE)
     res.gl_minor_version = 1;
 #else
-    res.gl_major_version = 4;
     res.gl_minor_version = 3;
+#endif
+#elif defined(SOKOL_GLES3)
+    res.gl_major_version = 3;
+#if defined(_SAPP_ANDROID) || defined(_SAPP_LINUX)
+    res.gl_minor_version = 1;
+#else
+    res.gl_minor_version = 0;
+#endif
 #endif
   }
   res.html5_canvas_selector = _sapp_def(res.html5_canvas_selector, "#canvas");
@@ -3747,7 +3759,9 @@ _SOKOL_PRIVATE void _sapp_setup_default_icon(void) {
 
 #if __has_feature(objc_arc)
 #define _SAPP_OBJC_RELEASE(obj) \
-  { obj = nil; }
+  {                             \
+    obj = nil;                  \
+  }
 #else
 #define _SAPP_OBJC_RELEASE(obj) \
   {                             \
@@ -5374,7 +5388,7 @@ EMSCRIPTEN_KEEPALIVE void _sapp_emsc_invoke_fetch_cb(
 #endif
 
 EM_JS(void, sapp_js_add_beforeunload_listener, (void), {
-  Module.sokol_beforeunload = (event) = > {
+  Module.sokol_beforeunload = (event) => {
     if (__sapp_html5_get_ask_leave_site() != 0) {
       event.preventDefault();
       event.returnValue = ' ';
@@ -5388,7 +5402,7 @@ EM_JS(void, sapp_js_remove_beforeunload_listener, (void), {
 })
 
 EM_JS(void, sapp_js_add_clipboard_listener, (void), {
-  Module.sokol_paste = (event) = > {
+  Module.sokol_paste = (event) => {
     const pasted_str = event.clipboardData.getData('text');
     withStackSave(() = > {
       const cstr = stringToUTF8OnStack(pasted_str);
@@ -5426,19 +5440,19 @@ _SOKOL_PRIVATE void _sapp_emsc_set_clipboard_string(const char* str) {
 
 EM_JS(void, sapp_js_add_dragndrop_listeners, (void), {
   Module.sokol_drop_files = [];
-  Module.sokol_dragenter = (event) = > {
+  Module.sokol_dragenter = (event) => {
     event.stopPropagation();
     event.preventDefault();
   };
-  Module.sokol_dragleave = (event) = > {
+  Module.sokol_dragleave = (event) => {
     event.stopPropagation();
     event.preventDefault();
   };
-  Module.sokol_dragover = (event) = > {
+  Module.sokol_dragover = (event) => {
     event.stopPropagation();
     event.preventDefault();
   };
-  Module.sokol_drop = (event) = > {
+  Module.sokol_drop = (event) => {
     event.stopPropagation();
     event.preventDefault();
     const files = event.dataTransfer.files;
@@ -5498,7 +5512,7 @@ EM_JS(void,
        void* user_data),
       {
         const reader = new FileReader();
-        reader.onload = (loadEvent) = > {
+        reader.onload = (loadEvent) => {
           const content = loadEvent.target.result;
           if (content.byteLength > buf_size) {
             // SAPP_HTML5_FETCH_ERROR_BUFFER_TOO_SMALL
@@ -5511,7 +5525,7 @@ EM_JS(void,
                                         user_data);
           }
         };
-        reader.onerror = () = > {
+        reader.onerror = () => {
           // SAPP_HTML5_FETCH_ERROR_OTHER
           __sapp_emsc_invoke_fetch_cb(index, 0, 2, callback, 0, buf_ptr,
                                       buf_size, user_data);
@@ -7702,22 +7716,21 @@ _SOKOL_PRIVATE void _sapp_wgl_create_context(void) {
     _SAPP_PANIC(WIN32_WGL_ARB_CREATE_CONTEXT_PROFILE_REQUIRED);
   }
   const int attrs[] = {
-    WGL_CONTEXT_MAJOR_VERSION_ARB,
-    _sapp.desc.gl_major_version,
-    WGL_CONTEXT_MINOR_VERSION_ARB,
-    _sapp.desc.gl_minor_version,
+      WGL_CONTEXT_MAJOR_VERSION_ARB,
+      _sapp.desc.gl_major_version,
+      WGL_CONTEXT_MINOR_VERSION_ARB,
+      _sapp.desc.gl_minor_version,
 #if defined(SOKOL_DEBUG)
-    WGL_CONTEXT_FLAGS_ARB,
-    WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB | WGL_CONTEXT_DEBUG_BIT_ARB,
+      WGL_CONTEXT_FLAGS_ARB,
+      WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB | WGL_CONTEXT_DEBUG_BIT_ARB,
 #else
-    WGL_CONTEXT_FLAGS_ARB,
-    WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB,
+      WGL_CONTEXT_FLAGS_ARB,
+      WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB,
 #endif
-    WGL_CONTEXT_PROFILE_MASK_ARB,
-    WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
-    0,
-    0
-  };
+      WGL_CONTEXT_PROFILE_MASK_ARB,
+      WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+      0,
+      0};
   _sapp.wgl.gl_ctx =
       _sapp.wgl.CreateContextAttribsARB(_sapp.win32.dc, 0, attrs);
   if (!_sapp.wgl.gl_ctx) {
@@ -9132,8 +9145,10 @@ _SOKOL_PRIVATE bool _sapp_android_init_egl(void) {
   }
 
   EGLint ctx_attributes[] = {
-      EGL_CONTEXT_CLIENT_VERSION,
-      3,
+      EGL_CONTEXT_MAJOR_VERSION,
+      _sapp.desc.gl_major_version,
+      EGL_CONTEXT_MINOR_VERSION,
+      _sapp.desc.gl_minor_version,
       EGL_NONE,
   };
   EGLContext context =
@@ -12619,32 +12634,32 @@ _SOKOL_PRIVATE void _sapp_egl_init(void) {
       _sapp.desc.sample_count > 1 ? _sapp.desc.sample_count : 0;
   EGLint alpha_size = _sapp.desc.alpha ? 8 : 0;
   const EGLint config_attrs[] = {
-    EGL_SURFACE_TYPE,
-    EGL_WINDOW_BIT,
+      EGL_SURFACE_TYPE,
+      EGL_WINDOW_BIT,
 #if defined(SOKOL_GLCORE)
-    EGL_RENDERABLE_TYPE,
-    EGL_OPENGL_BIT,
+      EGL_RENDERABLE_TYPE,
+      EGL_OPENGL_BIT,
 #elif defined(SOKOL_GLES3)
-    EGL_RENDERABLE_TYPE,
-    EGL_OPENGL_ES3_BIT,
+      EGL_RENDERABLE_TYPE,
+      EGL_OPENGL_ES3_BIT,
 #endif
-    EGL_RED_SIZE,
-    8,
-    EGL_GREEN_SIZE,
-    8,
-    EGL_BLUE_SIZE,
-    8,
-    EGL_ALPHA_SIZE,
-    alpha_size,
-    EGL_DEPTH_SIZE,
-    24,
-    EGL_STENCIL_SIZE,
-    8,
-    EGL_SAMPLE_BUFFERS,
-    _sapp.desc.sample_count > 1 ? 1 : 0,
-    EGL_SAMPLES,
-    sample_count,
-    EGL_NONE,
+      EGL_RED_SIZE,
+      8,
+      EGL_GREEN_SIZE,
+      8,
+      EGL_BLUE_SIZE,
+      8,
+      EGL_ALPHA_SIZE,
+      alpha_size,
+      EGL_DEPTH_SIZE,
+      24,
+      EGL_STENCIL_SIZE,
+      8,
+      EGL_SAMPLE_BUFFERS,
+      _sapp.desc.sample_count > 1 ? 1 : 0,
+      EGL_SAMPLES,
+      sample_count,
+      EGL_NONE,
   };
 
   EGLConfig egl_configs[32];
@@ -12700,18 +12715,15 @@ _SOKOL_PRIVATE void _sapp_egl_init(void) {
   }
 
   EGLint ctx_attrs[] = {
+      EGL_CONTEXT_MAJOR_VERSION,
+      _sapp.desc.gl_major_version,
+      EGL_CONTEXT_MINOR_VERSION,
+      _sapp.desc.gl_minor_version,
 #if defined(SOKOL_GLCORE)
-    EGL_CONTEXT_MAJOR_VERSION,
-    _sapp.desc.gl_major_version,
-    EGL_CONTEXT_MINOR_VERSION,
-    _sapp.desc.gl_minor_version,
-    EGL_CONTEXT_OPENGL_PROFILE_MASK,
-    EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
-#elif defined(SOKOL_GLES3)
-    EGL_CONTEXT_CLIENT_VERSION,
-    3,
+      EGL_CONTEXT_OPENGL_PROFILE_MASK,
+      EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
 #endif
-    EGL_NONE,
+      EGL_NONE,
   };
 
   _sapp.egl.context =
@@ -13434,7 +13446,7 @@ SOKOL_API_IMPL uint32_t sapp_gl_get_framebuffer(void) {
 
 SOKOL_API_IMPL int sapp_gl_get_major_version(void) {
   SOKOL_ASSERT(_sapp.valid);
-#if defined(SOKOL_GLCORE)
+#if defined(_SAPP_ANY_GL)
   return _sapp.desc.gl_major_version;
 #else
   return 0;
@@ -13443,10 +13455,18 @@ SOKOL_API_IMPL int sapp_gl_get_major_version(void) {
 
 SOKOL_API_IMPL int sapp_gl_get_minor_version(void) {
   SOKOL_ASSERT(_sapp.valid);
-#if defined(SOKOL_GLCORE)
+#if defined(_SAPP_ANY_GL)
   return _sapp.desc.gl_minor_version;
 #else
   return 0;
+#endif
+}
+
+SOKOL_API_IMPL bool sapp_gl_is_gles(void) {
+#if defined(SOKOL_GLES3)
+  return true;
+#else
+  return false;
 #endif
 }
 

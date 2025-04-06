@@ -46,12 +46,12 @@ project "mk_sokol"
   files {"deps/sokol.c"}
 
   filter "system:macosx"
-    defines { "SOKOL_GLCORE" }
+    -- defines { "SOKOL_GLCORE" }
     links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
     buildoptions { "-x objective-c" }
 
   filter "system:linux"
-    defines { "SOKOL_GLCORE" }
+    -- defines { "SOKOL_GLCORE" }
     links { "X11", "Xi", "Xcursor", "GL", "m" }
 
 -- Handmade Math (HMM) Library
