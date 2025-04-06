@@ -1,5 +1,4 @@
 #include <stdbool.h>
-
 #include "../deps/hmm.h"
 #include "../deps/log.h"
 #include "../deps/sokol_app.h"
@@ -11,10 +10,10 @@
 #define UTILS_ENDIAN_IMPLEMENTATION
 #define UTILS_ARENA_IMPLEMENTATION
 #define UTILS_ENDIAN_IMPLEMENTATION
-#define QK_MDL_IMPLEMENTATION
+#define MD1_IMPLEMENTATION
 
 #include "glsl/default.h"
-#include "quake/mdl.h"
+#include "quake/md1.h"
 #include "utils/types.h"
 
 #define FOV 60.0f
@@ -25,8 +24,8 @@ static struct {
   float roty;
   struct {
     qk_model mdl;
-    hmm_vec3 bbmin;
-    hmm_vec3 bbmax;
+    const f32* vbuf;
+    u32 vbuf_len;
   } qk;
 } S;
 
@@ -36,7 +35,7 @@ static void _load(cstr path) {
   makesure(bfsz > 0, "loadfile return size is zero");
 
   qk_error err = qk_load_mdl(bf, bfsz, &S.qk.mdl);
-  makesure(err == QK_ERR_SUCCESS, "qk_load_mdl failed");
+  makesure(err == MD1_ERR_SUCCESS, "qk_load_mdl failed");
   free(bf);
 }
 
@@ -53,34 +52,23 @@ static void init(void) {
 
   _load(mdl_file_path);
 
-  f32* verts = NULL;
-  u32 verts_cn = 0;
-  u32* inds = S.qk.mdl.indices;
-  u32 inds_cn = S.qk.mdl.header.indices_count;
-
-  qk_get_frame_vertices(&S.qk.mdl, 0, &verts, &verts_cn, &S.qk.bbmin,
-                        &S.qk.bbmax);
+  qk_get_frame_vertices(&S.qk.mdl, 0, 0, &S.qk.vbuf, &S.qk.vbuf_len);
 
   sg_shader shd = sg_make_shader(cube_shader_desc(sg_query_backend()));
 
   sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc){
       .type = SG_BUFFERTYPE_VERTEXBUFFER,
-      .data = {.ptr = verts, .size = verts_cn * sizeof(f32)},
-  });
-
-  sg_buffer ibuf = sg_make_buffer(&(sg_buffer_desc){
-      .type = SG_BUFFERTYPE_INDEXBUFFER,
-      .data = {.ptr = inds, .size = inds_cn * sizeof(u32)},
+      .data = {.ptr = S.qk.vbuf, .size = S.qk.vbuf_len * sizeof(f32)},
   });
 
   S.pip = sg_make_pipeline(&(sg_pipeline_desc){
-      .layout =
-          {.attrs = {[ATTR_cube_position] = {.format = SG_VERTEXFORMAT_FLOAT3,
-                                             .buffer_index = 0},
-                     [ATTR_cube_texcoord0] = {.format = SG_VERTEXFORMAT_FLOAT2,
-                                              .buffer_index = 0}}},
+      .layout = {.attrs =
+                     {
+                         [ATTR_cube_position].format = SG_VERTEXFORMAT_FLOAT3,
+
+                         [ATTR_cube_texcoord0].format = SG_VERTEXFORMAT_FLOAT2,
+                     }},
       .shader = shd,
-      .index_type = SG_INDEXTYPE_UINT32,
       .primitive_type = SG_PRIMITIVETYPE_TRIANGLES,
       .cull_mode = SG_CULLMODE_BACK,
       .depth = {
@@ -88,7 +76,7 @@ static void init(void) {
           .compare = SG_COMPAREFUNC_LESS_EQUAL,
       }});
 
-  S.bind = (sg_bindings){.vertex_buffers[0] = vbuf, .index_buffer = ibuf};
+  S.bind = (sg_bindings){.vertex_buffers[0] = vbuf};
   S.bind.images[IMG_tex] = S.qk.mdl.skins[0].image;
   S.bind.samplers[SMP_smp] = S.qk.mdl.skins[0].sampler;
 }
@@ -96,11 +84,12 @@ static void init(void) {
 static void frame(void) {
   S.roty += 1.0f;
 
-  hmm_vec3 center =
-      HMM_MultiplyVec3f(HMM_AddVec3(S.qk.bbmin, S.qk.bbmax), 0.5f);
-  f32 dx = S.qk.bbmax.X - S.qk.bbmin.X;
-  f32 dy = S.qk.bbmax.Y - S.qk.bbmin.Y;
-  f32 dz = S.qk.bbmax.Z - S.qk.bbmin.Z;
+  hmm_v3* bbmin = &S.qk.mdl.header.bbox_min;
+  hmm_v3* bbmax = &S.qk.mdl.header.bbox_max;
+  hmm_vec3 center = HMM_MultiplyVec3f(HMM_AddVec3(*bbmin, *bbmax), 0.5f);
+  f32 dx = bbmax->X - bbmin->X;
+  f32 dy = bbmax->Y - bbmin->Y;
+  f32 dz = bbmax->Z - bbmin->Z;
   f32 radius = 0.5f * sqrtf(dx * dx + dy * dy + dz * dz);
 
   f32 aspect = sapp_widthf() / sapp_heightf();
@@ -141,7 +130,7 @@ static void frame(void) {
   sg_apply_pipeline(S.pip);
   sg_apply_bindings(&S.bind);
   sg_apply_uniforms(UB_vs_params, &SG_RANGE(vs_params));
-  sg_draw(0, S.qk.mdl.header.indices_count, 1);
+  sg_draw(0, S.qk.vbuf_len, 1);
   sg_end_pass();
   sg_commit();
 }
