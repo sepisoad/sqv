@@ -1,5 +1,3 @@
-
-
 @ctype mat4 hmm_mat4
 
 @vs vs
