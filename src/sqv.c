@@ -37,6 +37,8 @@ static struct {
     sg_attachments atts;
     sg_pass_action pass_action;
     snk_image_t nk_img;
+    int width;
+    int height;
   } offscreen;
   struct {
     sg_pass_action pass_action;
@@ -52,6 +54,61 @@ static void _load(cstr path) {
   qk_error err = qk_load_mdl(bf, bfsz, &S.qk.mdl);
   makesure(err == MD1_ERR_SUCCESS, "qk_load_mdl failed");
   free(bf);
+}
+
+static void update_offscreen_target(int width, int height) {
+  // Destroy existing resources if they exist
+  if (sg_isvalid() && S.offscreen.color_img.id != SG_INVALID_ID) {
+    snk_destroy_image(S.offscreen.nk_img);
+    sg_destroy_attachments(S.offscreen.atts);
+    sg_destroy_image(S.offscreen.depth_img);
+    sg_destroy_image(S.offscreen.color_img);
+  }
+
+  // Update stored dimensions
+  S.offscreen.width = width > 0 ? width : DEFAULT_WIDTH;
+  S.offscreen.height = height > 0 ? height : DEFAULT_HEIGHT;
+
+  // Create new color image
+  S.offscreen.color_img = sg_make_image(&(sg_image_desc){
+      .render_target = true,
+      .width = S.offscreen.width,
+      .height = S.offscreen.height,
+      .pixel_format = SG_PIXELFORMAT_RGBA8,
+      .sample_count = 1,
+  });
+
+  // Create new depth image
+  S.offscreen.depth_img = sg_make_image(&(sg_image_desc){
+      .render_target = true,
+      .width = S.offscreen.width,
+      .height = S.offscreen.height,
+      .pixel_format = SG_PIXELFORMAT_DEPTH,
+      .sample_count = 1,
+  });
+
+  // Create new attachments
+  S.offscreen.atts = sg_make_attachments(&(sg_attachments_desc){
+      .colors[0].image = S.offscreen.color_img,
+      .depth_stencil.image = S.offscreen.depth_img,
+  });
+
+  // Create new Nuklear image
+  S.offscreen.nk_img = snk_make_image(&(snk_image_desc_t){
+      .image = S.offscreen.color_img,
+      .sampler = sg_make_sampler(&(sg_sampler_desc){
+          .min_filter = SG_FILTER_LINEAR,
+          .mag_filter = SG_FILTER_LINEAR,
+          .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
+          .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
+      }),
+  });
+
+  // Update pass action (recreate in case dimensions affect it)
+  S.offscreen.pass_action = (sg_pass_action){
+      .colors[0] = {.load_action = SG_LOADACTION_CLEAR,
+                    .clear_value = {0.25f, 0.5f, 0.75f, 1.0f}},
+  };
 }
 
 static void init(void) {
@@ -103,43 +160,8 @@ static void init(void) {
   S.bind.images[IMG_tex] = S.qk.mdl.skins[0].image;
   S.bind.samplers[SMP_smp] = S.qk.mdl.skins[0].sampler;
 
-  // Setup offscreen render target
-  S.offscreen.color_img = sg_make_image(&(sg_image_desc){
-      .render_target = true,
-      .width = DEFAULT_WIDTH,
-      .height = DEFAULT_HEIGHT,
-      .pixel_format = SG_PIXELFORMAT_RGBA8,
-      .sample_count = 1,
-  });
-
-  S.offscreen.depth_img = sg_make_image(&(sg_image_desc){
-      .render_target = true,
-      .width = DEFAULT_WIDTH,
-      .height = DEFAULT_HEIGHT,
-      .pixel_format = SG_PIXELFORMAT_DEPTH,
-      .sample_count = 1,
-  });
-
-  S.offscreen.atts = sg_make_attachments(&(sg_attachments_desc){
-      .colors[0].image = S.offscreen.color_img,
-      .depth_stencil.image = S.offscreen.depth_img,
-  });
-
-  S.offscreen.pass_action = (sg_pass_action){
-      .colors[0] = {.load_action = SG_LOADACTION_CLEAR,
-                    .clear_value = {0.25f, 0.5f, 0.75f, 1.0f}},
-  };
-
-  // Setup Nuklear image for the offscreen texture
-  S.offscreen.nk_img = snk_make_image(&(snk_image_desc_t){
-      .image = S.offscreen.color_img,
-      .sampler = sg_make_sampler(&(sg_sampler_desc){
-          .min_filter = SG_FILTER_LINEAR,
-          .mag_filter = SG_FILTER_LINEAR,
-          .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
-          .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
-      }),
-  });
+  // Initialize offscreen render target with window size
+  update_offscreen_target(sapp_width(), sapp_height());
 
   // Setup display pass action
   S.display.pass_action = (sg_pass_action){
@@ -159,7 +181,8 @@ static void draw_3d() {
   f32 dz = bbmax->Z - bbmin->Z;
   f32 radius = 0.5f * sqrtf(dx * dx + dy * dy + dz * dz);
 
-  f32 aspect = sapp_widthf() / sapp_heightf();
+  // Use current offscreen target dimensions for aspect ratio
+  f32 aspect = (f32)S.offscreen.width / (f32)S.offscreen.height;
   f32 cam_dist = (radius / sinf(HMM_ToRadians(FOV) * 0.5f)) * 1.5f;
 
   hmm_vec3 eye_pos = HMM_AddVec3(center, HMM_Vec3(0.0f, 0.0f, cam_dist));
@@ -172,7 +195,8 @@ static void draw_3d() {
   hmm_mat4 translate_to_origin =
       HMM_Translate(HMM_MultiplyVec3f(center, -1.0f));
 
-  hmm_mat4 rxm = HMM_Rotate(89, HMM_Vec3(1.0f, 0.0f, 0.0f));
+  hmm_mat4 rxm =
+      HMM_Rotate(89, HMM_Vec3(1.0f, 0.0f, 0.0f));  // Your fix for orientation
   hmm_mat4 rym = HMM_Rotate(0, HMM_Vec3(0.0f, 1.0f, 0.0f));
   hmm_mat4 rzm = HMM_Rotate(S.roty, HMM_Vec3(0.0f, 0.0f, -1.0f));
   hmm_mat4 rotation = HMM_MultiplyMat4(HMM_MultiplyMat4(rxm, rym), rzm);
@@ -202,17 +226,15 @@ static void draw_ui() {
   S.ctx = snk_new_frame();
   nk_style_hide_cursor(S.ctx);
 
-  // Save the default style to restore it later if needed
   struct nk_style_window default_window_style = S.ctx->style.window;
   struct nk_vec2 default_spacing = S.ctx->style.window.spacing;
-
-  // Set window padding and spacing to zero
   S.ctx->style.window.padding = nk_vec2(0, 0);
   S.ctx->style.window.spacing = nk_vec2(0, 0);
 
+  // Begin the window with no padding
   if (nk_begin(S.ctx, "SQV", nk_rect(0, 0, sapp_width(), sapp_height()),
                NK_WINDOW_NO_SCROLLBAR)) {
-    nk_layout_row_static(S.ctx, sapp_height(), sapp_width(), 1);
+    nk_layout_row_dynamic(S.ctx, sapp_height(), 1);
     nk_image(S.ctx, nk_image_handle(snk_nkhandle(S.offscreen.nk_img)));
   }
   nk_end(S.ctx);
@@ -224,6 +246,7 @@ static void draw_ui() {
       .action = S.display.pass_action,
       .swapchain = sglue_swapchain(),
   });
+
   snk_render(sapp_width(), sapp_height());
   sg_end_pass();
   sg_commit();
@@ -236,11 +259,22 @@ static void frame(void) {
 
 static void input(const sapp_event* event) {
   snk_handle_event(event);
+  if (event->type == SAPP_EVENTTYPE_RESIZED) {
+    // Update offscreen render target when window is resized
+    update_offscreen_target(event->window_width, event->window_height);
+  }
 }
 
 static void cleanup(void) {
   log_info("shutting down");
   qk_unload_mdl(&S.qk.mdl);
+  // Clean up offscreen resources
+  if (sg_isvalid()) {
+    snk_destroy_image(S.offscreen.nk_img);
+    sg_destroy_attachments(S.offscreen.atts);
+    sg_destroy_image(S.offscreen.depth_img);
+    sg_destroy_image(S.offscreen.color_img);
+  }
   snk_shutdown();
   sg_shutdown();
   sargs_shutdown();
