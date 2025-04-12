@@ -18,15 +18,9 @@
 #include "quake/md1.h"
 #include "utils/types.h"
 
-//=================================
-//=================================
-
 #define FOV 60.0f
-#define OFFSCREEN_WIDTH 512
-#define OFFSCREEN_HEIGHT 512
-#define OFFSCREEN_COLOR_FORMAT SG_PIXELFORMAT_RGBA8
-#define OFFSCREEN_DEPTH_FORMAT SG_PIXELFORMAT_DEPTH
-#define OFFSCREEN_SAMPLE_COUNT 1
+#define DEFAULT_WIDTH 512
+#define DEFAULT_HEIGHT 512
 
 static struct {
   sg_pipeline pip;
@@ -112,18 +106,18 @@ static void init(void) {
   // Setup offscreen render target
   S.offscreen.color_img = sg_make_image(&(sg_image_desc){
       .render_target = true,
-      .width = OFFSCREEN_WIDTH,
-      .height = OFFSCREEN_HEIGHT,
-      .pixel_format = OFFSCREEN_COLOR_FORMAT,
-      .sample_count = OFFSCREEN_SAMPLE_COUNT,
+      .width = DEFAULT_WIDTH,
+      .height = DEFAULT_HEIGHT,
+      .pixel_format = SG_PIXELFORMAT_RGBA8,
+      .sample_count = 1,
   });
 
   S.offscreen.depth_img = sg_make_image(&(sg_image_desc){
       .render_target = true,
-      .width = OFFSCREEN_WIDTH,
-      .height = OFFSCREEN_HEIGHT,
-      .pixel_format = OFFSCREEN_DEPTH_FORMAT,
-      .sample_count = OFFSCREEN_SAMPLE_COUNT,
+      .width = DEFAULT_WIDTH,
+      .height = DEFAULT_HEIGHT,
+      .pixel_format = SG_PIXELFORMAT_DEPTH,
+      .sample_count = 1,
   });
 
   S.offscreen.atts = sg_make_attachments(&(sg_attachments_desc){
@@ -154,7 +148,7 @@ static void init(void) {
   };
 }
 
-static void frame(void) {
+static void draw_3d() {
   S.roty += 1.0f;
 
   hmm_v3* bbmin = &S.qk.mdl.header.bbox_min;
@@ -165,7 +159,7 @@ static void frame(void) {
   f32 dz = bbmax->Z - bbmin->Z;
   f32 radius = 0.5f * sqrtf(dx * dx + dy * dy + dz * dz);
 
-  f32 aspect = (f32)OFFSCREEN_WIDTH / (f32)OFFSCREEN_HEIGHT;
+  f32 aspect = sapp_widthf() / sapp_heightf();
   f32 cam_dist = (radius / sinf(HMM_ToRadians(FOV) * 0.5f)) * 1.5f;
 
   hmm_vec3 eye_pos = HMM_AddVec3(center, HMM_Vec3(0.0f, 0.0f, cam_dist));
@@ -178,7 +172,7 @@ static void frame(void) {
   hmm_mat4 translate_to_origin =
       HMM_Translate(HMM_MultiplyVec3f(center, -1.0f));
 
-  hmm_mat4 rxm = HMM_Rotate(90, HMM_Vec3(-1.0f, 0.0f, 0.0f));
+  hmm_mat4 rxm = HMM_Rotate(89, HMM_Vec3(1.0f, 0.0f, 0.0f));
   hmm_mat4 rym = HMM_Rotate(0, HMM_Vec3(0.0f, 1.0f, 0.0f));
   hmm_mat4 rzm = HMM_Rotate(S.roty, HMM_Vec3(0.0f, 0.0f, -1.0f));
   hmm_mat4 rotation = HMM_MultiplyMat4(HMM_MultiplyMat4(rxm, rym), rzm);
@@ -202,19 +196,30 @@ static void frame(void) {
   sg_apply_uniforms(UB_vs_params, &SG_RANGE(vs_params));
   sg_draw(0, S.qk.vbuf_len, 1);
   sg_end_pass();
+}
 
-  // Setup Nuklear UI
+static void draw_ui() {
   S.ctx = snk_new_frame();
   nk_style_hide_cursor(S.ctx);
-  if (nk_begin(S.ctx, "3D View", nk_rect(10, 10, 600, 600),
-               NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE |
-                   NK_WINDOW_MINIMIZABLE)) {
-    nk_layout_row_dynamic(S.ctx, 512, 1);
+
+  // Save the default style to restore it later if needed
+  struct nk_style_window default_window_style = S.ctx->style.window;
+  struct nk_vec2 default_spacing = S.ctx->style.window.spacing;
+
+  // Set window padding and spacing to zero
+  S.ctx->style.window.padding = nk_vec2(0, 0);
+  S.ctx->style.window.spacing = nk_vec2(0, 0);
+
+  if (nk_begin(S.ctx, "SQV", nk_rect(0, 0, sapp_width(), sapp_height()),
+               NK_WINDOW_NO_SCROLLBAR)) {
+    nk_layout_row_static(S.ctx, sapp_height(), sapp_width(), 1);
     nk_image(S.ctx, nk_image_handle(snk_nkhandle(S.offscreen.nk_img)));
   }
   nk_end(S.ctx);
 
-  // Render display pass with Nuklear UI
+  S.ctx->style.window.padding = default_window_style.padding;
+  S.ctx->style.window.spacing = default_spacing;
+
   sg_begin_pass(&(sg_pass){
       .action = S.display.pass_action,
       .swapchain = sglue_swapchain(),
@@ -222,6 +227,11 @@ static void frame(void) {
   snk_render(sapp_width(), sapp_height());
   sg_end_pass();
   sg_commit();
+}
+
+static void frame(void) {
+  draw_3d();
+  draw_ui();
 }
 
 static void input(const sapp_event* event) {
