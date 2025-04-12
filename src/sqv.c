@@ -22,6 +22,17 @@
 #define DEFAULT_WIDTH 512
 #define DEFAULT_HEIGHT 512
 
+typedef struct {
+  sg_image color_img;
+  sg_image depth_img;
+  sg_attachments atts;
+  sg_pass_action pass_action;
+  snk_image_t nk_img;
+  sg_sampler sampler;
+  int width;
+  int height;
+} offscreen_target;
+
 static struct {
   sg_pipeline pip;
   sg_bindings bind;
@@ -31,20 +42,14 @@ static struct {
     const f32* vbuf;
     u32 vbuf_len;
   } qk;
-  struct {
-    sg_image color_img;
-    sg_image depth_img;
-    sg_attachments atts;
-    sg_pass_action pass_action;
-    snk_image_t nk_img;
-    int width;
-    int height;
-  } offscreen;
+  offscreen_target* offscreen_ptr;
   struct {
     sg_pass_action pass_action;
   } display;
   struct nk_context* ctx;
 } S;
+
+static offscreen_target offscreen = {0};
 
 static void _load(cstr path) {
   u8* bf = NULL;
@@ -58,79 +63,63 @@ static void _load(cstr path) {
 
 static void update_offscreen_target(int width, int height) {
   // Destroy existing resources if they exist
-  if (sg_isvalid() && S.offscreen.color_img.id != SG_INVALID_ID) {
-    snk_destroy_image(S.offscreen.nk_img);
-    sg_destroy_attachments(S.offscreen.atts);
-    sg_destroy_image(S.offscreen.depth_img);
-    sg_destroy_image(S.offscreen.color_img);
+  if (sg_isvalid() && S.offscreen_ptr->color_img.id != SG_INVALID_ID) {
+    snk_destroy_image(S.offscreen_ptr->nk_img);
+    sg_destroy_attachments(S.offscreen_ptr->atts);
+    sg_destroy_image(S.offscreen_ptr->depth_img);
+    sg_destroy_image(S.offscreen_ptr->color_img);
   }
 
   // Update stored dimensions
-  S.offscreen.width = width > 0 ? width : DEFAULT_WIDTH;
-  S.offscreen.height = height > 0 ? height : DEFAULT_HEIGHT;
+  S.offscreen_ptr->width = width > 0 ? width : DEFAULT_WIDTH;
+  S.offscreen_ptr->height = height > 0 ? height : DEFAULT_HEIGHT;
 
   // Create new color image
-  S.offscreen.color_img = sg_make_image(&(sg_image_desc){
+  S.offscreen_ptr->color_img = sg_make_image(&(sg_image_desc){
       .render_target = true,
-      .width = S.offscreen.width,
-      .height = S.offscreen.height,
+      .width = S.offscreen_ptr->width,
+      .height = S.offscreen_ptr->height,
       .pixel_format = SG_PIXELFORMAT_RGBA8,
       .sample_count = 1,
   });
 
   // Create new depth image
-  S.offscreen.depth_img = sg_make_image(&(sg_image_desc){
+  S.offscreen_ptr->depth_img = sg_make_image(&(sg_image_desc){
       .render_target = true,
-      .width = S.offscreen.width,
-      .height = S.offscreen.height,
+      .width = S.offscreen_ptr->width,
+      .height = S.offscreen_ptr->height,
       .pixel_format = SG_PIXELFORMAT_DEPTH,
       .sample_count = 1,
   });
 
   // Create new attachments
-  S.offscreen.atts = sg_make_attachments(&(sg_attachments_desc){
-      .colors[0].image = S.offscreen.color_img,
-      .depth_stencil.image = S.offscreen.depth_img,
+  S.offscreen_ptr->atts = sg_make_attachments(&(sg_attachments_desc){
+      .colors[0].image = S.offscreen_ptr->color_img,
+      .depth_stencil.image = S.offscreen_ptr->depth_img,
   });
 
-  // Create new Nuklear image
-  S.offscreen.nk_img = snk_make_image(&(snk_image_desc_t){
-      .image = S.offscreen.color_img,
-      .sampler = sg_make_sampler(&(sg_sampler_desc){
-          .min_filter = SG_FILTER_LINEAR,
-          .mag_filter = SG_FILTER_LINEAR,
-          .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
-          .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
-      }),
+  // Create new Nuklear image using the persistent sampler
+  S.offscreen_ptr->nk_img = snk_make_image(&(snk_image_desc_t){
+      .image = S.offscreen_ptr->color_img,
+      .sampler = S.offscreen_ptr->sampler,  // Reuse existing sampler
   });
 
-  // Update pass action (recreate in case dimensions affect it)
-  S.offscreen.pass_action = (sg_pass_action){
+  // Update pass action
+  S.offscreen_ptr->pass_action = (sg_pass_action){
       .colors[0] = {.load_action = SG_LOADACTION_CLEAR,
                     .clear_value = {0.25f, 0.5f, 0.75f, 1.0f}},
   };
 }
 
-static void init(void) {
-  log_info("initializing gpu ...");
+static void create_offscreen_taget(cstr path) {
+  if (S.offscreen_ptr != NULL) {
+    qk_unload_mdl(&S.qk.mdl);
+    update_offscreen_target(sapp_width(), sapp_height());
+  }
 
-  cstr mdl_file_path = (cstr)sapp_userdata();
-  log_info("loading '%s' model", mdl_file_path);
+  _load(path);
 
-  // Setup sokol-gfx
-  sg_setup(&(sg_desc){
-      .environment = sglue_environment(),
-      .logger.func = slog_func,
-  });
-
-  // Setup sokol-nuklear
-  snk_setup(&(snk_desc_t){
-      .enable_set_mouse_cursor = true,
-      .dpi_scale = sapp_dpi_scale(),
-      .logger.func = slog_func,
-  });
-
-  _load(mdl_file_path);
+  S.offscreen_ptr = &offscreen;
 
   qk_get_frame_vertices(&S.qk.mdl, 0, 0, &S.qk.vbuf, &S.qk.vbuf_len);
 
@@ -160,6 +149,14 @@ static void init(void) {
   S.bind.images[IMG_tex] = S.qk.mdl.skins[0].image;
   S.bind.samplers[SMP_smp] = S.qk.mdl.skins[0].sampler;
 
+  // Create a persistent sampler for the Nuklear image
+  S.offscreen_ptr->sampler = sg_make_sampler(&(sg_sampler_desc){
+      .min_filter = SG_FILTER_LINEAR,
+      .mag_filter = SG_FILTER_LINEAR,
+      .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
+      .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
+  });
+
   // Initialize offscreen render target with window size
   update_offscreen_target(sapp_width(), sapp_height());
 
@@ -168,6 +165,29 @@ static void init(void) {
       .colors[0] = {.load_action = SG_LOADACTION_CLEAR,
                     .clear_value = {0.1f, 0.1f, 0.1f, 1.0f}},
   };
+}
+
+static void init(void) {
+  log_info("initializing gpu ...");
+
+  // Setup sokol-gfx
+  sg_setup(&(sg_desc){
+      .environment = sglue_environment(),
+      .logger.func = slog_func,
+  });
+
+  // Setup sokol-nuklear
+  snk_setup(&(snk_desc_t){
+      .enable_set_mouse_cursor = true,
+      .dpi_scale = sapp_dpi_scale(),
+      .logger.func = slog_func,
+  });
+
+  cstr mdl_file_path = (cstr)sapp_userdata();
+  if (mdl_file_path != NULL) {
+    log_info("loading '%s' model", mdl_file_path);
+    create_offscreen_taget(mdl_file_path);
+  }
 }
 
 static void draw_3d() {
@@ -182,7 +202,7 @@ static void draw_3d() {
   f32 radius = 0.5f * sqrtf(dx * dx + dy * dy + dz * dz);
 
   // Use current offscreen target dimensions for aspect ratio
-  f32 aspect = (f32)S.offscreen.width / (f32)S.offscreen.height;
+  f32 aspect = (f32)S.offscreen_ptr->width / (f32)S.offscreen_ptr->height;
   f32 cam_dist = (radius / sinf(HMM_ToRadians(FOV) * 0.5f)) * 1.5f;
 
   hmm_vec3 eye_pos = HMM_AddVec3(center, HMM_Vec3(0.0f, 0.0f, cam_dist));
@@ -212,8 +232,8 @@ static void draw_3d() {
 
   // Render 3D scene to offscreen texture
   sg_begin_pass(&(sg_pass){
-      .action = S.offscreen.pass_action,
-      .attachments = S.offscreen.atts,
+      .action = S.offscreen_ptr->pass_action,
+      .attachments = S.offscreen_ptr->atts,
   });
   sg_apply_pipeline(S.pip);
   sg_apply_bindings(&S.bind);
@@ -226,27 +246,33 @@ static void draw_ui() {
   S.ctx = snk_new_frame();
   nk_style_hide_cursor(S.ctx);
 
+  // Save the default style to restore it later if needed
   struct nk_style_window default_window_style = S.ctx->style.window;
   struct nk_vec2 default_spacing = S.ctx->style.window.spacing;
+
+  // Set window padding and spacing to zero
   S.ctx->style.window.padding = nk_vec2(0, 0);
   S.ctx->style.window.spacing = nk_vec2(0, 0);
 
   // Begin the window with no padding
   if (nk_begin(S.ctx, "SQV", nk_rect(0, 0, sapp_width(), sapp_height()),
                NK_WINDOW_NO_SCROLLBAR)) {
+    // Use dynamic layout to fill the entire window height
     nk_layout_row_dynamic(S.ctx, sapp_height(), 1);
-    nk_image(S.ctx, nk_image_handle(snk_nkhandle(S.offscreen.nk_img)));
+    nk_image(S.ctx, nk_image_handle(snk_nkhandle(S.offscreen_ptr->nk_img)));
   }
   nk_end(S.ctx);
 
+  // Restore default style (optional, if you plan to add other windows with
+  // default styling)
   S.ctx->style.window.padding = default_window_style.padding;
   S.ctx->style.window.spacing = default_spacing;
 
+  // Render the display pass
   sg_begin_pass(&(sg_pass){
       .action = S.display.pass_action,
       .swapchain = sglue_swapchain(),
   });
-
   snk_render(sapp_width(), sapp_height());
   sg_end_pass();
   sg_commit();
@@ -257,11 +283,15 @@ static void frame(void) {
   draw_ui();
 }
 
-static void input(const sapp_event* event) {
-  snk_handle_event(event);
-  if (event->type == SAPP_EVENTTYPE_RESIZED) {
+static void input(const sapp_event* e) {
+  snk_handle_event(e);
+  if (e->type == SAPP_EVENTTYPE_RESIZED) {
     // Update offscreen render target when window is resized
-    update_offscreen_target(event->window_width, event->window_height);
+    update_offscreen_target(e->window_width, e->window_height);
+  }
+  if (e->type == SAPP_EVENTTYPE_FILES_DROPPED) {
+    printf("%s\n", sapp_get_dropped_file_path(0));
+    create_offscreen_taget(sapp_get_dropped_file_path(0));
   }
 }
 
@@ -270,10 +300,11 @@ static void cleanup(void) {
   qk_unload_mdl(&S.qk.mdl);
   // Clean up offscreen resources
   if (sg_isvalid()) {
-    snk_destroy_image(S.offscreen.nk_img);
-    sg_destroy_attachments(S.offscreen.atts);
-    sg_destroy_image(S.offscreen.depth_img);
-    sg_destroy_image(S.offscreen.color_img);
+    snk_destroy_image(S.offscreen_ptr->nk_img);
+    sg_destroy_attachments(S.offscreen_ptr->atts);
+    sg_destroy_image(S.offscreen_ptr->depth_img);
+    sg_destroy_image(S.offscreen_ptr->color_img);
+    sg_destroy_sampler(S.offscreen_ptr->sampler);  // Destroy persistent sampler
   }
   snk_shutdown();
   sg_shutdown();
@@ -294,9 +325,6 @@ sapp_desc sokol_main(i32 argc, char* argv[]) {
   } else if (sargs_exists("--model")) {
     _mdl = sargs_value("--model");
   } else {
-    makesure(false,
-             "you need to provide either '-m' or '--model' to define the path "
-             "to the MDL model");
   }
 
   return (sapp_desc){
@@ -310,6 +338,8 @@ sapp_desc sokol_main(i32 argc, char* argv[]) {
       .sample_count = 1,
       .window_title = "SQV with Nuklear",
       .icon.sokol_default = true,
+      .enable_dragndrop = true,
+      .max_dropped_files = 1,
       .logger.func = slog_func,
   };
 }
