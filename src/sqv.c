@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <stdio.h>
 #include "../deps/hmm.h"
 #include "../deps/log.h"
 #include "../deps/sokol_app.h"
@@ -9,7 +10,6 @@
 #include "../deps/sokol_glue.h"
 #include "../deps/sokol_log.h"
 
-#define UTILS_ENDIAN_IMPLEMENTATION
 #define UTILS_ARENA_IMPLEMENTATION
 #define UTILS_ENDIAN_IMPLEMENTATION
 #define MD1_IMPLEMENTATION
@@ -18,7 +18,15 @@
 #include "quake/md1.h"
 #include "utils/types.h"
 
+//=================================
+//=================================
+
 #define FOV 60.0f
+#define OFFSCREEN_WIDTH 512
+#define OFFSCREEN_HEIGHT 512
+#define OFFSCREEN_COLOR_FORMAT SG_PIXELFORMAT_RGBA8
+#define OFFSCREEN_DEPTH_FORMAT SG_PIXELFORMAT_DEPTH
+#define OFFSCREEN_SAMPLE_COUNT 1
 
 static struct {
   sg_pipeline pip;
@@ -29,6 +37,17 @@ static struct {
     const f32* vbuf;
     u32 vbuf_len;
   } qk;
+  struct {
+    sg_image color_img;
+    sg_image depth_img;
+    sg_attachments atts;
+    sg_pass_action pass_action;
+    snk_image_t nk_img;
+  } offscreen;
+  struct {
+    sg_pass_action pass_action;
+  } display;
+  struct nk_context* ctx;
 } S;
 
 static void _load(cstr path) {
@@ -47,11 +66,13 @@ static void init(void) {
   cstr mdl_file_path = (cstr)sapp_userdata();
   log_info("loading '%s' model", mdl_file_path);
 
+  // Setup sokol-gfx
   sg_setup(&(sg_desc){
       .environment = sglue_environment(),
       .logger.func = slog_func,
   });
 
+  // Setup sokol-nuklear
   snk_setup(&(snk_desc_t){
       .enable_set_mouse_cursor = true,
       .dpi_scale = sapp_dpi_scale(),
@@ -73,7 +94,6 @@ static void init(void) {
       .layout = {.attrs =
                      {
                          [ATTR_cube_position].format = SG_VERTEXFORMAT_FLOAT3,
-
                          [ATTR_cube_texcoord0].format = SG_VERTEXFORMAT_FLOAT2,
                      }},
       .shader = shd,
@@ -82,11 +102,56 @@ static void init(void) {
       .depth = {
           .write_enabled = true,
           .compare = SG_COMPAREFUNC_LESS_EQUAL,
+          .pixel_format = SG_PIXELFORMAT_DEPTH,
       }});
 
   S.bind = (sg_bindings){.vertex_buffers[0] = vbuf};
   S.bind.images[IMG_tex] = S.qk.mdl.skins[0].image;
   S.bind.samplers[SMP_smp] = S.qk.mdl.skins[0].sampler;
+
+  // Setup offscreen render target
+  S.offscreen.color_img = sg_make_image(&(sg_image_desc){
+      .render_target = true,
+      .width = OFFSCREEN_WIDTH,
+      .height = OFFSCREEN_HEIGHT,
+      .pixel_format = OFFSCREEN_COLOR_FORMAT,
+      .sample_count = OFFSCREEN_SAMPLE_COUNT,
+  });
+
+  S.offscreen.depth_img = sg_make_image(&(sg_image_desc){
+      .render_target = true,
+      .width = OFFSCREEN_WIDTH,
+      .height = OFFSCREEN_HEIGHT,
+      .pixel_format = OFFSCREEN_DEPTH_FORMAT,
+      .sample_count = OFFSCREEN_SAMPLE_COUNT,
+  });
+
+  S.offscreen.atts = sg_make_attachments(&(sg_attachments_desc){
+      .colors[0].image = S.offscreen.color_img,
+      .depth_stencil.image = S.offscreen.depth_img,
+  });
+
+  S.offscreen.pass_action = (sg_pass_action){
+      .colors[0] = {.load_action = SG_LOADACTION_CLEAR,
+                    .clear_value = {0.25f, 0.5f, 0.75f, 1.0f}},
+  };
+
+  // Setup Nuklear image for the offscreen texture
+  S.offscreen.nk_img = snk_make_image(&(snk_image_desc_t){
+      .image = S.offscreen.color_img,
+      .sampler = sg_make_sampler(&(sg_sampler_desc){
+          .min_filter = SG_FILTER_LINEAR,
+          .mag_filter = SG_FILTER_LINEAR,
+          .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
+          .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
+      }),
+  });
+
+  // Setup display pass action
+  S.display.pass_action = (sg_pass_action){
+      .colors[0] = {.load_action = SG_LOADACTION_CLEAR,
+                    .clear_value = {0.1f, 0.1f, 0.1f, 1.0f}},
+  };
 }
 
 static void frame(void) {
@@ -98,9 +163,9 @@ static void frame(void) {
   f32 dx = bbmax->X - bbmin->X;
   f32 dy = bbmax->Y - bbmin->Y;
   f32 dz = bbmax->Z - bbmin->Z;
-  f32 radius = 0.3f * sqrtf(dx * dx + dy * dy + dz * dz);
+  f32 radius = 0.5f * sqrtf(dx * dx + dy * dy + dz * dz);
 
-  f32 aspect = sapp_widthf() / sapp_heightf();
+  f32 aspect = (f32)OFFSCREEN_WIDTH / (f32)OFFSCREEN_HEIGHT;
   f32 cam_dist = (radius / sinf(HMM_ToRadians(FOV) * 0.5f)) * 1.5f;
 
   hmm_vec3 eye_pos = HMM_AddVec3(center, HMM_Vec3(0.0f, 0.0f, cam_dist));
@@ -127,29 +192,44 @@ static void frame(void) {
       .mvp = HMM_MultiplyMat4(view_proj, model),
   };
 
+  // Render 3D scene to offscreen texture
   sg_begin_pass(&(sg_pass){
-      .action =
-          {
-              .colors[0] = {.load_action = SG_LOADACTION_CLEAR,
-                            .clear_value = {0.25f, 0.5f, 0.75f, 1.0f}},
-          },
-      .swapchain = sglue_swapchain()});
-
+      .action = S.offscreen.pass_action,
+      .attachments = S.offscreen.atts,
+  });
   sg_apply_pipeline(S.pip);
   sg_apply_bindings(&S.bind);
   sg_apply_uniforms(UB_vs_params, &SG_RANGE(vs_params));
   sg_draw(0, S.qk.vbuf_len, 1);
-  snk_render(sapp_width(), sapp_height());  // <====
+  sg_end_pass();
+
+  // Setup Nuklear UI
+  S.ctx = snk_new_frame();
+  nk_style_hide_cursor(S.ctx);
+  if (nk_begin(S.ctx, "3D View", nk_rect(10, 10, 600, 600),
+               NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE |
+                   NK_WINDOW_MINIMIZABLE)) {
+    nk_layout_row_dynamic(S.ctx, 512, 1);
+    nk_image(S.ctx, nk_image_handle(snk_nkhandle(S.offscreen.nk_img)));
+  }
+  nk_end(S.ctx);
+
+  // Render display pass with Nuklear UI
+  sg_begin_pass(&(sg_pass){
+      .action = S.display.pass_action,
+      .swapchain = sglue_swapchain(),
+  });
+  snk_render(sapp_width(), sapp_height());
   sg_end_pass();
   sg_commit();
 }
 
-static void input(const sapp_event* ev) {
-  snk_handle_event(ev);
+static void input(const sapp_event* event) {
+  snk_handle_event(event);
 }
 
 static void cleanup(void) {
-  log_info("shuting down");
+  log_info("shutting down");
   qk_unload_mdl(&S.qk.mdl);
   snk_shutdown();
   sg_shutdown();
@@ -179,12 +259,12 @@ sapp_desc sokol_main(i32 argc, char* argv[]) {
       .user_data = (rptr)_mdl,
       .init_cb = init,
       .frame_cb = frame,
-      .event_cb = input,
       .cleanup_cb = cleanup,
-      .width = 400,
-      .height = 400,
+      .event_cb = input,
+      .width = 800,
+      .height = 600,
       .sample_count = 1,
-      .window_title = "SQV",
+      .window_title = "SQV with Nuklear",
       .icon.sokol_default = true,
       .logger.func = slog_func,
   };

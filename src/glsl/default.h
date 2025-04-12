@@ -27,7 +27,7 @@
             Bind slot: IMG_tex => 0
         Sampler 'smp':
             Type: SG_SAMPLERTYPE_FILTERING
-            Bind slot: SMP_smp => 1
+            Bind slot: SMP_smp => 0
 */
 #if !defined(SOKOL_GFX_INCLUDED)
 #error "Please include sokol_gfx.h before default.h"
@@ -43,7 +43,7 @@
 #define ATTR_cube_texcoord0 (1)
 #define UB_vs_params (0)
 #define IMG_tex (0)
-#define SMP_smp (1)
+#define SMP_smp (0)
 #pragma pack(push,1)
 SOKOL_SHDC_ALIGN(16) typedef struct vs_params_t {
     hmm_mat4 mvp;
@@ -133,11 +133,11 @@ static inline const sg_shader_desc* cube_shader_desc(sg_backend backend) {
             desc.images[0].image_type = SG_IMAGETYPE_2D;
             desc.images[0].sample_type = SG_IMAGESAMPLETYPE_FLOAT;
             desc.images[0].multisampled = false;
-            desc.samplers[1].stage = SG_SHADERSTAGE_FRAGMENT;
-            desc.samplers[1].sampler_type = SG_SAMPLERTYPE_FILTERING;
+            desc.samplers[0].stage = SG_SHADERSTAGE_FRAGMENT;
+            desc.samplers[0].sampler_type = SG_SAMPLERTYPE_FILTERING;
             desc.image_sampler_pairs[0].stage = SG_SHADERSTAGE_FRAGMENT;
             desc.image_sampler_pairs[0].image_slot = 0;
-            desc.image_sampler_pairs[0].sampler_slot = 1;
+            desc.image_sampler_pairs[0].sampler_slot = 0;
             desc.image_sampler_pairs[0].glsl_name = "tex_smp";
             desc.label = "cube_shader";
         }
