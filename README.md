@@ -1,23 +1,21 @@
 # SQV - Sepi's Quake Viewer
 
-SQV (Sepi's Quake Viewer) is a lightweight program that renders Quake 1 `.MDL` files.  
-
+SQV (Sepi's Quake Viewer) is a lightweight program that renders Quake 1 `.MDL` files.
 
 https://github.com/user-attachments/assets/4b13422c-c4dc-4cd8-9f55-34426d07f551
 
+## Features
+- Portable: Runs on all major desktop operating systems.
+- Self-contained: Comes with all necessary dependencies as source files—no need to install external packages.
+- Written in pure `C`, utilizing `sokol` for window creation and graphics.
 
-## Features  
-- Portable: Runs on all major desktop operating systems.  
-- Self-contained: Comes with all necessary dependencies as source files—no need to install external packages.  
-- Written in pure `C`, utilizing `sokol` for window creation and graphics.  
+## Status
+SQV is still in early development, but I have some exciting ideas for its future evolution.
 
-## Status  
-SQV is still in early development, but I have some exciting ideas for its future evolution.  
+## Building
+To build SQV, you need [`premake5`](https://premake.github.io/) installed on your system.
 
-## Building  
-To build SQV, you need [`premake5`](https://premake.github.io/) installed on your system.  
-
-1. Generate the Makefiles:  
+1. Generate the Makefiles:
    ```sh
    premake5 gmake2
    ```
