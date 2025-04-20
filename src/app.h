@@ -7,7 +7,8 @@ typedef struct nk_context contextui;
 
 typedef enum {
   MODE_UNKNOWN = -1,
-  MODE_NORMAL = 0,
+  MODE_INIT = 0,
+  MODE_NORMAL,
   MODE_INFO,
   MODE_HELP,
 } mode;
@@ -36,6 +37,7 @@ typedef struct {
   u32 mdl_pos;
   u32 mdl_frm;
   float mdl_roty;
+  bool rotating;
   mode m;
 } state;
 

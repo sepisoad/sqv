@@ -14,6 +14,7 @@
 #include "../deps/nuklear.h"
 #include "../deps/sokol_nuklear.h"
 #include "../deps/sokol_glue.h"
+#include "../deps/sokol_time.h"
 #include "../deps/sokol_log.h"
 
 #include "glsl/default.h"
@@ -21,9 +22,12 @@
 #include "utils/types.h"
 #include "app.h"
 
+#define MAX_INIT_DELAY 10
+#define ROT_FACTOR 0.5;
+
 static context3d ctx3d = {0};
 static state s;
-static float rot = 0.5;
+static u64 init_tm = 0;
 
 void load_3d_model(cstr path, qk_model* m);
 void unload_3d_model(qk_model* m);
@@ -135,12 +139,14 @@ static void create_offscreen_taget(cstr path) {
 
 static cstr mode_str(mode m) {
   switch (m) {
+    case MODE_INIT:
+      return "INIT";
     case MODE_NORMAL:
       return "NORMAL";
-    case MODE_INFO:
-      return "INFO";
     case MODE_HELP:
       return "HELP";
+    case MODE_INFO:
+      return "INFO";
     default:
       return "UNKNOWN";
   }
@@ -154,13 +160,25 @@ static void set_mode(mode m) {
 }
 
 static void update(void) {
-  s.mdl_roty += rot;
+  if (s.rotating) {
+    s.mdl_roty += ROT_FACTOR;
+  }
 }
 
 static void frame(void) {
   draw_3d(&s);
   draw_ui(&s);
   update();
+
+  if (s.m == MODE_INIT && stm_sec(stm_since(init_tm)) > MAX_INIT_DELAY) {
+    set_mode(MODE_NORMAL);
+  }
+}
+
+static void mode_init_input(const sapp_event* e) {
+  if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
+    set_mode(MODE_NORMAL);
+  }
 }
 
 static void mode_normal_input(const sapp_event* e) {
@@ -175,11 +193,7 @@ static void mode_normal_input(const sapp_event* e) {
         set_mode(MODE_INFO);
         break;
       case SAPP_KEYCODE_R:;
-        if (rot == 0.0f) {
-          rot = 0.5f;
-        } else {
-          rot = 0.0f;
-        }
+        s.rotating = !s.rotating;
         break;
       default:
         break;
@@ -187,7 +201,7 @@ static void mode_normal_input(const sapp_event* e) {
   }
 }
 
-static void mode_info_input(const sapp_event* e) {
+static void mode_help_input(const sapp_event* e) {
   if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
     switch (e->key_code) {
       case SAPP_KEYCODE_ESCAPE:
@@ -199,7 +213,7 @@ static void mode_info_input(const sapp_event* e) {
   }
 }
 
-static void mode_help_input(const sapp_event* e) {
+static void mode_info_input(const sapp_event* e) {
   if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
     switch (e->key_code) {
       case SAPP_KEYCODE_ESCAPE:
@@ -223,14 +237,17 @@ static void input(const sapp_event* e) {
   }
 
   switch (s.m) {
+    case MODE_INIT:
+      mode_init_input(e);
+      break;
     case MODE_NORMAL:
       mode_normal_input(e);
       break;
-    case MODE_INFO:
-      mode_info_input(e);
-      break;
     case MODE_HELP:
       mode_help_input(e);
+      break;
+    case MODE_INFO:
+      mode_info_input(e);
       break;
     default:
       break;
@@ -256,19 +273,23 @@ static void cleanup(void) {
 static void init(void) {
   log_info("initializing gpu ...");
 
-  s.ctx3d = &ctx3d;
-  s.m = MODE_NORMAL;
-
   sg_setup(&(sg_desc){
       .environment = sglue_environment(),
       .logger.func = slog_func,
   });
+
+  stm_setup();
 
   snk_setup(&(snk_desc_t){
       .enable_set_mouse_cursor = true,
       .dpi_scale = sapp_dpi_scale(),
       .logger.func = slog_func,
   });
+
+  init_tm = stm_now();
+  s.ctx3d = &ctx3d;
+  s.m = MODE_INIT;
+  s.rotating = true;
 
   cstr path = (cstr)sapp_userdata();
   if (path != NULL) {
