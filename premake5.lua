@@ -34,7 +34,7 @@ project "mk_ini"
   objdir "BUILD/obj"
   targetname "ini"
   files {"deps/ini.c"}
-  
+
 -- Sokol Library
 project "mk_sokol"
   kind "StaticLib"
@@ -83,17 +83,17 @@ project "mk_sqv"
   targetdir "BUILD/"
   objdir "BUILD/obj"
   targetname "sqv"
-  files {"src/*.c", "src/qk/*.c"}
+  files {"src/main.c", "src/draw3d.c", "src/drawui.c"}
   includedirs {"src", "deps"}
   links { "mk_log:static", "mk_ini:static", "mk_stb:static", "mk_sokol:static", "mk_hmm:static" }
   buildoptions { "-std=c2x" }
   defines { "SOKOL_GLCORE" }
   defines { "_POSIX_C_SOURCE=199309L" }  -- Needed for some C23 features
-  
+
   filter "system:macosx"
     links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
 
-  filter "system:linux"    
+  filter "system:linux"
     links { "X11", "Xi", "Xcursor", "GL", "m" }
 
 -- GLSL Shader Compilation Action
@@ -131,7 +131,7 @@ newaction {
     -- Capture additional command-line arguments
     local args = _ARGS
     local args_str = table.concat(args, " ")
-    
+
     -- Execute the program with arguments
     os.execute("BUILD/sqv -m=" .. args_str)
   end

@@ -21,8 +21,6 @@
 #define MAX_STATIC_MEM 8192
 #define MAX_FRAME_NAME_LEN 16
 
-/* RAW QUAKE TYPES AS THEY ARE STORED IN MDL FILE */
-
 typedef f32 md1_vectorf;
 
 typedef md1_vectorf md1_vector3f[3];
@@ -156,7 +154,7 @@ typedef struct {
 
 /* ****************** quake::mdl API ****************** */
 qk_error qk_load_mdl(const u8*, sz, qk_model*);
-void qk_get_frame_vertices(qk_model*, u32, u32, const f32**, u32*);
+void qk_get_frame_vertices(const qk_model*, u32, u32, const f32**, u32*);
 void qk_unload_mdl(qk_model*);
 /* ****************** quake::mdl API ****************** */
 
@@ -207,7 +205,7 @@ static void md1_estimate_memory(arena* mem,
                                 const md1_header* rhdr,
                                 sz bufsz,
                                 qk_header* hdr) {
-  log_debug("trying to estimate required memory");
+  DBG("trying to estimate required memory");
   arena_begin_estimate(mem);
 
   const u32 frm_len = hdr->frames_length;
@@ -243,7 +241,7 @@ static void md1_estimate_memory(arena* mem,
     if (*skin_type == MD1_SKIN_SINGLE) {
       p += skn_wdt * skn_hgt;
     } else {
-      makesure(false, "sqv does not support multi skin YET!");
+      mustdie("sqv does not support multi skin YET!");
     }
   }
 
@@ -258,7 +256,7 @@ static void md1_estimate_memory(arena* mem,
 
   for (u32 i = 0; i < frm_len; i++) {
     if (p + sizeof(md1_frame_type) > pend) {
-      makesure(false, "failed to parse frames data");
+      mustdie("failed to parse frames data");
     }
 
     md1_frame_type ft = *(const md1_frame_type*)p;
@@ -267,7 +265,7 @@ static void md1_estimate_memory(arena* mem,
     if (ft == MD1_FT_SINGLE) {
       if (p + sizeof(md1_frame_single) + (vrt_len * sizeof(md1_normal_vertex)) >
           pend) {
-        makesure(false, "failed to parse frames data");
+        mustdie("failed to parse frames data");
       }
 
       const char* pname = ((md1_frame_single*)p)->name;
@@ -286,7 +284,7 @@ static void md1_estimate_memory(arena* mem,
 
       p += sizeof(md1_frame_single) + (vrt_len * sizeof(md1_normal_vertex));
     } else {
-      makesure(false, "sqv does not support group frames YET!");
+      mustdie("sqv does not support group frames YET!");
     }
   }
 
@@ -311,11 +309,11 @@ static void md1_estimate_memory(arena* mem,
 
   // Finalize estimation
   arena_end_estimate(mem);
-  log_debug("memory size needed: %d bytes", mem->estimate);
+  DBG("memory size needed: %d bytes", mem->estimate);
 }
 
 static void md1_load_image(const u8* p, u8* pixels, sz size) {
-  log_debug("loading skin image data");
+  DBG("loading skin image data");
   u8* indices = (u8*)p;
   for (sz i = 0, j = 0; i < size; i++, j += 4) {
     u32 index = indices[i];
@@ -335,22 +333,22 @@ static const u8* md1_load_skins(qk_model* mdl, const u8* p) {
 
   sz memsz = sizeof(qk_skin) * hdr->skins_length;
   qk_skin* skins = (qk_skin*)arena_alloc(mem, memsz, alignof(qk_skin));
-  makesure(skins != NULL, "arena out of memory!");
+  notnull(skins);
 
   for (sz i = 0; i < hdr->skins_length; i++) {
-    log_debug("loading skins #%d", i);
+    DBG("loading skins #%d", i);
     md1_skin_type* skin_type = (md1_skin_type*)p;
     if (*skin_type == MD1_SKIN_SINGLE) {
       p += sizeof(md1_skin_type);
 
       sz pixel_sz = sizeof(u8) * skin_size * 4;
       u8* pixels = (u8*)arena_alloc(mem, pixel_sz, alignof(u8));
-      makesure(pixels != NULL, "arena out of memory!");
+      notnull(pixels);
 
       md1_load_image(p, pixels, skin_size);
 
 #ifdef DEBUG
-      log_debug("dumping skins data into an image on disk");
+      DBG("dumping skins data into an image on disk");
       char skin_name[1024] = {0};
       sprintf(skin_name, "BUILD/skin_%zu.png", i);
       stbi_write_png(skin_name, width, height, 4, pixels, width * 4);
@@ -371,7 +369,7 @@ static const u8* md1_load_skins(qk_model* mdl, const u8* p) {
                                      }});
       p += skin_size;
     } else {
-      makesure(false, "load_skin() does not support multi skin YET!");
+      mustdie("load_skin() does not support multi skin YET!");
     }
   }
 
@@ -380,12 +378,12 @@ static const u8* md1_load_skins(qk_model* mdl, const u8* p) {
 }
 
 static const u8* md1_load_st(qk_model* mdl, const u8* p, md1_st** coords) {
-  log_debug("loading texture S/T coordinates");
+  DBG("loading texture S/T coordinates");
   arena* mem = &mdl->mem;
   const qk_header* hdr = &mdl->header;
   sz mem_sz = sizeof(md1_st) * hdr->vertices_length;
   *coords = (md1_st*)arena_alloc(mem, mem_sz, alignof(md1_st));
-  makesure(coords != NULL, "arena out of memory!");
+  notnull(coords);
 
   const md1_st* src = (const md1_st*)p;
 
@@ -403,12 +401,12 @@ static const u8* md1_load_triangles(qk_model* mdl,
                                     const u8* p,
                                     const qk_header* hdr,
                                     md1_faced_triangle** ftris) {
-  log_debug("loading triangles");
+  DBG("loading triangles");
   arena* mem = &mdl->mem;
   sz mem_sz = sizeof(md1_faced_triangle) * hdr->triangles_length;
   *ftris = (md1_faced_triangle*)arena_alloc(mem, mem_sz,
                                             alignof(md1_faced_triangle));
-  makesure(ftris != NULL, "arena out of memory!");
+  notnull(ftris);
 
   const md1_faced_triangle* src =
       (const md1_faced_triangle*)p;  // Use separate pointer
@@ -435,7 +433,7 @@ static const u8* md1_load_single_frame(qk_model* mdl,
 
   char name[16] = {0};
   memcpy(name, snl->name, sizeof(name) - 1);
-  log_debug("loading single frame #%d from pose: %s", frm_idx, name);
+  DBG("loading single frame #%d from pose: %s", frm_idx, name);
 
   if (md1_pose_changed(name, oldname)) {
     memcpy(mdl->poses[*pos_idx].name, oldname, MAX_FRAME_NAME_LEN);
@@ -478,7 +476,7 @@ static const u8* md1_load_single_frame(qk_model* mdl,
 }
 
 static const u8* md1_load_frames(qk_model* mdl, const u8* p) {
-  log_debug("loading frames");
+  DBG("loading frames");
   arena* mem = &mdl->mem;
   const qk_header* hdr = &mdl->header;
   u32 frames_length = hdr->frames_length;
@@ -486,11 +484,11 @@ static const u8* md1_load_frames(qk_model* mdl, const u8* p) {
 
   sz verts_sz = sizeof(qk_vertex) * verts_length * frames_length;
   mdl->vertices = (qk_vertex*)arena_alloc(mem, verts_sz, alignof(qk_vertex));
-  makesure(mdl->vertices != NULL, "arena out of memory!");
+  notnull(mdl->vertices);
 
   sz poses_sz = sizeof(qk_pose) * mdl->header.poses_length;
   mdl->poses = (qk_pose*)arena_alloc(mem, poses_sz, alignof(qk_pose));
-  makesure(mdl->poses != NULL, "arena out of memory!");
+  notnull(mdl->poses);
 
   u32 pos_idx = 0;
   u32 pos_len = 0;
@@ -505,7 +503,7 @@ static const u8* md1_load_frames(qk_model* mdl, const u8* p) {
     if (ft == MD1_FT_SINGLE) {
       p = md1_load_single_frame(mdl, i, &pos_len, &pos_idx, oldname, p);
     } else {
-      makesure(false, "md1_load_frames() does not support multi frames YET!");
+      mustdie("md1_load_frames() does not support multi frames YET!");
     }
   }
 
@@ -515,7 +513,7 @@ static const u8* md1_load_frames(qk_model* mdl, const u8* p) {
 static void md1_make_display_list(qk_model* mdl,
                                   const md1_st* coords,
                                   const md1_faced_triangle* ftris) {
-  log_debug("generating vertex buffer data");
+  DBG("generating vertex buffer data");
   arena* mem = &mdl->mem;
   qk_header* hdr = &mdl->header;
   hmm_v3* scl = &hdr->scale;
@@ -531,7 +529,7 @@ static void md1_make_display_list(qk_model* mdl,
   u32 elm_len = 3 * (3 + 2);  // a->b->c * x,y,z, u,v
   sz vbuf_sz = sizeof(f32) * frm_len * tri_len * elm_len;
   f32* vbuf = (f32*)arena_alloc(mem, vbuf_sz, alignof(f32));
-  makesure(vbuf != NULL, "arena out of memory!");
+  notnull(vbuf);
 
   u32 idx = 0;
   for (u32 frm_idx = 0; frm_idx < frm_len; frm_idx++) {
@@ -566,12 +564,11 @@ static void md1_make_display_list(qk_model* mdl,
 
   mdl->vbuf = vbuf;
   hdr->vbuf_length = elm_len * tri_len;
-  log_debug("generated vertex buffer with %d items",
-            frm_len * tri_len * elm_len);
+  DBG("generated vertex buffer with %d items", frm_len * tri_len * elm_len);
 }
 
 void md1_scale_translate_bbox(qk_model* mdl) {
-  log_debug("scaling and translating bbox data");
+  DBG("scaling and translating bbox data");
 
   qk_header* hdr = &mdl->header;
   hmm_v3* scl = &hdr->scale;
@@ -587,12 +584,12 @@ void md1_scale_translate_bbox(qk_model* mdl) {
   bbx_max->Z = (bbx_max->Z * scl->Z) + trn->Z;
 }
 
-void qk_get_frame_vertices(qk_model* mdl,
+void qk_get_frame_vertices(const qk_model* mdl,
                            u32 pos_idx,
                            u32 frm_idx,
                            const f32** vbuf,
                            u32* vbuf_len) {
-  log_debug("getting vertices data for pos %d and frame %d", pos_idx, frm_idx);
+  /* DBG("getting vertices data for pos %d and frame %d", pos_idx, frm_idx); */
   makesure(pos_idx < mdl->header.poses_length, "invalid pose index");
   makesure(frm_idx < mdl->poses[pos_idx].frames_length,
            "invalid frame index in pose");
@@ -608,7 +605,7 @@ qk_error qk_load_mdl(const u8* buf, sz bufsz, qk_model* mdl) {
 
   memset(mdl, 0, sizeof(qk_model));
 
-  log_debug("loading MD1 haeder ...");
+  DBG("loading MD1 haeder ...");
   mdl->header = (qk_header){
       .radius = endian_f32(rhdr->bounding_radius),
       .skin_width = endian_i32(rhdr->skin_width),
@@ -633,11 +630,11 @@ qk_error qk_load_mdl(const u8* buf, sz bufsz, qk_model* mdl) {
   md1_st* stcoords = NULL;
   md1_faced_triangle* ftris = NULL;
 
-  log_debug("header/vertices: %d", hdr->vertices_length);
-  log_debug("header/triangles: %d", hdr->triangles_length);
-  log_debug("header/frames: %d", hdr->frames_length);
-  log_debug("header/skins: %d", hdr->skins_length);
-  log_debug("header/skin size: %d x %d", hdr->skin_width, hdr->skin_height);
+  DBG("header/vertices: %d", hdr->vertices_length);
+  DBG("header/triangles: %d", hdr->triangles_length);
+  DBG("header/frames: %d", hdr->frames_length);
+  DBG("header/skins: %d", hdr->skins_length);
+  DBG("header/skin size: %d x %d", hdr->skin_width, hdr->skin_height);
 
   md1_estimate_memory(mem, rhdr, bufsz, hdr);
 
