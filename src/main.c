@@ -263,7 +263,7 @@ static void cleanup(void) {
     sg_destroy_attachments(s.ctx3d->atts);
     sg_destroy_image(s.ctx3d->depth_img);
     sg_destroy_image(s.ctx3d->color_img);
-    sg_destroy_sampler(s.ctx3d->sampler);  // Destroy persistent sampler
+    sg_destroy_sampler(s.ctx3d->sampler);
   }
   snk_shutdown();
   sg_shutdown();
