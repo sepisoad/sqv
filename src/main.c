@@ -45,13 +45,10 @@ void update_frame_vbuf(u32 pos, u32 frm) {
   u32 vb_len = 0;
 
   qk_get_frame_vertices(&s.mdl, pos, frm, &vb, &vb_len);
-
-  sg_destroy_buffer(s.ctx3d->vbuf);
-  s.ctx3d->vbuf = sg_make_buffer(&(sg_buffer_desc){
-      .type = SG_BUFFERTYPE_VERTEXBUFFER,
-      .data = {.ptr = vb, .size = vb_len * sizeof(f32)},
-  });
-  s.bind.vertex_buffers[0] = s.ctx3d->vbuf;
+  sg_update_buffer(s.bind.vertex_buffers[0], &(sg_range){
+                                                 .ptr = vb,
+                                                 .size = vb_len * sizeof(f32),
+                                             });
 }
 
 static void reset_state() {
@@ -106,7 +103,6 @@ static void update_offscreen_target(int width, int height) {
 static void create_offscreen_target(cstr path) {
   if (s.ctx3d != NULL) {
     unload_3d_model(&s.mdl);
-    /* sg_destroy_buffer(s.ctx3d->vbuf); */
     sg_destroy_pipeline(s.pip);
     sg_destroy_shader(s.shd);
     reset_state();
@@ -121,11 +117,13 @@ static void create_offscreen_target(cstr path) {
   qk_get_frame_vertices(&s.mdl, s.mdl_pos, s.mdl_frm, &vb, &vb_len);
 
   s.shd = sg_make_shader(cube_shader_desc(sg_query_backend()));
-  s.ctx3d->vbuf = sg_make_buffer(&(sg_buffer_desc){
-      .type = SG_BUFFERTYPE_VERTEXBUFFER,
-      .data = {.ptr = vb, .size = vb_len * sizeof(f32)},
-  });
 
+  sg_buffer_desc vbufd = {};
+  vbufd.type = SG_BUFFERTYPE_VERTEXBUFFER;
+  vbufd.usage = SG_USAGE_DYNAMIC;
+  vbufd.size = vb_len * sizeof(f32);
+
+  sg_buffer vbuf = sg_make_buffer(&vbufd);
   s.pip = sg_make_pipeline(&(sg_pipeline_desc){
       .layout = {.attrs =
                      {
@@ -141,9 +139,14 @@ static void create_offscreen_target(cstr path) {
           .pixel_format = SG_PIXELFORMAT_DEPTH,
       }});
 
-  s.bind = (sg_bindings){.vertex_buffers[0] = s.ctx3d->vbuf};
+  s.bind = (sg_bindings){.vertex_buffers[0] = vbuf};
   s.bind.images[IMG_tex] = s.mdl.skins[s.mdl_skn].image;
   s.bind.samplers[SMP_smp] = s.mdl.skins[s.mdl_skn].sampler;
+
+  sg_update_buffer(s.bind.vertex_buffers[0], &(sg_range){
+                                                 .ptr = vb,
+                                                 .size = vb_len * sizeof(f32),
+                                             });
 
   // Create a persistent sampler for the Nuklear image
   s.ctx3d->sampler = sg_make_sampler(&(sg_sampler_desc){

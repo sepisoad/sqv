@@ -22,7 +22,6 @@ typedef struct {
   sg_pass_action pass_action;
   snk_image_t nk_img;
   sg_sampler sampler;
-  sg_buffer vbuf;
   int width;
   int height;
 } context3d;

@@ -119,7 +119,7 @@ newaction {
   trigger = "r",
   description = "quick execute",
   execute = function()
-    os.execute("BUILD/sqv -m=KEEP/spike.mdl")
+    os.execute("BUILD/sqv -m=KEEP/dog.mdl")
   end
 }
 

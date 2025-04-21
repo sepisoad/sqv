@@ -61,9 +61,9 @@ typedef struct {
   i32 vertices_length;
   i32 triangles_length;
   i32 frames_length;
-  md1_sync_type sync_type;  // SEPI: what is this?
-  i32 flags;                // SEPI: what is this?
-  f32 size;                 // SEPI: what is this?
+  md1_sync_type sync_type;
+  i32 flags;
+  f32 size;
 } md1_header;
 
 typedef struct {
@@ -104,6 +104,23 @@ typedef enum {
   MD1_ERR_INVALID,
 } qk_error;
 
+typedef struct {
+  f32 radius;
+  u32 skin_width;
+  u32 skin_height;
+  u32 skins_length;
+  u32 vertices_length;
+  u32 triangles_length;
+  u32 frames_length;
+  u32 poses_length;
+  u32 vbuf_length;
+  hmm_v3 scale;
+  hmm_v3 translate;
+  hmm_v3 eye;
+  hmm_v3 bbox_min;
+  hmm_v3 bbox_max;
+} qk_header;
+
 typedef f32* qk_vertex_buffer;
 typedef u32* qk_index_buffer;
 
@@ -113,29 +130,14 @@ typedef struct {
 } qk_vertex;
 
 typedef struct {
+  sg_buffer vbuf;
+} qk_frame;
+
+typedef struct {
   char name[MAX_FRAME_NAME_LEN];
   u32 start;
   u32 frames_length;
 } qk_pose;
-
-typedef struct {
-  f32 radius;  // bounding radius // TODO: drop this!
-  u32 skin_width;
-  u32 skin_height;
-  u32 skins_length;
-  u32 vertices_length;
-  u32 triangles_length;
-  u32 indices_length;
-  u32 mesh_length;  // TODO: drop this
-  u32 frames_length;
-  u32 poses_length;
-  u32 vbuf_length;
-  hmm_v3 scale;      // model scale
-  hmm_v3 translate;  // model translate
-  hmm_v3 eye;        // eye position
-  hmm_v3 bbox_min;
-  hmm_v3 bbox_max;
-} qk_header;
 
 typedef struct {
   sg_image image;
@@ -148,8 +150,9 @@ typedef struct {
   qk_skin* skins;
   qk_index_buffer indices;
   qk_vertex* vertices;
-  qk_pose* poses;  // TODO: keep this!
-  f32* vbuf;
+  qk_frame* frames;
+  qk_pose* poses;
+  f32* vbuf;  // TODO: drop this in favor of frame vbufs
   arena mem;
 } qk_model;
 
@@ -295,6 +298,10 @@ static void md1_estimate_memory(arena* mem,
   sz raw_verts_sz = sizeof(qk_vertex) * vrt_len * frm_len;
   arena_estimate_add(mem, raw_verts_sz, alignof(qk_vertex));
 
+  // Add frames memory
+  sz frames_sz = sizeof(qk_frame) * frm_len;
+  arena_estimate_add(mem, frames_sz, alignof(qk_frame));
+
   // Add pose memory estimation
   sz poses_sz = sizeof(qk_pose) * pos_len;
   arena_estimate_add(mem, poses_sz, alignof(qk_pose));
@@ -427,6 +434,17 @@ static const u8* md1_load_triangles(qk_model* mdl,
   return (const u8*)src;
 }
 
+static void md1_make_vbuf(qk_model* mdl, qk_vertex* verts, u32 frm_idx) {
+  u32 elm_len = 3 * (3 + 2);
+  u32 vb_len = elm_len * mdl->header.triangles_length;
+  qk_frame* frm = mdl->frames + frm_idx;
+
+  frm->vbuf = sg_make_buffer(&(sg_buffer_desc){
+      .type = SG_BUFFERTYPE_VERTEXBUFFER,
+      .data = {.ptr = verts, .size = vb_len * sizeof(f32)},
+  });
+}
+
 static const u8* md1_load_single_frame(qk_model* mdl,
                                        u32 frm_idx,
                                        u32* pos_len,
@@ -476,6 +494,7 @@ static const u8* md1_load_single_frame(qk_model* mdl,
                                   _qk_normals[raw_verts[i].normal_idx][1],
                                   _qk_normals[raw_verts[i].normal_idx][2]};
   }
+  md1_make_vbuf(mdl, frmverts, frm_idx);
 
   return (const u8*)(raw_verts + hdr->vertices_length);
 }
@@ -490,6 +509,10 @@ static const u8* md1_load_frames(qk_model* mdl, const u8* p) {
   sz verts_sz = sizeof(qk_vertex) * verts_length * frames_length;
   mdl->vertices = (qk_vertex*)arena_alloc(mem, verts_sz, alignof(qk_vertex));
   notnull(mdl->vertices);
+
+  sz frames_sz = sizeof(qk_frame) * mdl->header.frames_length;
+  mdl->frames = (qk_frame*)arena_alloc(mem, frames_sz, alignof(qk_frame));
+  notnull(mdl->frames);
 
   sz poses_sz = sizeof(qk_pose) * mdl->header.poses_length;
   mdl->poses = (qk_pose*)arena_alloc(mem, poses_sz, alignof(qk_pose));
@@ -589,12 +612,12 @@ void md1_scale_translate_bbox(qk_model* mdl) {
   bbx_max->Z = (bbx_max->Z * scl->Z) + trn->Z;
 }
 
+// TODO: delete this function
 void qk_get_frame_vertices(const qk_model* mdl,
                            u32 pos_idx,
                            u32 frm_idx,
                            const f32** vbuf,
                            u32* vbuf_len) {
-  /* DBG("getting vertices data for pos %d and frame %d", pos_idx, frm_idx); */
   makesure(pos_idx < mdl->header.poses_length, "invalid pose index");
   makesure(frm_idx < mdl->poses[pos_idx].frames_length,
            "invalid frame index in pose");
@@ -602,6 +625,15 @@ void qk_get_frame_vertices(const qk_model* mdl,
   qk_pose* pos = &mdl->poses[pos_idx];
   *vbuf = &mdl->vbuf[pos->start + frm_idx];
   *vbuf_len = mdl->header.vbuf_length;
+}
+
+sg_buffer qk_get_frame_vbuf(const qk_model* mdl, u32 pos_idx, u32 frm_idx) {
+  makesure(pos_idx < mdl->header.poses_length, "invalid pose index");
+  makesure(frm_idx < mdl->poses[pos_idx].frames_length,
+           "invalid frame index in pose");
+
+  qk_pose* pos = &mdl->poses[pos_idx];
+  return mdl->frames[pos->start + frm_idx].vbuf;
 }
 
 qk_error qk_load_mdl(const u8* buf, sz bufsz, qk_model* mdl) {
@@ -660,6 +692,10 @@ void qk_unload_mdl(qk_model* mdl) {
     sg_destroy_sampler(mdl->skins[i].sampler);
     snk_destroy_image(mdl->skins[i].ui_image);
   }
+
+  /* for (u32 i = 0; i < mdl->header.frames_length; i++) { */
+  /*   sg_destroy_buffer(mdl->frames[i].vbuf);     */
+  /* } */
   arena_destroy(&mdl->mem);
 }
 
