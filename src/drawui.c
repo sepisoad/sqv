@@ -9,134 +9,67 @@
 #include "quake/md1.h"
 #include "app.h"
 
+void set_skin(u32 idx);
+
+static struct nk_color BKG = {0, 0, 0, 180};
+static struct nk_color TXT = {255, 255, 255, 255};
+static struct nk_color BRD = {255, 255, 255, 255};
+
+static struct nk_rect win_max() {
+  f32 w = (f32)sapp_width();
+  f32 h = (f32)sapp_height();
+
+  return nk_rect(0, 0, w, h);
+}
+
+static struct nk_rect view_max() {
+  f32 w = (f32)sapp_width();
+  f32 h = (f32)sapp_height();
+
+  return nk_rect(5, 5, w - 10, h - 10);
+}
+
 static void draw_init_mode(state* s) {
   i32 w = sapp_width();
   i32 h = sapp_height();
   cstr txt = "press '?' for help";
+  i32 len = strlen(txt);
+  contextui* ctx = s->ctxui;
+  const struct nk_user_font* fnt = ctx->style.font;
 
-  if (nk_begin(s->ctxui, "Overlay", nk_rect(0, 0, w, h),
-               NK_WINDOW_NO_SCROLLBAR)) {
-    nk_layout_space_begin(s->ctxui, NK_STATIC, sapp_height(), 2);
-    nk_layout_space_push(s->ctxui, nk_rect(0, 0, w, h));
-    nk_image(s->ctxui, nk_image_handle(snk_nkhandle(s->ctx3d->nk_img)));
-    nk_layout_space_end(s->ctxui);
-
-    struct nk_command_buffer* canvas = nk_window_get_canvas(s->ctxui);
-    nk_fill_rect(canvas, nk_rect(5, 5, 135, 22), 0, nk_rgba(0, 0, 0, 180));
-    nk_draw_text(canvas, nk_rect(10, 10, 200, 20), txt, strlen(txt),
-                 s->ctxui->style.font, nk_rgba(0, 0, 0, 0),
-                 nk_rgba(255, 255, 255, 255));
-  }
-  nk_end(s->ctxui);
-}
-
-static void draw_normal_mode(state* s) {
-  if (nk_begin(s->ctxui, "sqv - sepi's quake md1 viewer",
-               nk_rect(0, 0, sapp_width(), sapp_height()),
-               NK_WINDOW_NO_SCROLLBAR)) {
-    nk_layout_row_dynamic(s->ctxui, sapp_height(), 1);
-    nk_image(s->ctxui, nk_image_handle(snk_nkhandle(s->ctx3d->nk_img)));
-  }
-  nk_end(s->ctxui);
-}
-
-static void draw_help_mode(state* s) {
-  f32 w = (f32)sapp_width();
-  f32 h = (f32)sapp_height();
-
-  struct nk_context* ctx = s->ctxui;
-  struct nk_style_window old_style = ctx->style.window;
-  ctx->style.window.fixed_background =
-      nk_style_item_color(nk_rgba(0, 0, 0, 180));
-  ctx->style.window.popup_border_color = nk_rgba(0, 0, 0, 0);
-  ctx->style.window.border_color = nk_rgba(255, 255, 255, 255);
-
-  if (nk_begin(ctx, "", nk_rect(0, 0, w, h), NK_WINDOW_NO_SCROLLBAR)) {
-    nk_layout_space_begin(ctx, NK_STATIC, h, 1);
-    nk_layout_space_push(ctx, nk_rect(0, 0, w, h));
+  if (nk_begin(ctx, "", win_max(), NK_WINDOW_NO_SCROLLBAR)) {
+    nk_layout_space_begin(ctx, NK_STATIC, sapp_height(), 2);
+    nk_layout_space_push(ctx, win_max());
     nk_image(ctx, nk_image_handle(snk_nkhandle(s->ctx3d->nk_img)));
     nk_layout_space_end(ctx);
 
-    struct nk_rect rect = {5, 5, w - 10, h - 10};
-    struct nk_color txtcol = {255, 255, 255, 255};
-    char buf[256] = {0};
-    if (nk_popup_begin(ctx, NK_POPUP_STATIC, "", NK_WINDOW_NO_SCROLLBAR,
-                       rect)) {
-      nk_layout_row_dynamic(ctx, 12, 3);
-      nk_label_colored(ctx, "INPUT", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "COMMAND", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "DESCRIPTION", NK_TEXT_LEFT, txtcol);
-
-      nk_label_colored(ctx, "------", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "------", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "------", NK_TEXT_LEFT, txtcol);
-
-      nk_label_colored(ctx, "[ESC]", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, ":normal", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "sets ui back to normal mode", NK_TEXT_LEFT,
-                       txtcol);
-
-      nk_label_colored(ctx, "?", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, ":help", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "shows this help", NK_TEXT_LEFT, txtcol);
-
-      nk_label_colored(ctx, "i", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, ":info", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "shows model information", NK_TEXT_LEFT, txtcol);
-
-      nk_label_colored(ctx, "s", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, ":skins", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "shows skins", NK_TEXT_LEFT, txtcol);
-
-      nk_label_colored(ctx, "p", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, ":poses", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "shows poses", NK_TEXT_LEFT, txtcol);
-
-      nk_label_colored(ctx, ">", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, ":next-pose", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "goes to next pose", NK_TEXT_LEFT, txtcol);
-
-      nk_label_colored(ctx, "<", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, ":prev-pose", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "goes to previous pose", NK_TEXT_LEFT, txtcol);
-
-      nk_label_colored(ctx, "a", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, ":!animate", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "toggles animation", NK_TEXT_LEFT, txtcol);
-
-      nk_label_colored(ctx, "r", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, ":!auto-rotate", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "toggles auto rotation", NK_TEXT_LEFT, txtcol);
-
-      nk_label_colored(ctx, "mouse wheel up", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, ":zoom-in [N]", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "zooms in", NK_TEXT_LEFT, txtcol);
-
-      nk_label_colored(ctx, "mouse wheel down", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, ":zoom-out [N]", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "zooms out", NK_TEXT_LEFT, txtcol);
-
-      nk_label_colored(ctx, "N/A", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, ":quit", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "quits application", NK_TEXT_LEFT, txtcol);
-
-      nk_popup_end(ctx);
-    }
+    struct nk_command_buffer* canvas = nk_window_get_canvas(ctx);
+    nk_fill_rect(canvas, nk_rect(5, 5, 135, 22), 1, BKG);
+    nk_draw_text(canvas, nk_rect(10, 10, 200, 20), txt, len, fnt, BRD, TXT);
   }
   nk_end(ctx);
-  ctx->style.window = old_style;
+}
+
+static void draw_normal_mode(state* s) {
+  contextui* ctx = s->ctxui;
+
+  if (nk_begin(ctx, "sqv - sepi's quake md1 viewer",
+               nk_rect(0, 0, sapp_width(), sapp_height()),
+               NK_WINDOW_NO_SCROLLBAR)) {
+    nk_layout_row_dynamic(ctx, sapp_height(), 1);
+    nk_image(ctx, nk_image_handle(snk_nkhandle(s->ctx3d->nk_img)));
+  }
+  nk_end(ctx);
 }
 
 static void draw_info_mode(state* s) {
   f32 w = (f32)sapp_width();
   f32 h = (f32)sapp_height();
-
   struct nk_context* ctx = s->ctxui;
+
   struct nk_style_window old_style = ctx->style.window;
-  ctx->style.window.fixed_background =
-      nk_style_item_color(nk_rgba(0, 0, 0, 180));
-  ctx->style.window.popup_border_color = nk_rgba(0, 0, 0, 0);
-  ctx->style.window.border_color = nk_rgba(255, 255, 255, 255);
+  ctx->style.window.fixed_background = nk_style_item_color(BKG);
+  ctx->style.window.popup_border_color = BRD;
 
   if (nk_begin(ctx, "", nk_rect(0, 0, w, h), NK_WINDOW_NO_SCROLLBAR)) {
     nk_layout_space_begin(ctx, NK_STATIC, h, 1);
@@ -145,41 +78,39 @@ static void draw_info_mode(state* s) {
     nk_layout_space_end(ctx);
 
     qk_header* hdr = &s->mdl.header;
-    struct nk_rect rect = {5, 5, w - 10, h - 10};
-    struct nk_color txtcol = {255, 255, 255, 255};
     char buf[256] = {0};
     if (nk_popup_begin(ctx, NK_POPUP_STATIC, "", NK_WINDOW_NO_SCROLLBAR,
-                       rect)) {
+                       view_max())) {
       nk_layout_row_dynamic(ctx, 12, 2);
-      nk_label_colored(ctx, "KEY", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "VALUE", NK_TEXT_LEFT, txtcol);
+      nk_label_colored(ctx, "KEY", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "VALUE", NK_TEXT_LEFT, TXT);
 
-      nk_label_colored(ctx, "------", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, "------", NK_TEXT_LEFT, txtcol);
+      nk_label_colored(ctx, "------", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "------", NK_TEXT_LEFT, TXT);
 
       sprintf(buf, "%u", hdr->vertices_length);
-      nk_label_colored(ctx, "vertices", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, buf, NK_TEXT_LEFT, txtcol);
+      nk_label_colored(ctx, "vertices", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, buf, NK_TEXT_LEFT, TXT);
       memset(buf, 0, 256);
 
       sprintf(buf, "%u", hdr->triangles_length);
-      nk_label_colored(ctx, "triangles", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, buf, NK_TEXT_LEFT, txtcol);
+      nk_label_colored(ctx, "triangles", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, buf, NK_TEXT_LEFT, TXT);
       memset(buf, 0, 256);
 
       sprintf(buf, "%u", hdr->frames_length);
-      nk_label_colored(ctx, "frames", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, buf, NK_TEXT_LEFT, txtcol);
+      nk_label_colored(ctx, "frames", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, buf, NK_TEXT_LEFT, TXT);
       memset(buf, 0, 256);
 
       sprintf(buf, "%u", hdr->poses_length);
-      nk_label_colored(ctx, "poses", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, buf, NK_TEXT_LEFT, txtcol);
+      nk_label_colored(ctx, "poses", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, buf, NK_TEXT_LEFT, TXT);
       memset(buf, 0, 256);
 
       sprintf(buf, "%u", hdr->skins_length);
-      nk_label_colored(ctx, "skins", NK_TEXT_LEFT, txtcol);
-      nk_label_colored(ctx, buf, NK_TEXT_LEFT, txtcol);
+      nk_label_colored(ctx, "skins", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, buf, NK_TEXT_LEFT, TXT);
       memset(buf, 0, 256);
 
       nk_popup_end(ctx);
@@ -187,6 +118,183 @@ static void draw_info_mode(state* s) {
   }
   nk_end(ctx);
   ctx->style.window = old_style;
+}
+
+static void draw_help_mode(state* s) {
+  f32 w = (f32)sapp_width();
+  f32 h = (f32)sapp_height();
+  contextui* ctx = s->ctxui;
+
+  struct nk_style_window old_style = ctx->style.window;
+  ctx->style.window.fixed_background = nk_style_item_color(BKG);
+  ctx->style.window.popup_border_color = BRD;
+
+  if (nk_begin(ctx, "", win_max(), NK_WINDOW_NO_SCROLLBAR)) {
+    nk_layout_space_begin(ctx, NK_STATIC, h, 1);
+    nk_layout_space_push(ctx, nk_rect(0, 0, w, h));
+    nk_image(ctx, nk_image_handle(snk_nkhandle(s->ctx3d->nk_img)));
+    nk_layout_space_end(ctx);
+
+    char buf[256] = {0};
+    if (nk_popup_begin(ctx, NK_POPUP_STATIC, "", NK_WINDOW_NO_SCROLLBAR,
+                       view_max())) {
+      nk_layout_row_dynamic(ctx, 12, 3);
+      nk_label_colored(ctx, "INPUT", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "COMMAND", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "DESCRIPTION", NK_TEXT_LEFT, TXT);
+
+      nk_label_colored(ctx, "------", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "------", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "------", NK_TEXT_LEFT, TXT);
+
+      nk_label_colored(ctx, "[ESC]", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, ":normal", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "sets ui back to normal mode", NK_TEXT_LEFT, TXT);
+
+      nk_label_colored(ctx, "?", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, ":help", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "shows this help", NK_TEXT_LEFT, TXT);
+
+      nk_label_colored(ctx, "i", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, ":info", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "shows model information", NK_TEXT_LEFT, TXT);
+
+      nk_label_colored(ctx, "s", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, ":skins", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "shows skins", NK_TEXT_LEFT, TXT);
+
+      nk_label_colored(ctx, "p", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, ":poses", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "shows poses", NK_TEXT_LEFT, TXT);
+
+      nk_label_colored(ctx, ">", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, ":next-pose", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "goes to next pose", NK_TEXT_LEFT, TXT);
+
+      nk_label_colored(ctx, "<", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, ":prev-pose", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "goes to previous pose", NK_TEXT_LEFT, TXT);
+
+      nk_label_colored(ctx, "a", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, ":!animate", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "toggles animation", NK_TEXT_LEFT, TXT);
+
+      nk_label_colored(ctx, "r", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, ":!auto-rotate", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "toggles auto rotation", NK_TEXT_LEFT, TXT);
+
+      nk_label_colored(ctx, "mouse wheel up", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, ":zoom-in [N]", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "zooms in", NK_TEXT_LEFT, TXT);
+
+      nk_label_colored(ctx, "mouse wheel down", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, ":zoom-out [N]", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "zooms out", NK_TEXT_LEFT, TXT);
+
+      nk_label_colored(ctx, "N/A", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, ":quit", NK_TEXT_LEFT, TXT);
+      nk_label_colored(ctx, "quits application", NK_TEXT_LEFT, TXT);
+
+      nk_popup_end(ctx);
+    }
+  }
+  nk_end(ctx);
+  ctx->style.window = old_style;
+}
+
+static void draw_skins_mode(state* s) {
+  f32 w = (f32)sapp_width();
+  f32 h = (f32)sapp_height();
+  f32 iw = s->mdl.header.skin_width;
+  f32 ih = s->mdl.header.skin_height;
+  struct nk_context* ctx = s->ctxui;
+
+  struct nk_style_window old_window_style = ctx->style.window;
+  struct nk_style_button old_button_style = ctx->style.button;
+  ctx->style.window.fixed_background = nk_style_item_color(BKG);
+  ctx->style.window.popup_border_color = BRD;
+  ctx->style.button.padding = nk_vec2(0, 0);
+  ctx->style.button.image_padding = nk_vec2(0, 0);
+  ctx->style.button.touch_padding = nk_vec2(0, 0);
+  ctx->style.button.border = 2.5;
+  ctx->style.button.rounding = 0;
+
+  if (nk_begin(ctx, "model", nk_rect(0, 0, w, h),
+               NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND)) {
+    nk_layout_space_begin(ctx, NK_STATIC, h, 1);
+    nk_layout_space_push(ctx, nk_rect(0, 0, w, h));
+    nk_image(ctx, nk_image_handle(snk_nkhandle(s->ctx3d->nk_img)));
+    nk_layout_space_end(ctx);
+  }
+  nk_end(ctx);
+
+  if (nk_begin(ctx, "skins", nk_rect(5, 5, iw + 10, h - 10),
+               NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE)) {
+    nk_layout_row_dynamic(ctx, 15, 1);
+    nk_label(ctx, "SKINS", NK_TEXT_CENTERED);
+
+    nk_layout_row_dynamic(ctx, ih, 1);
+
+    for (u32 i = 0; i < s->mdl.header.skins_length; i++) {
+      if (nk_button_image(
+              ctx, nk_image_handle(snk_nkhandle(s->mdl.skins[i].ui_image)))) {
+        set_skin(i);
+      }
+    }
+  }
+  nk_end(ctx);
+
+  ctx->style.window = old_window_style;
+  ctx->style.button = old_button_style;
+}
+
+static void draw_poses_mode(state* s) {
+  f32 w = (f32)sapp_width();
+  f32 h = (f32)sapp_height();
+  f32 iw = s->mdl.header.skin_width;
+  f32 ih = s->mdl.header.skin_height;
+  struct nk_context* ctx = s->ctxui;
+
+  struct nk_style_window old_window_style = ctx->style.window;
+  struct nk_style_button old_button_style = ctx->style.button;
+  ctx->style.window.fixed_background = nk_style_item_color(BKG);
+  ctx->style.window.popup_border_color = BRD;
+  ctx->style.button.padding = nk_vec2(0, 0);
+  ctx->style.button.border = 2.5;
+  ctx->style.button.rounding = 0;
+
+  struct nk_style_button cur_sty = ctx->style.button;
+  cur_sty.normal.data.color = (struct nk_color){100, 0, 0, 255};
+
+  if (nk_begin(ctx, "model", nk_rect(0, 0, w, h),
+               NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND)) {
+    nk_layout_space_begin(ctx, NK_STATIC, h, 1);
+    nk_layout_space_push(ctx, nk_rect(0, 0, w, h));
+    nk_image(ctx, nk_image_handle(snk_nkhandle(s->ctx3d->nk_img)));
+    nk_layout_space_end(ctx);
+  }
+  nk_end(ctx);
+
+  if (nk_begin(
+          ctx, "poses", nk_rect(5, 5, 100, h - 10),
+          NK_WINDOW_MOVABLE | NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_SCALABLE)) {
+    nk_layout_row_dynamic(ctx, 15, 1);
+    nk_label(ctx, "POSES", NK_TEXT_CENTERED);
+
+    for (u32 i = 0; i < s->mdl.header.poses_length; i++) {
+      if (i == s->mdl_pos) {
+        nk_button_label_styled(ctx, &cur_sty, s->mdl.poses[i].name);
+      } else {
+        if (nk_button_label(ctx, s->mdl.poses[i].name)) {
+          s->mdl_pos = i;
+        }
+      }
+    }
+  }
+  nk_end(ctx);
+
+  ctx->style.window = old_window_style;
+  ctx->style.button = old_button_style;
 }
 
 void draw_ui(state* s) {
@@ -205,11 +313,17 @@ void draw_ui(state* s) {
     case MODE_NORMAL:
       draw_normal_mode(s);
       break;
+    case MODE_INFO:
+      draw_info_mode(s);
+      break;
     case MODE_HELP:
       draw_help_mode(s);
       break;
-    case MODE_INFO:
-      draw_info_mode(s);
+    case MODE_SKINS:
+      draw_skins_mode(s);
+      break;
+    case MODE_POSES:
+      draw_poses_mode(s);
       break;
     default:
       log_warn("this mode should have not happened!");

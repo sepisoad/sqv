@@ -11,6 +11,8 @@ typedef enum {
   MODE_NORMAL,
   MODE_INFO,
   MODE_HELP,
+  MODE_SKINS,
+  MODE_POSES,
 } mode;
 
 typedef struct {
@@ -26,6 +28,7 @@ typedef struct {
 
 typedef struct {
   // rendering states
+  sg_shader shd;
   sg_pipeline pip;
   sg_bindings bind;
   sg_pass_action pass_action;
@@ -36,6 +39,7 @@ typedef struct {
   qk_model mdl;
   u32 mdl_pos;
   u32 mdl_frm;
+  u32 mdl_skn;
   float mdl_roty;
   bool rotating;
   mode m;

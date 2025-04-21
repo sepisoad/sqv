@@ -34,8 +34,18 @@ void unload_3d_model(qk_model* m);
 void draw_3d(state* s);
 void draw_ui(state* s);
 
+void set_skin(u32 idx) {
+  makesure(idx <= s.mdl.header.skins_length, "invalid skin index");
+  s.bind.images[IMG_tex] = s.mdl.skins[idx].image;
+  s.bind.samplers[SMP_smp] = s.mdl.skins[idx].sampler;
+}
+
+static void reset_state() {
+  s.mdl_pos = 0;
+  s.mdl_skn = 0;
+}
+
 static void update_offscreen_target(int width, int height) {
-  ;
   if (sg_isvalid() && s.ctx3d->color_img.id != SG_INVALID_ID) {
     snk_destroy_image(s.ctx3d->nk_img);
     sg_destroy_attachments(s.ctx3d->atts);
@@ -81,6 +91,9 @@ static void update_offscreen_target(int width, int height) {
 static void create_offscreen_taget(cstr path) {
   if (s.ctx3d != NULL) {
     unload_3d_model(&s.mdl);
+    sg_destroy_pipeline(s.pip);
+    sg_destroy_shader(s.shd);
+    reset_state();
     update_offscreen_target(sapp_width(), sapp_height());
   }
 
@@ -92,7 +105,7 @@ static void create_offscreen_taget(cstr path) {
   u32 vb_len = 0;
   qk_get_frame_vertices(&s.mdl, s.mdl_pos, s.mdl_frm, &vb, &vb_len);
 
-  sg_shader shd = sg_make_shader(cube_shader_desc(sg_query_backend()));
+  s.shd = sg_make_shader(cube_shader_desc(sg_query_backend()));
   sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc){
       .type = SG_BUFFERTYPE_VERTEXBUFFER,
       .data = {.ptr = vb, .size = vb_len * sizeof(f32)},
@@ -104,7 +117,7 @@ static void create_offscreen_taget(cstr path) {
                          [ATTR_cube_position].format = SG_VERTEXFORMAT_FLOAT3,
                          [ATTR_cube_texcoord0].format = SG_VERTEXFORMAT_FLOAT2,
                      }},
-      .shader = shd,
+      .shader = s.shd,
       .primitive_type = SG_PRIMITIVETYPE_TRIANGLES,
       .cull_mode = SG_CULLMODE_BACK,
       .depth = {
@@ -114,8 +127,8 @@ static void create_offscreen_taget(cstr path) {
       }});
 
   s.bind = (sg_bindings){.vertex_buffers[0] = vbuf};
-  s.bind.images[IMG_tex] = s.mdl.skins[0].image;
-  s.bind.samplers[SMP_smp] = s.mdl.skins[0].sampler;
+  s.bind.images[IMG_tex] = s.mdl.skins[s.mdl_skn].image;
+  s.bind.samplers[SMP_smp] = s.mdl.skins[s.mdl_skn].sampler;
 
   // Create a persistent sampler for the Nuklear image
   s.ctx3d->sampler = sg_make_sampler(&(sg_sampler_desc){
@@ -147,6 +160,10 @@ static cstr mode_str(mode m) {
       return "HELP";
     case MODE_INFO:
       return "INFO";
+    case MODE_SKINS:
+      return "SKINS";
+    case MODE_POSES:
+      return "POSES";
     default:
       return "UNKNOWN";
   }
@@ -192,8 +209,26 @@ static void mode_normal_input(const sapp_event* e) {
       case SAPP_KEYCODE_I:
         set_mode(MODE_INFO);
         break;
-      case SAPP_KEYCODE_R:;
+      case SAPP_KEYCODE_R:
         s.rotating = !s.rotating;
+        break;
+      case SAPP_KEYCODE_S:
+        set_mode(MODE_SKINS);
+        break;
+      case SAPP_KEYCODE_P:
+        set_mode(MODE_POSES);
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+static void mode_info_input(const sapp_event* e) {
+  if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
+    switch (e->key_code) {
+      case SAPP_KEYCODE_ESCAPE:
+        set_mode(MODE_NORMAL);
         break;
       default:
         break;
@@ -213,7 +248,19 @@ static void mode_help_input(const sapp_event* e) {
   }
 }
 
-static void mode_info_input(const sapp_event* e) {
+static void mode_skins_input(const sapp_event* e) {
+  if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
+    switch (e->key_code) {
+      case SAPP_KEYCODE_ESCAPE:
+        set_mode(MODE_NORMAL);
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+static void mode_poses_input(const sapp_event* e) {
   if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
     switch (e->key_code) {
       case SAPP_KEYCODE_ESCAPE:
@@ -243,11 +290,17 @@ static void input(const sapp_event* e) {
     case MODE_NORMAL:
       mode_normal_input(e);
       break;
+    case MODE_INFO:
+      mode_info_input(e);
+      break;
     case MODE_HELP:
       mode_help_input(e);
       break;
-    case MODE_INFO:
-      mode_info_input(e);
+    case MODE_SKINS:
+      mode_skins_input(e);
+      break;
+    case MODE_POSES:
+      mode_poses_input(e);
       break;
     default:
       break;
@@ -289,6 +342,8 @@ static void init(void) {
   init_tm = stm_now();
   s.ctx3d = &ctx3d;
   s.m = MODE_INIT;
+  s.mdl_pos = 0;
+  s.mdl_skn = 0;
   s.rotating = true;
 
   cstr path = (cstr)sapp_userdata();

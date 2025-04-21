@@ -140,6 +140,7 @@ typedef struct {
 typedef struct {
   sg_image image;
   sg_sampler sampler;
+  snk_image_t ui_image;
 } qk_skin;
 
 typedef struct {
@@ -358,6 +359,10 @@ static const u8* md1_load_skins(qk_model* mdl, const u8* p) {
       skins[i].sampler = sg_make_sampler(&(sg_sampler_desc){
           .min_filter = SG_FILTER_LINEAR,
           .mag_filter = SG_FILTER_LINEAR,
+      });
+      skins[i].ui_image = snk_make_image(&(snk_image_desc_t){
+          .image = skins[i].image,
+          .sampler = skins[i].sampler,
       });
       sg_init_image(skins[i].image,
                     &(sg_image_desc){.width = width,
@@ -650,6 +655,11 @@ qk_error qk_load_mdl(const u8* buf, sz bufsz, qk_model* mdl) {
 }
 
 void qk_unload_mdl(qk_model* mdl) {
+  for (u32 i = 0; i < mdl->header.skins_length; i++) {
+    sg_destroy_image(mdl->skins[i].image);
+    sg_destroy_sampler(mdl->skins[i].sampler);
+    snk_destroy_image(mdl->skins[i].ui_image);
+  }
   arena_destroy(&mdl->mem);
 }
 
