@@ -287,6 +287,7 @@ static void draw_poses_mode(state* s) {
       } else {
         if (nk_button_label(ctx, s->mdl.poses[i].name)) {
           s->mdl_pos = i;
+          s->mdl_frm = 0;
         }
       }
     }

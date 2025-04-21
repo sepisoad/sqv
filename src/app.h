@@ -22,6 +22,7 @@ typedef struct {
   sg_pass_action pass_action;
   snk_image_t nk_img;
   sg_sampler sampler;
+  sg_buffer vbuf;
   int width;
   int height;
 } context3d;
@@ -42,6 +43,7 @@ typedef struct {
   u32 mdl_skn;
   float mdl_roty;
   bool rotating;
+  bool animating;
   mode m;
 } state;
 

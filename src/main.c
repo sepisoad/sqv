@@ -40,9 +40,24 @@ void set_skin(u32 idx) {
   s.bind.samplers[SMP_smp] = s.mdl.skins[idx].sampler;
 }
 
+void update_frame_vbuf(u32 pos, u32 frm) {
+  const f32* vb = NULL;
+  u32 vb_len = 0;
+
+  qk_get_frame_vertices(&s.mdl, pos, frm, &vb, &vb_len);
+
+  sg_destroy_buffer(s.ctx3d->vbuf);
+  s.ctx3d->vbuf = sg_make_buffer(&(sg_buffer_desc){
+      .type = SG_BUFFERTYPE_VERTEXBUFFER,
+      .data = {.ptr = vb, .size = vb_len * sizeof(f32)},
+  });
+  s.bind.vertex_buffers[0] = s.ctx3d->vbuf;
+}
+
 static void reset_state() {
-  s.mdl_pos = 0;
   s.mdl_skn = 0;
+  s.mdl_pos = 0;
+  s.mdl_frm = 0;
 }
 
 static void update_offscreen_target(int width, int height) {
@@ -88,9 +103,10 @@ static void update_offscreen_target(int width, int height) {
   };
 }
 
-static void create_offscreen_taget(cstr path) {
+static void create_offscreen_target(cstr path) {
   if (s.ctx3d != NULL) {
     unload_3d_model(&s.mdl);
+    /* sg_destroy_buffer(s.ctx3d->vbuf); */
     sg_destroy_pipeline(s.pip);
     sg_destroy_shader(s.shd);
     reset_state();
@@ -100,13 +116,12 @@ static void create_offscreen_taget(cstr path) {
   load_3d_model(path, &s.mdl);
   s.ctx3d = &ctx3d;  // resetting
 
-  // SEPI: we should move this to another location
   const f32* vb = NULL;
   u32 vb_len = 0;
   qk_get_frame_vertices(&s.mdl, s.mdl_pos, s.mdl_frm, &vb, &vb_len);
 
   s.shd = sg_make_shader(cube_shader_desc(sg_query_backend()));
-  sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc){
+  s.ctx3d->vbuf = sg_make_buffer(&(sg_buffer_desc){
       .type = SG_BUFFERTYPE_VERTEXBUFFER,
       .data = {.ptr = vb, .size = vb_len * sizeof(f32)},
   });
@@ -126,7 +141,7 @@ static void create_offscreen_taget(cstr path) {
           .pixel_format = SG_PIXELFORMAT_DEPTH,
       }});
 
-  s.bind = (sg_bindings){.vertex_buffers[0] = vbuf};
+  s.bind = (sg_bindings){.vertex_buffers[0] = s.ctx3d->vbuf};
   s.bind.images[IMG_tex] = s.mdl.skins[s.mdl_skn].image;
   s.bind.samplers[SMP_smp] = s.mdl.skins[s.mdl_skn].sampler;
 
@@ -180,6 +195,15 @@ static void update(void) {
   if (s.rotating) {
     s.mdl_roty += ROT_FACTOR;
   }
+
+  if (s.animating) {
+    s.mdl_frm++;
+    if (s.mdl_frm >= s.mdl.poses[s.mdl_pos].frames_length) {
+      s.mdl_frm = 0;
+    }
+
+    update_frame_vbuf(s.mdl_pos, s.mdl_frm);
+  }
 }
 
 static void frame(void) {
@@ -217,6 +241,9 @@ static void mode_normal_input(const sapp_event* e) {
         break;
       case SAPP_KEYCODE_P:
         set_mode(MODE_POSES);
+        break;
+      case SAPP_KEYCODE_A:
+        s.animating = !s.animating;
         break;
       default:
         break;
@@ -280,7 +307,7 @@ static void input(const sapp_event* e) {
   }
 
   if (e->type == SAPP_EVENTTYPE_FILES_DROPPED) {
-    create_offscreen_taget(sapp_get_dropped_file_path(0));
+    create_offscreen_target(sapp_get_dropped_file_path(0));
   }
 
   switch (s.m) {
@@ -345,11 +372,12 @@ static void init(void) {
   s.mdl_pos = 0;
   s.mdl_skn = 0;
   s.rotating = true;
+  s.animating = false;
 
   cstr path = (cstr)sapp_userdata();
   if (path != NULL) {
     log_info("loading '%s' model", path);
-    create_offscreen_taget(path);
+    create_offscreen_target(path);
   }
 }
 
