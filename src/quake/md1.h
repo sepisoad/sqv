@@ -130,10 +130,6 @@ typedef struct {
 } qk_vertex;
 
 typedef struct {
-  sg_buffer vbuf;
-} qk_frame;
-
-typedef struct {
   char name[MAX_FRAME_NAME_LEN];
   u32 start;
   u32 frames_length;
@@ -150,9 +146,8 @@ typedef struct {
   qk_skin* skins;
   qk_index_buffer indices;
   qk_vertex* vertices;
-  qk_frame* frames;
   qk_pose* poses;
-  f32* vbuf;  // TODO: drop this in favor of frame vbufs
+  f32* vbuf;
   arena mem;
 } qk_model;
 
@@ -298,10 +293,6 @@ static void md1_estimate_memory(arena* mem,
   sz raw_verts_sz = sizeof(qk_vertex) * vrt_len * frm_len;
   arena_estimate_add(mem, raw_verts_sz, alignof(qk_vertex));
 
-  // Add frames memory
-  sz frames_sz = sizeof(qk_frame) * frm_len;
-  arena_estimate_add(mem, frames_sz, alignof(qk_frame));
-
   // Add pose memory estimation
   sz poses_sz = sizeof(qk_pose) * pos_len;
   arena_estimate_add(mem, poses_sz, alignof(qk_pose));
@@ -434,17 +425,6 @@ static const u8* md1_load_triangles(qk_model* mdl,
   return (const u8*)src;
 }
 
-static void md1_make_vbuf(qk_model* mdl, qk_vertex* verts, u32 frm_idx) {
-  u32 elm_len = 3 * (3 + 2);
-  u32 vb_len = elm_len * mdl->header.triangles_length;
-  qk_frame* frm = mdl->frames + frm_idx;
-
-  frm->vbuf = sg_make_buffer(&(sg_buffer_desc){
-      .type = SG_BUFFERTYPE_VERTEXBUFFER,
-      .data = {.ptr = verts, .size = vb_len * sizeof(f32)},
-  });
-}
-
 static const u8* md1_load_single_frame(qk_model* mdl,
                                        u32 frm_idx,
                                        u32* pos_len,
@@ -494,8 +474,6 @@ static const u8* md1_load_single_frame(qk_model* mdl,
                                   _qk_normals[raw_verts[i].normal_idx][1],
                                   _qk_normals[raw_verts[i].normal_idx][2]};
   }
-  md1_make_vbuf(mdl, frmverts, frm_idx);
-
   return (const u8*)(raw_verts + hdr->vertices_length);
 }
 
@@ -509,10 +487,6 @@ static const u8* md1_load_frames(qk_model* mdl, const u8* p) {
   sz verts_sz = sizeof(qk_vertex) * verts_length * frames_length;
   mdl->vertices = (qk_vertex*)arena_alloc(mem, verts_sz, alignof(qk_vertex));
   notnull(mdl->vertices);
-
-  sz frames_sz = sizeof(qk_frame) * mdl->header.frames_length;
-  mdl->frames = (qk_frame*)arena_alloc(mem, frames_sz, alignof(qk_frame));
-  notnull(mdl->frames);
 
   sz poses_sz = sizeof(qk_pose) * mdl->header.poses_length;
   mdl->poses = (qk_pose*)arena_alloc(mem, poses_sz, alignof(qk_pose));
@@ -625,15 +599,6 @@ void qk_get_frame_vertices(const qk_model* mdl,
   qk_pose* pos = &mdl->poses[pos_idx];
   *vbuf = &mdl->vbuf[pos->start + frm_idx];
   *vbuf_len = mdl->header.vbuf_length;
-}
-
-sg_buffer qk_get_frame_vbuf(const qk_model* mdl, u32 pos_idx, u32 frm_idx) {
-  makesure(pos_idx < mdl->header.poses_length, "invalid pose index");
-  makesure(frm_idx < mdl->poses[pos_idx].frames_length,
-           "invalid frame index in pose");
-
-  qk_pose* pos = &mdl->poses[pos_idx];
-  return mdl->frames[pos->start + frm_idx].vbuf;
 }
 
 qk_error qk_load_mdl(const u8* buf, sz bufsz, qk_model* mdl) {
