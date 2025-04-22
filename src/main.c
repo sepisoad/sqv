@@ -28,6 +28,7 @@
 static context3d ctx3d = {0};
 static state s;
 static u64 init_tm = 0;
+static u64 last_frame_tick = 0;
 
 void load_3d_model(cstr path, qk_model* m);
 void unload_3d_model(qk_model* m);
@@ -38,6 +39,23 @@ void set_skin(u32 idx) {
   makesure(idx <= s.mdl.header.skins_length, "invalid skin index");
   s.bind.images[IMG_tex] = s.mdl.skins[idx].image;
   s.bind.samplers[SMP_smp] = s.mdl.skins[idx].sampler;
+}
+
+void next_pose() {
+  s.mdl_pos++;
+  if (s.mdl_pos >= s.mdl.header.poses_length) {
+    s.mdl_pos = 0;
+  }
+  s.mdl_frm = 0;
+}
+
+void prev_pose() {
+  if (s.mdl_pos == 0) {
+    s.mdl_pos = s.mdl.header.poses_length - 1;
+  } else {
+    s.mdl_pos--;
+  }
+  s.mdl_frm = 0;
 }
 
 void update_frame_vbuf(u32 pos, u32 frm) {
@@ -199,7 +217,8 @@ static void update(void) {
     s.mdl_roty += ROT_FACTOR;
   }
 
-  if (s.animating) {
+  if (s.animating && (stm_ms(stm_since(last_frame_tick)) > 60)) {
+    last_frame_tick = stm_now();
     s.mdl_frm++;
     if (s.mdl_frm >= s.mdl.poses[s.mdl_pos].frames_length) {
       s.mdl_frm = 0;
@@ -247,6 +266,16 @@ static void mode_normal_input(const sapp_event* e) {
         break;
       case SAPP_KEYCODE_A:
         s.animating = !s.animating;
+        break;
+      case SAPP_KEYCODE_PERIOD:
+        if (e->modifiers & SAPP_MODIFIER_SHIFT) {
+          next_pose();
+        }
+        break;
+      case SAPP_KEYCODE_COMMA:
+        if (e->modifiers & SAPP_MODIFIER_SHIFT) {
+          prev_pose();
+        }
         break;
       default:
         break;
@@ -376,6 +405,7 @@ static void init(void) {
   s.mdl_skn = 0;
   s.rotating = true;
   s.animating = false;
+  last_frame_tick = stm_now();
 
   cstr path = (cstr)sapp_userdata();
   if (path != NULL) {

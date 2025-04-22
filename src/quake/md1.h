@@ -586,7 +586,6 @@ void md1_scale_translate_bbox(qk_model* mdl) {
   bbx_max->Z = (bbx_max->Z * scl->Z) + trn->Z;
 }
 
-// TODO: delete this function
 void qk_get_frame_vertices(const qk_model* mdl,
                            u32 pos_idx,
                            u32 frm_idx,
@@ -597,7 +596,7 @@ void qk_get_frame_vertices(const qk_model* mdl,
            "invalid frame index in pose");
 
   qk_pose* pos = &mdl->poses[pos_idx];
-  *vbuf = &mdl->vbuf[pos->start + frm_idx];
+  *vbuf = &mdl->vbuf[(pos->start + frm_idx) * mdl->header.vbuf_length];
   *vbuf_len = mdl->header.vbuf_length;
 }
 

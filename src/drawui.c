@@ -281,7 +281,12 @@ static void draw_poses_mode(state* s) {
     nk_layout_row_dynamic(ctx, 15, 1);
     nk_label(ctx, "POSES", NK_TEXT_CENTERED);
 
+    char number[16] = {0};
+    nk_layout_row_dynamic(ctx, 15, 2);
     for (u32 i = 0; i < s->mdl.header.poses_length; i++) {
+      sprintf(number, "%u", s->mdl.poses[i].frames_length);
+      nk_label(ctx, number, NK_TEXT_CENTERED);
+
       if (i == s->mdl_pos) {
         nk_button_label_styled(ctx, &cur_sty, s->mdl.poses[i].name);
       } else {
