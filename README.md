@@ -4,6 +4,9 @@ SQV (Sepi's Quake Viewer) is a lightweight program that renders Quake 1 `.MDL` f
 
 https://github.com/user-attachments/assets/4b13422c-c4dc-4cd8-9f55-34426d07f551
 
+https://github.com/user-attachments/assets/d725cb44-4b51-4bee-9d44-4ac1fdb165ac
+
+
 ## Features
 - Portable: Runs on all major desktop operating systems.
 - Self-contained: Comes with all necessary dependencies as source files—no need to install external packages.
