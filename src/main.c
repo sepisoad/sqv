@@ -32,33 +32,13 @@ void unload_3d_model(qk_model* m);
 void draw_3d(state* s);
 void draw_ui(state* s);
 
-void update_frame_vbuf(u32 pos, u32 frm) {
-  const f32* vb = NULL;
-  u32 vb_len = 0;
-
-  /* sg_query_frame_stats(); */
-  /* sg_enable_frame_stats(); */
-  /* sg_disable_frame_stats(); */
-  /* sg_frame_stats_enabled(); */
-
-  sg_buffer_info info = sg_query_buffer_info(s.bind.vertex_buffers[0]);
-  DBG("%u, %d, %u, %d, %d", info.slot.res_id, info.slot.state,
-      info.update_frame_index, info.num_slots, info.active_slot);
-
-  qk_get_frame_vertices(&s.mdl, pos, frm, &vb, &vb_len);
-  sg_update_buffer(s.bind.vertex_buffers[0], &(sg_range){
-                                                 .ptr = vb,
-                                                 .size = vb_len * sizeof(f32),
-                                             });
-}
-
 void set_skin(u32 idx) {
   makesure(idx <= s.mdl.header.skins_length, "invalid skin index");
   s.bind.images[IMG_tex] = s.mdl.skins[idx].image;
   s.bind.samplers[SMP_smp] = s.mdl.skins[idx].sampler;
 }
 
-void next_pose() {
+static void next_pose() {
   s.mdl_pos++;
   if (s.mdl_pos >= s.mdl.header.poses_length) {
     s.mdl_pos = 0;
@@ -66,7 +46,7 @@ void next_pose() {
   s.mdl_frm = 0;
 }
 
-void prev_pose() {
+static void prev_pose() {
   if (s.mdl_pos == 0) {
     s.mdl_pos = s.mdl.header.poses_length - 1;
   } else {
@@ -75,25 +55,22 @@ void prev_pose() {
   s.mdl_frm = 0;
 }
 
-void next_frame() {
+static void next_frame() {
   s.mdl_frm++;
   if (s.mdl_frm >= s.mdl.poses[s.mdl_pos].frames_length) {
     s.mdl_frm = 0;
   }
-
-  update_frame_vbuf(s.mdl_pos, s.mdl_frm);
 }
 
-void prev_frame() {
-  s.mdl_frm--;
-  if (s.mdl_frm < 0) {
+static void prev_frame() {
+  if (((i32)s.mdl_frm - 1) < 0) {
     s.mdl_frm = s.mdl.poses[s.mdl_pos].frames_length - 1;
+  } else {
+    s.mdl_frm--;
   }
-
-  update_frame_vbuf(s.mdl_pos, s.mdl_frm);
 }
 
-void set_zoom(f32 val) {
+static void set_zoom(f32 val) {
   if (val < 0) {
     s.zoom -= 0.1;
   } else if (val > 0) {
@@ -109,7 +86,7 @@ void set_zoom(f32 val) {
   DBG("zoom: %f", s.zoom);
 }
 
-void set_frame_rate(f32 val) {
+static void set_frame_rate(f32 val) {
   if (val < 0) {
     s.frame_rate -= 10;
   } else if (val > 0) {
@@ -134,12 +111,12 @@ static void reset_state() {
 }
 
 static void update_offscreen_target(int width, int height) {
-  if (sg_isvalid() && s.ctx3d->color_img.id != SG_INVALID_ID) {
-    snk_destroy_image(s.ctx3d->nk_img);
-    sg_destroy_attachments(s.ctx3d->atts);
-    sg_destroy_image(s.ctx3d->depth_img);
-    sg_destroy_image(s.ctx3d->color_img);
-  }
+  /* if (sg_isvalid() && s.ctx3d->color_img.id != SG_INVALID_ID) { */
+  snk_destroy_image(s.ctx3d->nk_img);
+  sg_destroy_attachments(s.ctx3d->atts);
+  sg_destroy_image(s.ctx3d->depth_img);
+  sg_destroy_image(s.ctx3d->color_img);
+  /* } */
 
   s.ctx3d->width = width > 0 ? width : DEFAULT_WIDTH;
   s.ctx3d->height = height > 0 ? height : DEFAULT_HEIGHT;
@@ -193,19 +170,15 @@ static void create_offscreen_target(cstr path) {
   qk_get_frame_vertices(&s.mdl, s.mdl_pos, s.mdl_frm, &vb, &vb_len);
 
   s.shd = sg_make_shader(cube_shader_desc(sg_query_backend()));
-
-  sg_buffer_desc vbufd = {};
-  vbufd.type = SG_BUFFERTYPE_VERTEXBUFFER;
-  vbufd.usage = SG_USAGE_DYNAMIC;
-  vbufd.size = vb_len * sizeof(f32);
-
-  sg_buffer vbuf = sg_make_buffer(&vbufd);
   s.pip = sg_make_pipeline(&(sg_pipeline_desc){
-      .layout = {.attrs =
-                     {
-                         [ATTR_cube_position].format = SG_VERTEXFORMAT_FLOAT3,
-                         [ATTR_cube_texcoord0].format = SG_VERTEXFORMAT_FLOAT2,
-                     }},
+      .layout =
+          {
+              .attrs =
+                  {
+                      [ATTR_cube_position].format = SG_VERTEXFORMAT_FLOAT3,
+                      [ATTR_cube_texcoord0].format = SG_VERTEXFORMAT_FLOAT2,
+                  },
+          },
       .shader = s.shd,
       .primitive_type = SG_PRIMITIVETYPE_TRIANGLES,
       .cull_mode = SG_CULLMODE_BACK,
@@ -215,16 +188,13 @@ static void create_offscreen_target(cstr path) {
           .pixel_format = SG_PIXELFORMAT_DEPTH,
       }});
 
-  s.bind = (sg_bindings){.vertex_buffers[0] = vbuf};
+  s.bind.vertex_buffers[0] = sg_make_buffer(&(sg_buffer_desc){
+      .size = (size_t)vb_len * sizeof(f32),
+      .usage = SG_USAGE_STREAM,
+  });
   s.bind.images[IMG_tex] = s.mdl.skins[s.mdl_skn].image;
   s.bind.samplers[SMP_smp] = s.mdl.skins[s.mdl_skn].sampler;
 
-  sg_update_buffer(s.bind.vertex_buffers[0], &(sg_range){
-                                                 .ptr = vb,
-                                                 .size = vb_len * sizeof(f32),
-                                             });
-
-  // Create a persistent sampler for the Nuklear image
   s.ctx3d->sampler = sg_make_sampler(&(sg_sampler_desc){
       .min_filter = SG_FILTER_LINEAR,
       .mag_filter = SG_FILTER_LINEAR,
@@ -232,9 +202,7 @@ static void create_offscreen_target(cstr path) {
       .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
   });
 
-  // Initialize offscreen render target with window size
   update_offscreen_target(sapp_width(), sapp_height());
-
   s.pass_action = (sg_pass_action){
       .colors[0] =
           {
@@ -281,8 +249,6 @@ static void update(void) {
     if (s.mdl_frm >= s.mdl.poses[s.mdl_pos].frames_length) {
       s.mdl_frm = 0;
     }
-
-    update_frame_vbuf(s.mdl_pos, s.mdl_frm);
   }
 }
 

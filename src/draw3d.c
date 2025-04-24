@@ -44,6 +44,23 @@ void draw_3d(state* s) {
   u32 vb_len = 0;
 
   qk_get_frame_vertices(m, s->mdl_pos, s->mdl_frm, &vb, &vb_len);
+
+  sg_update_buffer(
+      s->bind.vertex_buffers[0],
+      &(sg_range){.ptr = vb, .size = (size_t)vb_len * sizeof(f32)});
+
+  sg_buffer_info info = sg_query_buffer_info(s->bind.vertex_buffers[0]);
+  DBG("%u, %d, %u, %d, %d", info.slot.res_id, info.slot.state,
+      info.update_frame_index, info.num_slots, info.active_slot);
+
+  /* DBG("%u, %d, %u, %d, %d", info.slot.res_id, info.slot.state, */
+  /*     info.update_frame_index, info.num_slots, info.active_slot); */
+
+  /* if (sg_query_buffer_overflow(s->bind.vertex_buffers[0])) */
+  /*   return; */
+
+  /* sg_apply_bindings(&s->bind); */
+
   hmm_v3* bbmin = &m->header.bbox_min;
   hmm_v3* bbmax = &m->header.bbox_max;
   hmm_vec3 center = HMM_MultiplyVec3f(HMM_AddVec3(*bbmin, *bbmax), 0.5f);
