@@ -32,6 +32,26 @@ void unload_3d_model(qk_model* m);
 void draw_3d(state* s);
 void draw_ui(state* s);
 
+void update_frame_vbuf(u32 pos, u32 frm) {
+  const f32* vb = NULL;
+  u32 vb_len = 0;
+
+  /* sg_query_frame_stats(); */
+  /* sg_enable_frame_stats(); */
+  /* sg_disable_frame_stats(); */
+  /* sg_frame_stats_enabled(); */
+
+  sg_buffer_info info = sg_query_buffer_info(s.bind.vertex_buffers[0]);
+  DBG("%u, %d, %u, %d, %d", info.slot.res_id, info.slot.state,
+      info.update_frame_index, info.num_slots, info.active_slot);
+
+  qk_get_frame_vertices(&s.mdl, pos, frm, &vb, &vb_len);
+  sg_update_buffer(s.bind.vertex_buffers[0], &(sg_range){
+                                                 .ptr = vb,
+                                                 .size = vb_len * sizeof(f32),
+                                             });
+}
+
 void set_skin(u32 idx) {
   makesure(idx <= s.mdl.header.skins_length, "invalid skin index");
   s.bind.images[IMG_tex] = s.mdl.skins[idx].image;
@@ -53,6 +73,24 @@ void prev_pose() {
     s.mdl_pos--;
   }
   s.mdl_frm = 0;
+}
+
+void next_frame() {
+  s.mdl_frm++;
+  if (s.mdl_frm >= s.mdl.poses[s.mdl_pos].frames_length) {
+    s.mdl_frm = 0;
+  }
+
+  update_frame_vbuf(s.mdl_pos, s.mdl_frm);
+}
+
+void prev_frame() {
+  s.mdl_frm--;
+  if (s.mdl_frm < 0) {
+    s.mdl_frm = s.mdl.poses[s.mdl_pos].frames_length - 1;
+  }
+
+  update_frame_vbuf(s.mdl_pos, s.mdl_frm);
 }
 
 void set_zoom(f32 val) {
@@ -85,17 +123,6 @@ void set_frame_rate(f32 val) {
   }
 
   DBG("frame_rate: %u", s.frame_rate);
-}
-
-void update_frame_vbuf(u32 pos, u32 frm) {
-  const f32* vb = NULL;
-  u32 vb_len = 0;
-
-  qk_get_frame_vertices(&s.mdl, pos, frm, &vb, &vb_len);
-  sg_update_buffer(s.bind.vertex_buffers[0], &(sg_range){
-                                                 .ptr = vb,
-                                                 .size = vb_len * sizeof(f32),
-                                             });
 }
 
 static void reset_state() {
@@ -301,11 +328,15 @@ static void mode_normal_input(const sapp_event* e) {
       case SAPP_KEYCODE_PERIOD:
         if (e->modifiers & SAPP_MODIFIER_SHIFT) {
           next_pose();
+        } else {
+          next_frame();
         }
         break;
       case SAPP_KEYCODE_COMMA:
         if (e->modifiers & SAPP_MODIFIER_SHIFT) {
           prev_pose();
+        } else {
+          prev_frame();
         }
         break;
       default:

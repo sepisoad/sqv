@@ -40,7 +40,7 @@ typedef struct {
   u32 mdl_pos;
   u32 mdl_frm;
   u32 mdl_skn;
-  u32 frame_rate;
+  i32 frame_rate;
   f32 mdl_roty;
   f32 zoom;
   bool rotating;
