@@ -50,7 +50,7 @@ void draw_3d(state* s) {
   f32 dx = bbmax->X - bbmin->X;
   f32 dy = bbmax->Y - bbmin->Y;
   f32 dz = bbmax->Z - bbmin->Z;
-  f32 rad = 0.5f * sqrtf(dx * dx + dy * dy + dz * dz);
+  f32 rad = 0.5f * sqrtf(dx * (dx * s->zoom) + dy * dy + dz * dz);
 
   f32 aspect = (f32)s->ctx3d->width / (f32)s->ctx3d->height;
   f32 dist = (rad / sinf(HMM_ToRadians(FOV) * 0.5f)) * 1.5f;

@@ -22,9 +22,6 @@
 #include "utils/types.h"
 #include "app.h"
 
-#define MAX_INIT_DELAY 10
-#define ROT_FACTOR 0.5;
-
 static context3d ctx3d = {0};
 static state s;
 static u64 init_tm = 0;
@@ -58,6 +55,38 @@ void prev_pose() {
   s.mdl_frm = 0;
 }
 
+void set_zoom(f32 val) {
+  if (val < 0) {
+    s.zoom -= 0.1;
+  } else if (val > 0) {
+    s.zoom += 0.1;
+  }
+
+  if (s.zoom < MIN_ZOOM) {
+    s.zoom = MIN_ZOOM;
+  } else if (s.zoom > MAX_ZOOM) {
+    s.zoom = MAX_ZOOM;
+  }
+
+  DBG("zoom: %f", s.zoom);
+}
+
+void set_frame_rate(f32 val) {
+  if (val < 0) {
+    s.frame_rate -= 10;
+  } else if (val > 0) {
+    s.frame_rate += 10;
+  }
+
+  if (s.frame_rate < MIN_FRAME_RATE) {
+    s.frame_rate = MIN_FRAME_RATE;
+  } else if (s.frame_rate > MAX_FRAME_RATE) {
+    s.frame_rate = MAX_FRAME_RATE;
+  }
+
+  DBG("frame_rate: %u", s.frame_rate);
+}
+
 void update_frame_vbuf(u32 pos, u32 frm) {
   const f32* vb = NULL;
   u32 vb_len = 0;
@@ -73,6 +102,8 @@ static void reset_state() {
   s.mdl_skn = 0;
   s.mdl_pos = 0;
   s.mdl_frm = 0;
+  s.zoom = 1;
+  s.frame_rate = 60;
 }
 
 static void update_offscreen_target(int width, int height) {
@@ -217,7 +248,7 @@ static void update(void) {
     s.mdl_roty += ROT_FACTOR;
   }
 
-  if (s.animating && (stm_ms(stm_since(last_frame_tick)) > 60)) {
+  if (s.animating && (stm_ms(stm_since(last_frame_tick)) > s.frame_rate)) {
     last_frame_tick = stm_now();
     s.mdl_frm++;
     if (s.mdl_frm >= s.mdl.poses[s.mdl_pos].frames_length) {
@@ -280,6 +311,11 @@ static void mode_normal_input(const sapp_event* e) {
       default:
         break;
     }
+  }
+
+  if ((e->type == SAPP_EVENTTYPE_MOUSE_SCROLL)) {
+    set_zoom(e->scroll_y);
+    set_frame_rate(e->scroll_x);
   }
 }
 
@@ -403,6 +439,8 @@ static void init(void) {
   s.m = MODE_INIT;
   s.mdl_pos = 0;
   s.mdl_skn = 0;
+  s.frame_rate = 60;
+  s.zoom = 1;
   s.rotating = true;
   s.animating = false;
   last_frame_tick = stm_now();

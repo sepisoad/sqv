@@ -40,14 +40,22 @@ typedef struct {
   u32 mdl_pos;
   u32 mdl_frm;
   u32 mdl_skn;
-  float mdl_roty;
+  u32 frame_rate;
+  f32 mdl_roty;
+  f32 zoom;
   bool rotating;
   bool animating;
   mode m;
 } state;
 
+#define MAX_INIT_DELAY 10
+#define ROT_FACTOR 0.5;
 #define FOV 60.0f
 #define DEFAULT_WIDTH 512
 #define DEFAULT_HEIGHT 512
+#define MIN_ZOOM -5.0f
+#define MAX_ZOOM 10.0f
+#define MIN_FRAME_RATE 1
+#define MAX_FRAME_RATE 1000
 
 #endif  // SQV_APP_HEADER_
