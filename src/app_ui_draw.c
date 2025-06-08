@@ -1,12 +1,13 @@
 #include <stdbool.h>
 #include <stdio.h>
+
 #include "../deps/sokol_app.h"
 #include "../deps/sokol_gfx.h"
 #include "../deps/nuklear.h"
 #include "../deps/sokol_nuklear.h"
 #include "../deps/sokol_glue.h"
 
-#include "quake/md1.h"
+#include "md1.h"
 #include "app.h"
 
 void set_skin(u32 idx);

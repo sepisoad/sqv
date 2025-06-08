@@ -10,9 +10,12 @@
 #include <stdalign.h>
 #include <ctype.h>
 
-#include "../utils/all.h"
-#include "../../deps/hmm.h"
-#include "../../deps/sokol_gfx.h"
+#include "../deps/hmm.h"
+#include "../deps/sokol_gfx.h"
+#include "../deps/sepi_macros.h"
+#include "../deps/sepi_types.h"
+#include "../deps/sepi_endian.h"
+#include "../deps/sepi_arena.h"
 
 #define MAX_STATIC_MEM 8192
 #define MAX_FRAME_NAME_LEN 16

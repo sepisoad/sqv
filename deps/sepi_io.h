@@ -3,16 +3,16 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-#include "types.h"
+#include "sepi_types.h"
+#include "sepi_macros.h"
 
 /* ****************** utils::io API ****************** */
 size_t ut_load_file(const char* path, u8** buf);
 /* ****************** utils::io API ****************** */
 
 #ifdef UTILS_IO_IMPLEMENTATION
-
-#include "macros.h"
 
 size_t ut_load_file(const char* path, u8** buf) {
   FILE* f = fopen(path, "rb");

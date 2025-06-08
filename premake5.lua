@@ -75,6 +75,17 @@ project "mk_stb"
   buildoptions { "-Wno-deprecated-declarations" }
   files {"deps/stb.c"}
 
+-- STB Library
+project "mk_sepi"
+  kind "StaticLib"
+  language "C"
+  location "BUILD"
+  targetdir "BUILD/"
+  objdir "BUILD/obj"
+  targetname "sepi"
+  buildoptions { "-Wno-deprecated-declarations" }
+  files {"deps/sepi.c"}
+  
 -- Main Application
 project "mk_sqv"
   kind "ConsoleApp"
@@ -83,9 +94,20 @@ project "mk_sqv"
   targetdir "BUILD/"
   objdir "BUILD/obj"
   targetname "sqv"
-  files {"src/main.c", "src/draw3d.c", "src/drawui.c"}
   includedirs {"src", "deps"}
-  links { "mk_log:static", "mk_ini:static", "mk_stb:static", "mk_sokol:static", "mk_hmm:static" }
+  links {
+    "mk_log:static",
+    "mk_ini:static",
+    "mk_stb:static",
+    "mk_hmm:static",
+    "mk_sepi:static",
+    "mk_sokol:static",    
+  }
+  files {
+    "src/app.c",
+    "src/app_3d_draw.c",
+    "src/app_ui_draw.c"
+  }
   buildoptions { "-std=c2x" }
   defines { "SOKOL_GLCORE" }
   defines { "_POSIX_C_SOURCE=199309L" }  -- Needed for some C23 features
@@ -101,7 +123,7 @@ newaction {
   trigger = "glsl",
   description = "Compile shaders into C headers",
   execute = function()
-    os.execute("sokol-shdc -i res/shaders/default.glsl -l glsl410 -f sokol -o src/glsl/default.h")
+    os.execute("sokol-shdc -i res/shaders/default.glsl -l glsl410 -f sokol -o src/glsl_default.h")
   end
 }
 

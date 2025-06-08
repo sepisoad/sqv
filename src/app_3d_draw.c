@@ -1,18 +1,20 @@
 #include <stdbool.h>
 #include <stdio.h>
+
 #include "../deps/hmm.h"
 #include "../deps/log.h"
+#include "../deps/nuklear.h"
 #include "../deps/sokol_app.h"
 #include "../deps/sokol_args.h"
 #include "../deps/sokol_gfx.h"
-#include "../deps/nuklear.h"
 #include "../deps/sokol_nuklear.h"
 #include "../deps/sokol_glue.h"
 #include "../deps/sokol_log.h"
+#include "../deps/sepi_types.h"
+#include "../deps/sepi_io.h"
 
-#include "glsl/default.h"
-#include "quake/md1.h"
-#include "utils/types.h"
+#include "glsl_default.h"
+#include "md1.h"
 #include "app.h"
 
 void load_3d_model(cstr path, qk_model* m) {

@@ -7,8 +7,8 @@
 #include <stddef.h>
 #include <assert.h>
 
-#include "types.h"
-#include "macros.h"
+#include "sepi_types.h"
+#include "sepi_macros.h"
 
 #define ARENA_DEFAULT_SIZE (1024 * 1024)  // 1MB default size
 #define ALIGNMENT 16                      // Default alignment

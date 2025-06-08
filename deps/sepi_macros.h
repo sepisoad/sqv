@@ -1,7 +1,7 @@
 #ifndef UTIL_COMMON_HEADER_
 #define UTIL_COMMON_HEADER_
 
-#include "../../deps/log.h"
+#include "log.h"
 
 static char error_buffer[1024];  // removed const so snprintf can write into it
 

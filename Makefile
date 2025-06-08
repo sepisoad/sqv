@@ -14,6 +14,7 @@ ifeq ($(config),debug)
   mk_sokol_config = debug
   mk_hmm_config = debug
   mk_stb_config = debug
+  mk_sepi_config = debug
   mk_sqv_config = debug
 
 else ifeq ($(config),release)
@@ -22,13 +23,14 @@ else ifeq ($(config),release)
   mk_sokol_config = release
   mk_hmm_config = release
   mk_stb_config = release
+  mk_sepi_config = release
   mk_sqv_config = release
 
 else
   $(error "invalid configuration $(config)")
 endif
 
-PROJECTS := mk_log mk_ini mk_sokol mk_hmm mk_stb mk_sqv
+PROJECTS := mk_log mk_ini mk_sokol mk_hmm mk_stb mk_sepi mk_sqv
 
 .PHONY: all clean help $(PROJECTS) 
 
@@ -64,6 +66,12 @@ ifneq (,$(mk_stb_config))
 	@${MAKE} --no-print-directory -C BUILD -f mk_stb.make config=$(mk_stb_config)
 endif
 
+mk_sepi:
+ifneq (,$(mk_sepi_config))
+	@echo "==== Building mk_sepi ($(mk_sepi_config)) ===="
+	@${MAKE} --no-print-directory -C BUILD -f mk_sepi.make config=$(mk_sepi_config)
+endif
+
 mk_sqv:
 ifneq (,$(mk_sqv_config))
 	@echo "==== Building mk_sqv ($(mk_sqv_config)) ===="
@@ -76,6 +84,7 @@ clean:
 	@${MAKE} --no-print-directory -C BUILD -f mk_sokol.make clean
 	@${MAKE} --no-print-directory -C BUILD -f mk_hmm.make clean
 	@${MAKE} --no-print-directory -C BUILD -f mk_stb.make clean
+	@${MAKE} --no-print-directory -C BUILD -f mk_sepi.make clean
 	@${MAKE} --no-print-directory -C BUILD -f mk_sqv.make clean
 
 help:
@@ -93,6 +102,7 @@ help:
 	@echo "   mk_sokol"
 	@echo "   mk_hmm"
 	@echo "   mk_stb"
+	@echo "   mk_sepi"
 	@echo "   mk_sqv"
 	@echo ""
 	@echo "For more information, see https://github.com/premake/premake-core/wiki"

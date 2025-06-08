@@ -1,6 +1,3 @@
-#define UTILS_ARENA_IMPLEMENTATION
-#define UTILS_ENDIAN_IMPLEMENTATION
-#define UTILS_IO_IMPLEMENTATION
 #define MD1_IMPLEMENTATION
 
 #include <stdbool.h>
@@ -16,10 +13,11 @@
 #include "../deps/sokol_glue.h"
 #include "../deps/sokol_time.h"
 #include "../deps/sokol_log.h"
+#include "../deps/sepi_types.h"
+#include "../deps/sepi_endian.h"
 
-#include "glsl/default.h"
-#include "quake/md1.h"
-#include "utils/types.h"
+#include "glsl_default.h"
+#include "md1.h"
 #include "app.h"
 
 static context3d ctx3d = {0};

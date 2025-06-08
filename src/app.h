@@ -6,6 +6,11 @@
 typedef struct nk_context contextui;
 
 typedef enum {
+  SQV_ERR_UNKNOWN = -1,
+  SQV_ERR_SUCCESS = 0,
+} sqv_err;
+
+typedef enum {
   MAJOR_MODE_UNKNOWN = -1,
   MAJOR_MODE_INIT = 0,
   MAJOR_MODE_NORMAL,
