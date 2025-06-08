@@ -10,10 +10,6 @@
 #include <stdalign.h>
 #include <ctype.h>
 
-#ifdef DEBUG
-#include "../deps/stb_image_write.h"
-#endif
-
 #include "../utils/all.h"
 #include "../../deps/hmm.h"
 #include "../../deps/sokol_gfx.h"
@@ -346,13 +342,6 @@ static const u8* md1_load_skins(qk_model* mdl, const u8* p) {
 
       md1_load_image(p, pixels, skin_size);
 
-#ifdef DEBUG
-      DBG("dumping skins data into an image on disk");
-      char skin_name[1024] = {0};
-      sprintf(skin_name, "BUILD/skin_%zu.png", i);
-      stbi_write_png(skin_name, width, height, 4, pixels, width * 4);
-#endif
-
       skins[i].image = sg_alloc_image();
       skins[i].sampler = sg_make_sampler(&(sg_sampler_desc){
           .min_filter = SG_FILTER_LINEAR,
@@ -522,11 +511,11 @@ static void md1_make_display_list(qk_model* mdl,
   hmm_v3* trn = &hdr->translate;
   hmm_v3* bbx_min = &hdr->bbox_min;
   hmm_v3* bbx_max = &hdr->bbox_max;
-  u32 skn_wdt = mdl->header.skin_width;
-  u32 skn_hgt = mdl->header.skin_height;
-  u32 vrt_len = hdr->vertices_length;
-  u32 frm_len = hdr->frames_length;
-  u32 tri_len = hdr->triangles_length;
+  const u32 skn_wdt = mdl->header.skin_width;
+  const u32 skn_hgt = mdl->header.skin_height;
+  const u32 vrt_len = hdr->vertices_length;
+  const u32 frm_len = hdr->frames_length;
+  const u32 tri_len = hdr->triangles_length;
 
   u32 elm_len = 3 * (3 + 2);  // a->b->c * x,y,z, u,v
   sz vbuf_sz = sizeof(f32) * frm_len * tri_len * elm_len;
@@ -656,10 +645,6 @@ void qk_unload_mdl(qk_model* mdl) {
     sg_destroy_sampler(mdl->skins[i].sampler);
     snk_destroy_image(mdl->skins[i].ui_image);
   }
-
-  /* for (u32 i = 0; i < mdl->header.frames_length; i++) { */
-  /*   sg_destroy_buffer(mdl->frames[i].vbuf);     */
-  /* } */
   arena_destroy(&mdl->mem);
 }
 

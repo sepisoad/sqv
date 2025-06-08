@@ -69,7 +69,7 @@ void draw_3d(state* s) {
   f32 dz = bbmax->Z - bbmin->Z;
   f32 rad = 0.5f * sqrtf(dx * (dx * s->zoom) + dy * dy + dz * dz);
 
-  f32 aspect = (f32)s->ctx3d->width / (f32)s->ctx3d->height;
+  f32 aspect = sapp_widthf() / sapp_heightf();
   f32 dist = (rad / sinf(HMM_ToRadians(FOV) * 0.5f)) * 1.5f;
 
   hmm_vec3 eye = HMM_AddVec3(center, HMM_Vec3(0.0f, 0.0f, dist));
