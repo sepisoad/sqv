@@ -20,32 +20,31 @@
 #include "md1.h"
 #include "app.h"
 
-static context3d ctx3d = {0};
+context3d ctx3d = {0};
 static state s;
 static u64 init_tm = 0;
 static u64 last_frame_tick = 0;
 
+void update_offscreen_target(state* s, int width, int height);
+void create_offscreen_target(state* s, cstr path);
 void load_3d_model(cstr path, qk_model* m);
 void unload_3d_model(qk_model* m);
 void draw_3d(state* s);
 void draw_ui(state* s);
 
-void update_frame_vbuf(u32 pos, u32 frm) {
-  const f32* vb = NULL;
-  u32 vb_len = 0;
-
-  sg_buffer_info info = sg_query_buffer_info(s.bind.vertex_buffers[0]);
-  qk_get_frame_vertices(&s.mdl, pos, frm, &vb, &vb_len);
-  sg_update_buffer(s.bind.vertex_buffers[0], &(sg_range){
-                                                 .ptr = vb,
-                                                 .size = vb_len * sizeof(f32),
-                                             });
-}
-
+// this one is used by other module so cannot be static
 void set_skin(u32 idx) {
   makesure(idx <= s.mdl.header.skins_length, "invalid skin index");
   s.bind.images[IMG_tex] = s.mdl.skins[idx].image;
   s.bind.samplers[SMP_smp] = s.mdl.skins[idx].sampler;
+}
+
+void reset_state() {
+  s.mdl_skn = 0;
+  s.mdl_pos = 0;
+  s.mdl_frm = 0;
+  s.zoom = 1;
+  s.frame_rate = 60;
 }
 
 static void next_pose() {
@@ -92,8 +91,6 @@ static void set_zoom(f32 val) {
   } else if (s.zoom > MAX_ZOOM) {
     s.zoom = MAX_ZOOM;
   }
-
-  DBG("zoom: %f", s.zoom);
 }
 
 static void set_frame_rate(f32 val) {
@@ -108,117 +105,6 @@ static void set_frame_rate(f32 val) {
   } else if (s.frame_rate > MAX_FRAME_RATE) {
     s.frame_rate = MAX_FRAME_RATE;
   }
-
-  DBG("frame_rate: %u", s.frame_rate);
-}
-
-static void reset_state() {
-  s.mdl_skn = 0;
-  s.mdl_pos = 0;
-  s.mdl_frm = 0;
-  s.zoom = 1;
-  s.frame_rate = 60;
-}
-
-static void update_offscreen_target(int width, int height) {
-  /* if (sg_isvalid() && s.ctx3d->color_img.id != SG_INVALID_ID) { */
-  snk_destroy_image(s.ctx3d->nk_img);
-  sg_destroy_attachments(s.ctx3d->atts);
-  sg_destroy_image(s.ctx3d->depth_img);
-  sg_destroy_image(s.ctx3d->color_img);
-  /* } */
-
-  s.ctx3d->width = width > 0 ? width : DEFAULT_WIDTH;
-  s.ctx3d->height = height > 0 ? height : DEFAULT_HEIGHT;
-
-  s.ctx3d->color_img = sg_make_image(&(sg_image_desc){
-      .render_target = true,
-      .width = s.ctx3d->width,
-      .height = s.ctx3d->height,
-      .sample_count = 1,
-  });
-
-  s.ctx3d->depth_img = sg_make_image(&(sg_image_desc){
-      .render_target = true,
-      .width = s.ctx3d->width,
-      .height = s.ctx3d->height,
-      .pixel_format = SG_PIXELFORMAT_DEPTH,
-      .sample_count = 1,
-  });
-
-  s.ctx3d->atts = sg_make_attachments(&(sg_attachments_desc){
-      .colors[0].image = s.ctx3d->color_img,
-      .depth_stencil.image = s.ctx3d->depth_img,
-  });
-
-  s.ctx3d->nk_img = snk_make_image(&(snk_image_desc_t){
-      .image = s.ctx3d->color_img,
-      .sampler = s.ctx3d->sampler,
-  });
-
-  s.ctx3d->pass_action = (sg_pass_action){
-      .colors[0] = {.load_action = SG_LOADACTION_CLEAR,
-                    .clear_value = {0.25f, 0.5f, 0.75f, 1.0f}},
-  };
-}
-
-static void create_offscreen_target(cstr path) {
-  if (s.ctx3d != NULL) {
-    unload_3d_model(&s.mdl);
-    sg_destroy_pipeline(s.pip);
-    sg_destroy_shader(s.shd);
-    reset_state();
-    update_offscreen_target(sapp_width(), sapp_height());
-  }
-
-  load_3d_model(path, &s.mdl);
-  s.ctx3d = &ctx3d;  // resetting
-
-  const f32* vb = NULL;
-  u32 vb_len = 0;
-  qk_get_frame_vertices(&s.mdl, s.mdl_pos, s.mdl_frm, &vb, &vb_len);
-
-  s.shd = sg_make_shader(cube_shader_desc(sg_query_backend()));
-  s.pip = sg_make_pipeline(&(sg_pipeline_desc){
-      .layout =
-          {
-              .attrs =
-                  {
-                      [ATTR_cube_position].format = SG_VERTEXFORMAT_FLOAT3,
-                      [ATTR_cube_texcoord0].format = SG_VERTEXFORMAT_FLOAT2,
-                  },
-          },
-      .shader = s.shd,
-      .primitive_type = SG_PRIMITIVETYPE_TRIANGLES,
-      .cull_mode = SG_CULLMODE_BACK,
-      .depth = {
-          .write_enabled = true,
-          .compare = SG_COMPAREFUNC_LESS_EQUAL,
-          .pixel_format = SG_PIXELFORMAT_DEPTH,
-      }});
-
-  s.bind.vertex_buffers[0] = sg_make_buffer(&(sg_buffer_desc){
-      .size = (size_t)vb_len * sizeof(f32),
-      .usage = SG_USAGE_STREAM,
-  });
-  s.bind.images[IMG_tex] = s.mdl.skins[s.mdl_skn].image;
-  s.bind.samplers[SMP_smp] = s.mdl.skins[s.mdl_skn].sampler;
-
-  s.ctx3d->sampler = sg_make_sampler(&(sg_sampler_desc){
-      .min_filter = SG_FILTER_LINEAR,
-      .mag_filter = SG_FILTER_LINEAR,
-      .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
-      .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
-  });
-
-  update_offscreen_target(sapp_width(), sapp_height());
-  s.pass_action = (sg_pass_action){
-      .colors[0] =
-          {
-              .load_action = SG_LOADACTION_CLEAR,
-              .clear_value = {0.1f, 0.1f, 0.1f, 1.0f},
-          },
-  };
 }
 
 static cstr major_mode_str(major_mode m) {
@@ -388,11 +274,11 @@ static void input(const sapp_event* e) {
   snk_handle_event(e);
 
   if (e->type == SAPP_EVENTTYPE_RESIZED) {
-    update_offscreen_target(e->window_width, e->window_height);
+    update_offscreen_target(&s, e->window_width, e->window_height);
   }
 
   if (e->type == SAPP_EVENTTYPE_FILES_DROPPED) {
-    create_offscreen_target(sapp_get_dropped_file_path(0));
+    create_offscreen_target(&s, sapp_get_dropped_file_path(0));
   }
 
   switch (s.mjm) {
@@ -466,7 +352,7 @@ static void init(void) {
   cstr path = (cstr)sapp_userdata();
   if (path != NULL) {
     log_info("loading '%s' model", path);
-    create_offscreen_target(path);
+    create_offscreen_target(&s, path);
   }
 }
 
