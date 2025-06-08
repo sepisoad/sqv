@@ -36,15 +36,7 @@ void update_frame_vbuf(u32 pos, u32 frm) {
   const f32* vb = NULL;
   u32 vb_len = 0;
 
-  /* sg_query_frame_stats(); */
-  /* sg_enable_frame_stats(); */
-  /* sg_disable_frame_stats(); */
-  /* sg_frame_stats_enabled(); */
-
   sg_buffer_info info = sg_query_buffer_info(s.bind.vertex_buffers[0]);
-  DBG("%u, %d, %u, %d, %d", info.slot.res_id, info.slot.state,
-      info.update_frame_index, info.num_slots, info.active_slot);
-
   qk_get_frame_vertices(&s.mdl, pos, frm, &vb, &vb_len);
   sg_update_buffer(s.bind.vertex_buffers[0], &(sg_range){
                                                  .ptr = vb,
@@ -148,7 +140,6 @@ static void update_offscreen_target(int width, int height) {
       .render_target = true,
       .width = s.ctx3d->width,
       .height = s.ctx3d->height,
-      .pixel_format = SG_PIXELFORMAT_RGBA8,
       .sample_count = 1,
   });
 
