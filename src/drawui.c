@@ -312,23 +312,23 @@ void draw_ui(state* s) {
   s->ctxui->style.window.padding = nk_vec2(0, 0);
   s->ctxui->style.window.spacing = nk_vec2(0, 0);
 
-  switch (s->m) {
-    case MODE_INIT:
+  switch (s->mjm) {
+    case MAJOR_MODE_INIT:
       draw_init_mode(s);
       break;
-    case MODE_NORMAL:
+    case MAJOR_MODE_NORMAL:
       draw_normal_mode(s);
       break;
-    case MODE_INFO:
+    case MAJOR_MODE_INFO:
       draw_info_mode(s);
       break;
-    case MODE_HELP:
+    case MAJOR_MODE_HELP:
       draw_help_mode(s);
       break;
-    case MODE_SKINS:
+    case MAJOR_MODE_SKINS:
       draw_skins_mode(s);
       break;
-    case MODE_POSES:
+    case MAJOR_MODE_POSES:
       draw_poses_mode(s);
       break;
     default:

@@ -32,6 +32,18 @@ void unload_3d_model(qk_model* m);
 void draw_3d(state* s);
 void draw_ui(state* s);
 
+void update_frame_vbuf(u32 pos, u32 frm) {
+  const f32* vb = NULL;
+  u32 vb_len = 0;
+
+  sg_buffer_info info = sg_query_buffer_info(s.bind.vertex_buffers[0]);
+  qk_get_frame_vertices(&s.mdl, pos, frm, &vb, &vb_len);
+  sg_update_buffer(s.bind.vertex_buffers[0], &(sg_range){
+                                                 .ptr = vb,
+                                                 .size = vb_len * sizeof(f32),
+                                             });
+}
+
 void set_skin(u32 idx) {
   makesure(idx <= s.mdl.header.skins_length, "invalid skin index");
   s.bind.images[IMG_tex] = s.mdl.skins[idx].image;
@@ -125,7 +137,6 @@ static void update_offscreen_target(int width, int height) {
       .render_target = true,
       .width = s.ctx3d->width,
       .height = s.ctx3d->height,
-      .pixel_format = SG_PIXELFORMAT_RGBA8,
       .sample_count = 1,
   });
 
@@ -212,29 +223,38 @@ static void create_offscreen_target(cstr path) {
   };
 }
 
-static cstr mode_str(mode m) {
+static cstr major_mode_str(major_mode m) {
   switch (m) {
-    case MODE_INIT:
+    case MAJOR_MODE_INIT:
       return "INIT";
-    case MODE_NORMAL:
+    case MAJOR_MODE_NORMAL:
       return "NORMAL";
-    case MODE_HELP:
+    case MAJOR_MODE_HELP:
       return "HELP";
-    case MODE_INFO:
+    case MAJOR_MODE_INFO:
       return "INFO";
-    case MODE_SKINS:
+    case MAJOR_MODE_SKINS:
       return "SKINS";
-    case MODE_POSES:
+    case MAJOR_MODE_POSES:
       return "POSES";
     default:
       return "UNKNOWN";
   }
 }
 
-static void set_mode(mode m) {
-  if (s.m != m) {
-    DBG("changing mode from '%s' to '%s'", mode_str(s.m), mode_str(m));
-    s.m = m;
+static void set_major_mode(major_mode m) {
+  if (s.mjm != m) {
+    DBG("changing mode from '%s' to '%s'", major_mode_str(s.mjm),
+        major_mode_str(m));
+    s.mjm = m;
+  }
+}
+
+static void set_minor_mode(minor_mode m) {
+  if (s.mnm != m) {
+    /* DBG("changing mode from '%s' to '%s'", major_mode_str(s.mjm), */
+    /*     major_mode_str(m)); */
+    s.mnm = m;
   }
 }
 
@@ -257,14 +277,9 @@ static void frame(void) {
   draw_ui(&s);
   update();
 
-  if (s.m == MODE_INIT && stm_sec(stm_since(init_tm)) > MAX_INIT_DELAY) {
-    set_mode(MODE_NORMAL);
-  }
-}
-
-static void mode_init_input(const sapp_event* e) {
-  if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
-    set_mode(MODE_NORMAL);
+  if (s.mjm == MAJOR_MODE_INIT &&
+      stm_sec(stm_since(init_tm)) > MAX_INIT_DELAY) {
+    set_major_mode(MAJOR_MODE_NORMAL);
   }
 }
 
@@ -273,20 +288,20 @@ static void mode_normal_input(const sapp_event* e) {
     switch (e->key_code) {
       case SAPP_KEYCODE_SLASH:
         if (e->modifiers & SAPP_MODIFIER_SHIFT) {
-          set_mode(MODE_HELP);
+          set_major_mode(MAJOR_MODE_HELP);
         }
         break;
       case SAPP_KEYCODE_I:
-        set_mode(MODE_INFO);
+        set_major_mode(MAJOR_MODE_INFO);
         break;
       case SAPP_KEYCODE_R:
         s.rotating = !s.rotating;
         break;
       case SAPP_KEYCODE_S:
-        set_mode(MODE_SKINS);
+        set_major_mode(MAJOR_MODE_SKINS);
         break;
       case SAPP_KEYCODE_P:
-        set_mode(MODE_POSES);
+        set_major_mode(MAJOR_MODE_POSES);
         break;
       case SAPP_KEYCODE_A:
         s.animating = !s.animating;
@@ -316,11 +331,18 @@ static void mode_normal_input(const sapp_event* e) {
   }
 }
 
+static void mode_init_input(const sapp_event* e) {
+  if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
+    set_major_mode(MAJOR_MODE_NORMAL);
+    mode_normal_input(e);
+  }
+}
+
 static void mode_info_input(const sapp_event* e) {
   if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
     switch (e->key_code) {
       case SAPP_KEYCODE_ESCAPE:
-        set_mode(MODE_NORMAL);
+        set_major_mode(MAJOR_MODE_NORMAL);
         break;
       default:
         break;
@@ -332,7 +354,7 @@ static void mode_help_input(const sapp_event* e) {
   if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
     switch (e->key_code) {
       case SAPP_KEYCODE_ESCAPE:
-        set_mode(MODE_NORMAL);
+        set_major_mode(MAJOR_MODE_NORMAL);
         break;
       default:
         break;
@@ -344,7 +366,7 @@ static void mode_skins_input(const sapp_event* e) {
   if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
     switch (e->key_code) {
       case SAPP_KEYCODE_ESCAPE:
-        set_mode(MODE_NORMAL);
+        set_major_mode(MAJOR_MODE_NORMAL);
         break;
       default:
         break;
@@ -356,7 +378,7 @@ static void mode_poses_input(const sapp_event* e) {
   if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
     switch (e->key_code) {
       case SAPP_KEYCODE_ESCAPE:
-        set_mode(MODE_NORMAL);
+        set_major_mode(MAJOR_MODE_NORMAL);
         break;
       default:
         break;
@@ -375,23 +397,23 @@ static void input(const sapp_event* e) {
     create_offscreen_target(sapp_get_dropped_file_path(0));
   }
 
-  switch (s.m) {
-    case MODE_INIT:
+  switch (s.mjm) {
+    case MAJOR_MODE_INIT:
       mode_init_input(e);
       break;
-    case MODE_NORMAL:
+    case MAJOR_MODE_NORMAL:
       mode_normal_input(e);
       break;
-    case MODE_INFO:
+    case MAJOR_MODE_INFO:
       mode_info_input(e);
       break;
-    case MODE_HELP:
+    case MAJOR_MODE_HELP:
       mode_help_input(e);
       break;
-    case MODE_SKINS:
+    case MAJOR_MODE_SKINS:
       mode_skins_input(e);
       break;
-    case MODE_POSES:
+    case MAJOR_MODE_POSES:
       mode_poses_input(e);
       break;
     default:
@@ -433,7 +455,8 @@ static void init(void) {
 
   init_tm = stm_now();
   s.ctx3d = &ctx3d;
-  s.m = MODE_INIT;
+  s.mjm = MAJOR_MODE_INIT;
+  s.mnm = MINOR_MODE_UNKNOWN;
   s.mdl_pos = 0;
   s.mdl_skn = 0;
   s.frame_rate = 60;

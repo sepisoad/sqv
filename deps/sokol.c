@@ -1,6 +1,4 @@
-#define SOKOL_GLCORE
 #define SOKOL_IMPL
-
 #define NK_IMPLEMENTATION
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
@@ -8,8 +6,6 @@
 #define NK_INCLUDE_FONT_BAKING
 #define NK_INCLUDE_DEFAULT_FONT
 #define NK_INCLUDE_STANDARD_VARARGS
-
-#define SOKOL_IMGUI_IMPL
 
 #include "sokol_app.h"
 #include "sokol_args.h"

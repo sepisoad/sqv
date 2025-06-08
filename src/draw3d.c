@@ -98,6 +98,6 @@ void draw_3d(state* s) {
   sg_apply_pipeline(s->pip);
   sg_apply_bindings(&s->bind);
   sg_apply_uniforms(UB_vs_params, &SG_RANGE(vs_params));
-  sg_draw(0, vb_len, 1);
+  sg_draw(0, vb_len / 5, 1);
   sg_end_pass();
 }
