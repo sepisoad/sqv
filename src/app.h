@@ -6,14 +6,20 @@
 typedef struct nk_context contextui;
 
 typedef enum {
-  MODE_UNKNOWN = -1,
-  MODE_INIT = 0,
-  MODE_NORMAL,
-  MODE_INFO,
-  MODE_HELP,
-  MODE_SKINS,
-  MODE_POSES,
-} mode;
+  MAJOR_MODE_UNKNOWN = -1,
+  MAJOR_MODE_INIT = 0,
+  MAJOR_MODE_NORMAL,
+  MAJOR_MODE_INFO,
+  MAJOR_MODE_HELP,
+  MAJOR_MODE_SKINS,
+  MAJOR_MODE_POSES,
+} major_mode;
+
+typedef enum {
+  MINOR_MODE_UNKNOWN = -1,
+  MINOR_MODE_STATUS = 0,
+  MINOR_MODE_TOOLBAR,
+} minor_mode;
 
 typedef struct {
   sg_image color_img;
@@ -45,7 +51,8 @@ typedef struct {
   f32 zoom;
   bool rotating;
   bool animating;
-  mode m;
+  major_mode mjm;
+  minor_mode mnm;
 } state;
 
 #define MAX_INIT_DELAY 10
