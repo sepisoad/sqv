@@ -17,6 +17,10 @@
 #include "qk1_md1.h"
 #include "app.h"
 
+#ifdef DEBUG
+#include "../deps/sepi_alloc.h"
+#endif
+
 extern context3d ctx3d;
 
 void reset_state();
@@ -127,14 +131,10 @@ void load_3d_model(cstr path, qk1_md1_model* m) {
   notnull(m);
 
   u8* bf = NULL;
-  sz bfsz = notzero(ut_load_file(path, &bf));
+  sz bfsz = notzero(sepi_io_load_file(path, &bf));
 
   qk1_md1_error err = qk_load_mdl(bf, bfsz, m);
   makesure(err == MD1_ERR_SUCCESS, "qk_load_mdl failed");
-  // SEPI: if tomorrow you decide not to crash on error and return error then
-  // you need to make sure to free the buffer on error, right now the buffer
-  // only is freed if all goes well and if shit hits the fan the program
-  // intetially terminates
   free(bf);
 }
 

@@ -9,12 +9,12 @@
 #include "sepi_macros.h"
 
 /* ****************** utils::io API ****************** */
-size_t ut_load_file(const char* path, u8** buf);
+size_t sepi_io_load_file(cstr, u8**);
 /* ****************** utils::io API ****************** */
 
 #ifdef SEPI_IO_IMPLEMENTATION
 
-size_t ut_load_file(const char* path, u8** buf) {
+size_t sepi_io_load_file(cstr path, u8** buf) {
   FILE* f = fopen(path, "rb");
   notnull(f);
 

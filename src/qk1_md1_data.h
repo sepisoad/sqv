@@ -1,7 +1,6 @@
 #ifndef QK_DATA_HEADER_
 #define QK_DATA_HEADER_
 
-#include <stdint.h>
 #include "../deps/sepi_types.h"
 
 const u8 _qk_palette[256][3] = {

@@ -62,5 +62,5 @@ f32 endian_f32(f32 num) {
   return result;
 }
 
-#endif  // UTILS_ENDIAN_IMPLEMENTATION
+#endif  // SEPI_ENDIAN_IMPLEMENTATION
 #endif  // SEPI_ENDIAN_HEADER_

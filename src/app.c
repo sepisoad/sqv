@@ -14,11 +14,16 @@
 #include "../deps/sokol_time.h"
 #include "../deps/sokol_log.h"
 #include "../deps/sepi_types.h"
+#include "../deps/sepi_alloc.h"
 #include "../deps/sepi_endian.h"
 
 #include "glsl_default.h"
 #include "qk1_md1.h"
 #include "app.h"
+
+#ifdef DEBUG
+#include "../deps/sokol_memtrack.h"
+#endif
 
 context3d ctx3d = {0};
 static state s;
@@ -320,6 +325,10 @@ static void cleanup(void) {
   snk_shutdown();
   sg_shutdown();
   sargs_shutdown();
+
+#ifdef DEBUG
+  sepi_alloc_report();
+#endif
 }
 
 static void init(void) {
@@ -328,6 +337,9 @@ static void init(void) {
   sg_setup(&(sg_desc){
       .environment = sglue_environment(),
       .logger.func = slog_func,
+#ifdef DEBUG
+      .allocator = {.alloc_fn = smemtrack_alloc, .free_fn = smemtrack_free}
+#endif
   });
 
   stm_setup();
@@ -387,3 +399,5 @@ sapp_desc sokol_main(i32 argc, char* argv[]) {
       .logger.func = slog_func,
   };
 }
+
+int atexit(void (*function)(void));
