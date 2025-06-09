@@ -1,5 +1,5 @@
-#ifndef UTIL_COMMON_HEADER_
-#define UTIL_COMMON_HEADER_
+#ifndef SEPI_COMMON_HEADER_
+#define SEPI_COMMON_HEADER_
 
 #include "log.h"
 
@@ -25,4 +25,4 @@ static char error_buffer[1024];  // removed const so snprintf can write into it
 #define DBG(msg, ...)
 #endif
 
-#endif  // UTIL_COMMON_HEADER_
+#endif  // SEPI_COMMON_HEADER_

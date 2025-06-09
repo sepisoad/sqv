@@ -14,14 +14,14 @@
 #include "../deps/sepi_io.h"
 
 #include "glsl_default.h"
-#include "md1.h"
+#include "qk1_md1.h"
 #include "app.h"
 
 extern context3d ctx3d;
 
 void reset_state();
-void load_3d_model(cstr path, qk_model* m);
-void unload_3d_model(qk_model* m);
+void load_3d_model(cstr path, qk1_md1_model* m);
+void unload_3d_model(qk1_md1_model* m);
 
 void update_offscreen_target(state* s, int width, int height) {
   snk_destroy_image(s->ctx3d->nk_img);
@@ -33,14 +33,14 @@ void update_offscreen_target(state* s, int width, int height) {
   s->ctx3d->height = height > 0 ? height : DEFAULT_HEIGHT;
 
   s->ctx3d->color_img = sg_make_image(&(sg_image_desc){
-      .render_target = true,
+      .usage.render_attachment = true,
       .width = s->ctx3d->width,
       .height = s->ctx3d->height,
       .sample_count = 1,
   });
 
   s->ctx3d->depth_img = sg_make_image(&(sg_image_desc){
-      .render_target = true,
+      .usage.render_attachment = true,
       .width = s->ctx3d->width,
       .height = s->ctx3d->height,
       .pixel_format = SG_PIXELFORMAT_DEPTH,
@@ -100,7 +100,7 @@ void create_offscreen_target(state* s, cstr path) {
 
   s->bind.vertex_buffers[0] = sg_make_buffer(&(sg_buffer_desc){
       .size = (size_t)vb_len * sizeof(f32),
-      .usage = SG_USAGE_STREAM,
+      .usage = (sg_buffer_usage){.stream_update = true},
   });
   s->bind.images[IMG_tex] = s->mdl.skins[s->mdl_skn].image;
   s->bind.samplers[SMP_smp] = s->mdl.skins[s->mdl_skn].sampler;
@@ -122,14 +122,14 @@ void create_offscreen_target(state* s, cstr path) {
   };
 }
 
-void load_3d_model(cstr path, qk_model* m) {
+void load_3d_model(cstr path, qk1_md1_model* m) {
   notnull(path);
   notnull(m);
 
   u8* bf = NULL;
   sz bfsz = notzero(ut_load_file(path, &bf));
 
-  qk_error err = qk_load_mdl(bf, bfsz, m);
+  qk1_md1_error err = qk_load_mdl(bf, bfsz, m);
   makesure(err == MD1_ERR_SUCCESS, "qk_load_mdl failed");
   // SEPI: if tomorrow you decide not to crash on error and return error then
   // you need to make sure to free the buffer on error, right now the buffer
@@ -138,7 +138,7 @@ void load_3d_model(cstr path, qk_model* m) {
   free(bf);
 }
 
-void unload_3d_model(qk_model* m) {
+void unload_3d_model(qk1_md1_model* m) {
   notnull(m);
   qk_unload_mdl(m);
 }
@@ -146,7 +146,7 @@ void unload_3d_model(qk_model* m) {
 // SEPI: this function is called in the main loop so we should avoid unnecessary
 // operations
 void draw_3d(state* s) {
-  qk_model* m = &s->mdl;
+  qk1_md1_model* m = &s->mdl;
   hmm_v3* bbmin = &m->header.bbox_min;
   hmm_v3* bbmax = &m->header.bbox_max;
   hmm_vec3 center = HMM_MultiplyVec3f(HMM_AddVec3(*bbmin, *bbmax), 0.5f);

@@ -1,5 +1,5 @@
-#ifndef UTILS_IO_HEADER_
-#define UTILS_IO_HEADER_
+#ifndef SEPI_IO_HEADER_
+#define SEPI_IO_HEADER_
 
 #include <stdint.h>
 #include <stdio.h>
@@ -12,7 +12,7 @@
 size_t ut_load_file(const char* path, u8** buf);
 /* ****************** utils::io API ****************** */
 
-#ifdef UTILS_IO_IMPLEMENTATION
+#ifdef SEPI_IO_IMPLEMENTATION
 
 size_t ut_load_file(const char* path, u8** buf) {
   FILE* f = fopen(path, "rb");
@@ -37,4 +37,4 @@ size_t ut_load_file(const char* path, u8** buf) {
 }
 
 #endif  // UTILS_IO_IMPLEMENTATION
-#endif  // UTILS_IO_HEADER_
+#endif  // SEPI_IO_HEADER_

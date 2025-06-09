@@ -1,19 +1,19 @@
-#ifndef UTILS_ENDIAN_HEADER_
-#define UTILS_ENDIAN_HEADER_
+#ifndef SEPI_ENDIAN_HEADER_
+#define SEPI_ENDIAN_HEADER_
 
 #include <stdlib.h>
 #include <stdbool.h>
 
 #include "sepi_types.h"
 
-/* ****************** utils::endian API ****************** */
+/* ****************** API ****************** */
 i16 endian_i16(i16 num);
 i32 endian_i32(i32 num);
 i64 endian_i64(i64 num);
 f32 endian_f32(f32 num);
-/* ****************** utils::endian API ****************** */
+/* ****************** API ****************** */
 
-#ifdef UTILS_ENDIAN_IMPLEMENTATION
+#ifdef SEPI_ENDIAN_IMPLEMENTATION
 
 //  _                 _                           _        _   _
 // (_)               | |                         | |      | | (_)
@@ -63,4 +63,4 @@ f32 endian_f32(f32 num) {
 }
 
 #endif  // UTILS_ENDIAN_IMPLEMENTATION
-#endif  // UTILS_ENDIAN_HEADER_
+#endif  // SEPI_ENDIAN_HEADER_

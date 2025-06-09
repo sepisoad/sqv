@@ -1,4 +1,4 @@
-#define MD1_IMPLEMENTATION
+#define QK1_MD1_IMPLEMENTATION
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -17,7 +17,7 @@
 #include "../deps/sepi_endian.h"
 
 #include "glsl_default.h"
-#include "md1.h"
+#include "qk1_md1.h"
 #include "app.h"
 
 context3d ctx3d = {0};
@@ -27,12 +27,11 @@ static u64 last_frame_tick = 0;
 
 void update_offscreen_target(state* s, int width, int height);
 void create_offscreen_target(state* s, cstr path);
-void load_3d_model(cstr path, qk_model* m);
-void unload_3d_model(qk_model* m);
+void load_3d_model(cstr path, qk1_md1_model* m);
+void unload_3d_model(qk1_md1_model* m);
 void draw_3d(state* s);
 void draw_ui(state* s);
 
-// this one is used by other module so cannot be static
 void set_skin(u32 idx) {
   makesure(idx <= s.mdl.header.skins_length, "invalid skin index");
   s.bind.images[IMG_tex] = s.mdl.skins[idx].image;
@@ -46,6 +45,8 @@ void reset_state() {
   s.zoom = 1;
   s.frame_rate = 60;
 }
+
+// PRIVATE FUNCTIONS
 
 static void next_pose() {
   s.mdl_pos++;

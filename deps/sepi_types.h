@@ -1,5 +1,5 @@
-#ifndef UTIL_TYPES_HEADER_
-#define UTIL_TYPES_HEADER_
+#ifndef SEPI_TYPES_HEADER_
+#define SEPI_TYPES_HEADER_
 
 #include <stdint.h>
 #include <stddef.h>
@@ -24,4 +24,4 @@ typedef ptrdiff_t xptr;
 
 typedef const char* cstr;
 
-#endif  // UTIL_TYPES_HEADER_
+#endif  // SEPI_TYPES_HEADER_

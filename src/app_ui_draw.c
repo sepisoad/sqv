@@ -7,7 +7,7 @@
 #include "../deps/sokol_nuklear.h"
 #include "../deps/sokol_glue.h"
 
-#include "md1.h"
+#include "qk1_md1.h"
 #include "app.h"
 
 void set_skin(u32 idx);
@@ -78,7 +78,7 @@ static void draw_info_mode(state* s) {
     nk_image(ctx, nk_image_handle(snk_nkhandle(s->ctx3d->nk_img)));
     nk_layout_space_end(ctx);
 
-    qk_header* hdr = &s->mdl.header;
+    qk1_md1_header* hdr = &s->mdl.header;
     char buf[256] = {0};
     if (nk_popup_begin(ctx, NK_POPUP_STATIC, "", NK_WINDOW_NO_SCROLLBAR,
                        view_max())) {

@@ -2905,7 +2905,10 @@ typedef struct {
     bool tracked;
     uint8_t capture_mask;
   } mouse;
-  uint8_t raw_input_data[256];
+  struct {
+    size_t size;
+    void* ptr;
+  } raw_input_data;
 } _sapp_win32_t;
 
 #if defined(SOKOL_GLCORE)
@@ -4390,12 +4393,12 @@ _SOKOL_PRIVATE void _sapp_macos_frame(void) {
 #endif
   [_sapp.macos.window center];
   _sapp.valid = true;
+  NSApp.activationPolicy = NSApplicationActivationPolicyRegular;
   if (_sapp.fullscreen) {
     /* ^^^ on GL, this already toggles a rendered frame, so set the valid flag
      * before */
     [_sapp.macos.window toggleFullScreen:self];
   }
-  NSApp.activationPolicy = NSApplicationActivationPolicyRegular;
   [NSApp activateIgnoringOtherApps:YES];
   [_sapp.macos.window makeKeyAndOrderFront:nil];
   _sapp_macos_update_dimensions();
@@ -7269,19 +7272,21 @@ _SOKOL_PRIVATE void _sapp_d3d11_create_device_and_swapchain(void) {
 #if defined(SOKOL_DEBUG)
   create_flags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
-  D3D_FEATURE_LEVEL feature_level;
+  D3D_FEATURE_LEVEL requested_feature_levels[] = {D3D_FEATURE_LEVEL_11_1,
+                                                  D3D_FEATURE_LEVEL_11_0};
+  D3D_FEATURE_LEVEL result_feature_level;
   HRESULT hr = D3D11CreateDeviceAndSwapChain(
       NULL,                         /* pAdapter (use default) */
       D3D_DRIVER_TYPE_HARDWARE,     /* DriverType */
       NULL,                         /* Software */
       create_flags,                 /* Flags */
-      NULL,                         /* pFeatureLevels */
-      0,                            /* FeatureLevels */
+      requested_feature_levels,     /* pFeatureLevels */
+      2,                            /* FeatureLevels */
       D3D11_SDK_VERSION,            /* SDKVersion */
       sc_desc,                      /* pSwapChainDesc */
       &_sapp.d3d11.swap_chain,      /* ppSwapChain */
       &_sapp.d3d11.device,          /* ppDevice */
-      &feature_level,               /* pFeatureLevel */
+      &result_feature_level,        /* pFeatureLevel */
       &_sapp.d3d11.device_context); /* ppImmediateContext */
   _SOKOL_UNUSED(hr);
 #if defined(SOKOL_DEBUG)
@@ -7304,13 +7309,13 @@ _SOKOL_PRIVATE void _sapp_d3d11_create_device_and_swapchain(void) {
         D3D_DRIVER_TYPE_HARDWARE,     /* DriverType */
         NULL,                         /* Software */
         create_flags,                 /* Flags */
-        NULL,                         /* pFeatureLevels */
-        0,                            /* FeatureLevels */
+        requested_feature_levels,     /* pFeatureLevels */
+        2,                            /* FeatureLevels */
         D3D11_SDK_VERSION,            /* SDKVersion */
         sc_desc,                      /* pSwapChainDesc */
         &_sapp.d3d11.swap_chain,      /* ppSwapChain */
         &_sapp.d3d11.device,          /* ppDevice */
-        &feature_level,               /* pFeatureLevel */
+        &result_feature_level,        /* pFeatureLevel */
         &_sapp.d3d11.device_context); /* ppImmediateContext */
   }
 #endif
@@ -7976,6 +7981,32 @@ _SOKOL_PRIVATE void _sapp_win32_lock_mouse(bool lock) {
   _sapp.win32.mouse.requested_lock = lock;
 }
 
+_SOKOL_PRIVATE void _sapp_win32_free_raw_input_data(void) {
+  if (_sapp.win32.raw_input_data.ptr) {
+    _sapp_free(_sapp.win32.raw_input_data.ptr);
+    _sapp.win32.raw_input_data.ptr = 0;
+    _sapp.win32.raw_input_data.size = 0;
+  }
+}
+
+_SOKOL_PRIVATE void _sapp_win32_alloc_raw_input_data(size_t size) {
+  SOKOL_ASSERT(!_sapp.win32.raw_input_data.ptr);
+  SOKOL_ASSERT(size > 0);
+  _sapp.win32.raw_input_data.ptr = _sapp_malloc(size);
+  _sapp.win32.raw_input_data.size = size;
+  SOKOL_ASSERT(_sapp.win32.raw_input_data.ptr);
+}
+
+_SOKOL_PRIVATE void* _sapp_win32_ensure_raw_input_data(size_t required_size) {
+  if (required_size > _sapp.win32.raw_input_data.size) {
+    _sapp_win32_free_raw_input_data();
+    _sapp_win32_alloc_raw_input_data(required_size);
+  }
+  // we expect that malloc() returns at least 8-byte aligned memory
+  SOKOL_ASSERT((((uintptr_t)_sapp.win32.raw_input_data.ptr) & 7) == 0);
+  return _sapp.win32.raw_input_data.ptr;
+}
+
 _SOKOL_PRIVATE void _sapp_win32_do_lock_mouse(void) {
   _sapp.mouse.locked = true;
 
@@ -8410,17 +8441,22 @@ _SOKOL_PRIVATE LRESULT CALLBACK _sapp_win32_wndproc(HWND hWnd,
         /* raw mouse input during mouse-lock */
         if (_sapp.mouse.locked) {
           HRAWINPUT ri = (HRAWINPUT)lParam;
-          UINT size = sizeof(_sapp.win32.raw_input_data);
           // see:
           // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getrawinputdata
-          if ((UINT)-1 == GetRawInputData(ri, RID_INPUT,
-                                          &_sapp.win32.raw_input_data, &size,
-                                          sizeof(RAWINPUTHEADER))) {
+          // also see:
+          // https://github.com/glfw/glfw/blob/e7ea71be039836da3a98cea55ae5569cb5eb885c/src/win32_window.c#L912-L924
+
+          // first poll for required size to alloc/grow input buffer, then get
+          // the actual data
+          UINT size = 0;
+          GetRawInputData(ri, RID_INPUT, NULL, &size, sizeof(RAWINPUTHEADER));
+          void* raw_input_data_ptr = _sapp_win32_ensure_raw_input_data(size);
+          if ((UINT)-1 == GetRawInputData(ri, RID_INPUT, raw_input_data_ptr,
+                                          &size, sizeof(RAWINPUTHEADER))) {
             _SAPP_ERROR(WIN32_GET_RAW_INPUT_DATA_FAILED);
             break;
           }
-          const RAWINPUT* raw_mouse_data =
-              (const RAWINPUT*)&_sapp.win32.raw_input_data;
+          const RAWINPUT* raw_mouse_data = (const RAWINPUT*)raw_input_data_ptr;
           if (raw_mouse_data->data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) {
             /* mouse only reports absolute position
                NOTE: This code is untested and will most likely behave wrong in
@@ -9001,6 +9037,7 @@ _SOKOL_PRIVATE void _sapp_win32_run(const sapp_desc* desc) {
   _sapp_win32_destroy_window();
   _sapp_win32_destroy_icons();
   _sapp_win32_restore_console();
+  _sapp_win32_free_raw_input_data();
   _sapp_discard_state();
 }
 
@@ -11832,27 +11869,19 @@ _SOKOL_PRIVATE void _sapp_x11_create_window(Visual* visual, int depth) {
 
   int display_width = DisplayWidth(_sapp.x11.display, _sapp.x11.screen);
   int display_height = DisplayHeight(_sapp.x11.display, _sapp.x11.screen);
-  int window_width = _sapp.window_width;
-  int window_height = _sapp.window_height;
+  int window_width = (int)(_sapp.window_width * _sapp.dpi_scale);
+  int window_height = (int)(_sapp.window_height * _sapp.dpi_scale);
   if (0 == window_width) {
     window_width = (display_width * 4) / 5;
   }
   if (0 == window_height) {
     window_height = (display_height * 4) / 5;
   }
-  int window_xpos = (display_width - window_width) / 2;
-  int window_ypos = (display_height - window_height) / 2;
-  if (window_xpos < 0) {
-    window_xpos = 0;
-  }
-  if (window_ypos < 0) {
-    window_ypos = 0;
-  }
   _sapp_x11_grab_error_handler();
   _sapp.x11.window = XCreateWindow(
-      _sapp.x11.display, _sapp.x11.root, window_xpos, window_ypos,
-      (uint32_t)window_width, (uint32_t)window_height, 0, /* border width */
-      depth,                                              /* color depth */
+      _sapp.x11.display, _sapp.x11.root, 0, 0, (uint32_t)window_width,
+      (uint32_t)window_height, 0, /* border width */
+      depth,                      /* color depth */
       InputOutput, visual, wamask, &wa);
   _sapp_x11_release_error_handler();
   if (!_sapp.x11.window) {
@@ -11861,17 +11890,14 @@ _SOKOL_PRIVATE void _sapp_x11_create_window(Visual* visual, int depth) {
   Atom protocols[] = {_sapp.x11.WM_DELETE_WINDOW};
   XSetWMProtocols(_sapp.x11.display, _sapp.x11.window, protocols, 1);
 
+  // NOTE: PPosition and PSize are obsolete and ignored
   XSizeHints* hints = XAllocSizeHints();
-  hints->flags = (PWinGravity | PPosition | PSize);
-  hints->win_gravity = StaticGravity;
-  hints->x = window_xpos;
-  hints->y = window_ypos;
-  hints->width = window_width;
-  hints->height = window_height;
+  hints->flags = PWinGravity;
+  hints->win_gravity = CenterGravity;
   XSetWMNormalHints(_sapp.x11.display, _sapp.x11.window, hints);
   XFree(hints);
 
-  /* announce support for drag'n'drop */
+  // announce support for drag'n'drop
   if (_sapp.drop.enabled) {
     const Atom version = _SAPP_X11_XDND_VERSION;
     XChangeProperty(_sapp.x11.display, _sapp.x11.window,

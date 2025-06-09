@@ -1,5 +1,5 @@
-#ifndef UTILS_ARENA_HEADER_
-#define UTILS_ARENA_HEADER_
+#ifndef SEPI_ARENA_HEADER_
+#define SEPI_ARENA_HEADER_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,27 +20,18 @@ typedef struct {
   sz estimate;  // Memory estimate during pre-allocation phase
 } arena;
 
-/* ****************** utils::arena API ****************** */
-
-// Arena initialization and destruction
+/* ****************** API ****************** */
 void arena_create(arena* a, sz size);
 void arena_destroy(arena* a);
-
-// Arena allocation
 void* arena_alloc(arena* a, sz size, sz alignment);
 void arena_reset(arena* a);
-
-// Memory estimation API
 void arena_begin_estimate(arena* a);
 void arena_estimate_add(arena* a, sz size, sz alignment);
 sz arena_end_estimate(arena* a);
-
-// Debug API
 void arena_print(arena* a);
+/* ****************** API ****************** */
 
-/* ****************** utils::arena API ****************** */
-
-#ifdef UTILS_ARENA_IMPLEMENTATION
+#ifdef SEPI_ARENA_IMPLEMENTATION
 
 //  _                 _                           _        _   _
 // (_)               | |                         | |      | | (_)
@@ -131,4 +122,4 @@ void arena_print(arena* a) {
 }
 
 #endif  // UTILS_ARENA_IMPLEMENTATION
-#endif  // UTILS_ARENA_HEADER_
+#endif  // SEPI_ARENA_HEADER_
