@@ -17,6 +17,7 @@ static char error_buffer[1024];  // removed const so snprintf can write into it
 
 #define notnull(val) makesure((val), "NULL")
 #define notzero(val) makesure((val), "zero")
+#define isvalid(val) makesure((val), "not valid")
 #define mustdie(msg, ...) makesure(false, msg, ##__VA_ARGS__)
 
 #ifdef DEBUG

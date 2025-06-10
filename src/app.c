@@ -1,4 +1,5 @@
-#define QK1_MD1_IMPLEMENTATION
+#define QK_MD1_IMPLEMENTATION
+#define QK_FILES_IMPLEMENTATION
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -18,8 +19,9 @@
 #include "../deps/sepi_endian.h"
 
 #include "glsl_default.h"
-#include "qk1_md1.h"
+#include "qk_md1.h"
 #include "app.h"
+#include "qk_files.h"
 
 #ifdef DEBUG
 #include "../deps/sokol_memtrack.h"
@@ -32,8 +34,6 @@ static u64 last_frame_tick = 0;
 
 void update_offscreen_target(state* s, int width, int height);
 void create_offscreen_target(state* s, cstr path);
-void load_3d_model(cstr path, qk1_md1_model* m);
-void unload_3d_model(qk1_md1_model* m);
 void draw_3d(state* s);
 void draw_ui(state* s);
 
@@ -163,7 +163,9 @@ static void update(void) {
 }
 
 static void frame(void) {
-  draw_3d(&s);
+  if (s.qft == QK_FILE_QUAKE1_MDL) {
+    draw_3d(&s);
+  }
   draw_ui(&s);
   update();
 
@@ -276,6 +278,13 @@ static void mode_poses_input(const sapp_event* e) {
   }
 }
 
+static void handle_file(cstr path) {
+  s.qft = qk_file_guess_type_from_path(path);
+  if (s.qft == QK_FILE_QUAKE1_MDL) {
+    create_offscreen_target(&s, path);
+  }
+}
+
 static void input(const sapp_event* e) {
   snk_handle_event(e);
 
@@ -284,7 +293,7 @@ static void input(const sapp_event* e) {
   }
 
   if (e->type == SAPP_EVENTTYPE_FILES_DROPPED) {
-    create_offscreen_target(&s, sapp_get_dropped_file_path(0));
+    handle_file(sapp_get_dropped_file_path(0));
   }
 
   switch (s.mjm) {
@@ -365,7 +374,7 @@ static void init(void) {
   cstr path = (cstr)sapp_userdata();
   if (path != NULL) {
     log_info("loading '%s' model", path);
-    create_offscreen_target(&s, path);
+    handle_file(path);
   }
 }
 
@@ -378,10 +387,10 @@ sapp_desc sokol_main(i32 argc, char* argv[]) {
   });
 
   cstr mdlpath = NULL;
-  if (sargs_exists("-m"))
-    mdlpath = sargs_value("-m");
-  else if (sargs_exists("--model"))
-    mdlpath = sargs_value("--model");
+  if (sargs_exists("-i"))
+    mdlpath = sargs_value("-i");
+  else if (sargs_exists("--input"))
+    mdlpath = sargs_value("--input");
 
   return (sapp_desc){
       .init_cb = init,
@@ -399,5 +408,3 @@ sapp_desc sokol_main(i32 argc, char* argv[]) {
       .logger.func = slog_func,
   };
 }
-
-int atexit(void (*function)(void));
