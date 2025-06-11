@@ -1,5 +1,5 @@
-#define QK_MD1_IMPLEMENTATION
-#define QK_FILES_IMPLEMENTATION
+#define MD1_IMPLEMENTATION
+#define KIND_IMPLEMENTATION
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -19,9 +19,9 @@
 #include "../deps/sepi_endian.h"
 
 #include "glsl_default.h"
-#include "qk_md1.h"
+#include "kind.h"
+#include "md1.h"
 #include "app.h"
-#include "qk_files.h"
 
 #ifdef DEBUG
 #include "../deps/sokol_memtrack.h"
@@ -163,7 +163,7 @@ static void update(void) {
 }
 
 static void frame(void) {
-  if (s.qft == QK_FILE_QUAKE1_MDL) {
+  if (s.knd == KIND_MD1) {
     draw_3d(&s);
   }
   draw_ui(&s);
@@ -279,8 +279,8 @@ static void mode_poses_input(const sapp_event* e) {
 }
 
 static void handle_file(cstr path) {
-  s.qft = qk_file_guess_type_from_path(path);
-  if (s.qft == QK_FILE_QUAKE1_MDL) {
+  s.knd = kind_guess_file(path);
+  if (s.knd == KIND_MD1) {
     create_offscreen_target(&s, path);
   }
 }
@@ -323,7 +323,7 @@ static void input(const sapp_event* e) {
 static void cleanup(void) {
   log_info("shutting down");
 
-  qk_unload_mdl(&s.mdl);
+  md1_unload(&s.mdl);
   if (sg_isvalid()) {
     snk_destroy_image(s.ctx3d->nk_img);
     sg_destroy_attachments(s.ctx3d->atts);

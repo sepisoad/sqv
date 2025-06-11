@@ -3,7 +3,7 @@
 
 #include "../deps/sepi_types.h"
 
-const u8 _qk_palette[256][3] = {
+const u8 quake1_palette[256][3] = {
     {0, 0, 0},       /* */
     {15, 15, 15},    /* */
     {31, 31, 31},    /* */
@@ -262,7 +262,7 @@ const u8 _qk_palette[256][3] = {
     {159, 91, 83},   /* */
 };
 
-const float _qk_normals[162][3] = {
+const float quake1_normals[162][3] = {
     {-0.525731f, 0.000000f, 0.850651f},   /* */
     {-0.442863f, 0.238856f, 0.864188f},   /* */
     {-0.295242f, 0.000000f, 0.955423f},   /* */

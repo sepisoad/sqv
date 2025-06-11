@@ -2,7 +2,7 @@
 #define SQV_APP_HEADER_
 
 #include "../deps/sokol_gfx.h"
-#include "qk_files.h"
+#include "kind.h"
 
 typedef struct nk_context contextui;
 
@@ -48,7 +48,7 @@ typedef struct {
   context3d* ctx3d;
 
   // mdl model states
-  qk_md1_model mdl;
+  md1_model mdl;
   u32 mdl_pos;
   u32 mdl_frm;
   u32 mdl_skn;
@@ -57,7 +57,7 @@ typedef struct {
   f32 zoom;
   bool rotating;
   bool animating;
-  qk_file_type qft;
+  kind knd;
   major_mode mjm;
   minor_mode mnm;
 } state;

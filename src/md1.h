@@ -1,5 +1,5 @@
-#ifndef QK_MD1_HEADER_
-#define QK_MD1_HEADER_
+#ifndef MD1_HEADER_
+#define MD1_HEADER_
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -20,78 +20,78 @@
 #define MAX_STATIC_MEM 8192
 #define MAX_FRAME_NAME_LEN 16
 
-typedef f32 qk_md1_vectorf;
+typedef f32 md1_vectorf;
 
-typedef qk_md1_vectorf qk_md1_vector3f[3];
+typedef md1_vectorf md1_vector3f[3];
 
-typedef i32 qk_md1_triangle[3];
+typedef i32 md1_triangle[3];
 
-typedef u8 qk_md1_raw_vertex[3];
+typedef u8 md1_raw_vertex[3];
 
 typedef enum {
   MD1_ST_UNKNOWN = -1,
   MD1_ST_SYNC = 0,
   MD1_ST_RAND,
   MD1_ST_FRAMETIME,
-} qk_md1_sync_type;
+} md1_sync_type;
 
 typedef enum {
   MD1_SKIN_UNKNOWN = -1,
   MD1_SKIN_SINGLE = 0,
   MD1_SKIN_GROUP,
-} qk_md1_skin_type;
+} md1_skin_type;
 
 typedef enum {
   MD1_FT_UNKNOWN = -1,
   MD1_FT_SINGLE = 0,
   MD1_FT_GROUP,
-} qk_md1_frame_type;
+} md1_frame_type;
 
 typedef struct {
   i32 magic_codes;
   i32 version;
-  qk_md1_vector3f scale;
-  qk_md1_vector3f translate;
+  md1_vector3f scale;
+  md1_vector3f translate;
   f32 bounding_radius;
-  qk_md1_vector3f eye_position;
+  md1_vector3f eye_position;
   i32 skins_length;
   i32 skin_width;
   i32 skin_height;
   i32 vertices_length;
   i32 triangles_length;
   i32 frames_length;
-  qk_md1_sync_type sync_type;
+  md1_sync_type sync_type;
   i32 flags;
   f32 size;
-} qk_md1_raw_header;
+} md1_raw_header;
 
 typedef struct {
   i32 onseam;
   i32 s;
   i32 t;
-} qk_md1_st;
+} md1_st;
 
 typedef struct {
   i32 frontface;
-  qk_md1_triangle vertices_idx;
-} qk_md1_faced_triangle;
+  md1_triangle vertices_idx;
+} md1_faced_triangle;
 
 typedef struct {
-  qk_md1_raw_vertex vertex;
+  md1_raw_vertex vertex;
   u8 normal_idx;
-} qk_md1_normal_vertex;
+} md1_normal_vertex;
 
 typedef struct {
-  qk_md1_normal_vertex bbox_min;
-  qk_md1_normal_vertex bbox_max;
+  md1_normal_vertex bbox_min;
+  md1_normal_vertex bbox_max;
   char name[16];
 } md1_frame_single;
 
 typedef struct {
   i32 frames_length;
-  qk_md1_normal_vertex bbox_min;
-  qk_md1_normal_vertex bbox_max;
-} qk_md1_frames_group;
+  md1_normal_vertex bbox_min;
+  md1_normal_vertex bbox_max;
+} md1_frames_group;
 
 typedef enum {
   MD1_ERR_UNKNOWN = -1,
@@ -101,7 +101,7 @@ typedef enum {
   MD1_ERR_READ_SIZE,
   MD1_ERR_RAME_IDX,
   MD1_ERR_INVALID,
-} qk_md1_error;
+} md1_error;
 
 typedef struct {
   f32 radius;
@@ -118,38 +118,38 @@ typedef struct {
   hmm_v3 eye;
   hmm_v3 bbox_min;
   hmm_v3 bbox_max;
-} qk_md1_header;
+} md1_header;
 
 typedef struct {
   hmm_v3 vertex;
   hmm_v3 normal;
-} qk_md1_vertex;
+} md1_vertex;
 
 typedef struct {
   char name[MAX_FRAME_NAME_LEN];
   u32 start;
   u32 frames_length;
-} qk_md1_pose;
+} md1_pose;
 
 typedef struct {
   sg_image image;
   sg_sampler sampler;
   snk_image_t ui_image;
-} qk_md1_skin;
+} md1_skin;
 
 typedef struct {
-  qk_md1_header header;
-  qk_md1_skin* skins;
-  qk_md1_vertex* vertices;
-  qk_md1_pose* poses;
+  md1_header header;
+  md1_skin* skins;
+  md1_vertex* vertices;
+  md1_pose* poses;
   f32* vbuf;
   arena mem;
-} qk_md1_model;
+} md1_model;
 
 /* ****************** quake::mdl API ****************** */
-qk_md1_error qk_load_mdl(const u8*, sz, qk_md1_model*);
-void qk_get_frame_vertices(const qk_md1_model*, u32, u32, const f32**, u32*);
-void qk_unload_mdl(qk_md1_model*);
+md1_error md1_load(const u8*, sz, md1_model*);
+void md1_unload(md1_model*);
+void md1_get_vertices(const md1_model*, u32, u32, const f32**, u32*);
 /* ****************** quake::mdl API ****************** */
 
 //  _                 _                           _        _   _
@@ -161,9 +161,9 @@ void qk_unload_mdl(qk_md1_model*);
 //             | |
 //             |_|
 
-#ifdef QK_MD1_IMPLEMENTATION
+#ifdef MD1_IMPLEMENTATION
 
-#include "qk_md1_data.h"
+#include "data.h"
 
 const int MAGICCODE = (('O' << 24) + ('P' << 16) + ('D' << 8) + 'I');
 const int MD0VERSION = 6;
@@ -172,8 +172,8 @@ const int MAXVERTICES = 2000;
 const int MAXTRIANGLES = 4096;
 const int MAXSKINS = 32;
 
-extern const u8 _qk_palette[256][3];
-extern const f32 _qk_normals[162][3];
+extern const u8 quake1_palette[256][3];
+extern const f32 quake1_normals[162][3];
 
 static bool md1_pose_changed(char* new, char* old) {
   for (i32 i = 0; i < MAX_FRAME_NAME_LEN - 1; i++) {
@@ -194,9 +194,9 @@ static bool md1_pose_changed(char* new, char* old) {
 }
 
 static void md1_estimate_memory(arena* mem,
-                                const qk_md1_raw_header* rhdr,
+                                const md1_raw_header* rhdr,
                                 sz bufsz,
-                                qk_md1_header* hdr) {
+                                md1_header* hdr) {
   DBG("trying to estimate required memory");
   arena_begin_estimate(mem);
 
@@ -208,28 +208,28 @@ static void md1_estimate_memory(arena* mem,
   const u32 skn_hgt = hdr->skin_height;
 
   // Estimate memory for skins texture
-  sz skin_sz = sizeof(qk_md1_skin) * skn_len;
-  arena_estimate_add(mem, skin_sz, alignof(qk_md1_skin));
+  sz skin_sz = sizeof(md1_skin) * skn_len;
+  arena_estimate_add(mem, skin_sz, alignof(md1_skin));
 
   // Estimate memory for skins pixels
   sz pixel_sz = skn_len * skn_wdt * skn_hgt * sizeof(u8) * 4;
   arena_estimate_add(mem, pixel_sz, alignof(u8));
 
   // Estimate memory for texture UVs
-  sz texcoord_sz = sizeof(qk_md1_st) * vrt_len;
-  arena_estimate_add(mem, texcoord_sz, alignof(qk_md1_st));
+  sz texcoord_sz = sizeof(md1_st) * vrt_len;
+  arena_estimate_add(mem, texcoord_sz, alignof(md1_st));
 
   // Estimate memory for triangle indices
-  sz trisix_sz = sizeof(qk_md1_faced_triangle) * tri_len;
-  arena_estimate_add(mem, trisix_sz, alignof(qk_md1_faced_triangle));
+  sz trisix_sz = sizeof(md1_faced_triangle) * tri_len;
+  arena_estimate_add(mem, trisix_sz, alignof(md1_faced_triangle));
 
-  const u8* p = (const u8*)rhdr + sizeof(qk_md1_raw_header);
+  const u8* p = (const u8*)rhdr + sizeof(md1_raw_header);
   const u8* pend = (const u8*)rhdr + bufsz;
 
   // Advance past skin data
   for (u32 i = 0; i < hdr->skins_length; i++) {
-    qk_md1_skin_type* skin_type = (qk_md1_skin_type*)p;
-    p += sizeof(qk_md1_skin_type);
+    md1_skin_type* skin_type = (md1_skin_type*)p;
+    p += sizeof(md1_skin_type);
     if (*skin_type == MD1_SKIN_SINGLE) {
       p += skn_wdt * skn_hgt;
     } else {
@@ -238,25 +238,24 @@ static void md1_estimate_memory(arena* mem,
   }
 
   // Advance past texture UVs
-  p += sizeof(qk_md1_st) * vrt_len;
+  p += sizeof(md1_st) * vrt_len;
   // Advance past triangle indices
-  p += sizeof(qk_md1_faced_triangle) * tri_len;
+  p += sizeof(md1_faced_triangle) * tri_len;
 
   char fname[MAX_FRAME_NAME_LEN] = {0};
   char fnameold[MAX_FRAME_NAME_LEN] = {0};
   u32 pos_len = 0;
 
   for (u32 i = 0; i < frm_len; i++) {
-    if (p + sizeof(qk_md1_frame_type) > pend) {
+    if (p + sizeof(md1_frame_type) > pend) {
       mustdie("failed to parse frames data");
     }
 
-    qk_md1_frame_type ft = *(const qk_md1_frame_type*)p;
-    p += sizeof(qk_md1_frame_type);
+    md1_frame_type ft = *(const md1_frame_type*)p;
+    p += sizeof(md1_frame_type);
 
     if (ft == MD1_FT_SINGLE) {
-      if (p + sizeof(md1_frame_single) +
-              (vrt_len * sizeof(qk_md1_normal_vertex)) >
+      if (p + sizeof(md1_frame_single) + (vrt_len * sizeof(md1_normal_vertex)) >
           pend) {
         mustdie("failed to parse frames data");
       }
@@ -275,7 +274,7 @@ static void md1_estimate_memory(arena* mem,
       if (i == frm_len - 1)
         pos_len++;
 
-      p += sizeof(md1_frame_single) + (vrt_len * sizeof(qk_md1_normal_vertex));
+      p += sizeof(md1_frame_single) + (vrt_len * sizeof(md1_normal_vertex));
     } else {
       mustdie("sqv does not support group frames YET!");
     }
@@ -284,12 +283,12 @@ static void md1_estimate_memory(arena* mem,
   hdr->poses_length = pos_len;
 
   // Add raw vertices memory
-  sz raw_verts_sz = sizeof(qk_md1_vertex) * vrt_len * frm_len;
-  arena_estimate_add(mem, raw_verts_sz, alignof(qk_md1_vertex));
+  sz raw_verts_sz = sizeof(md1_vertex) * vrt_len * frm_len;
+  arena_estimate_add(mem, raw_verts_sz, alignof(md1_vertex));
 
   // Add pose memory estimation
-  sz poses_sz = sizeof(qk_md1_pose) * pos_len;
-  arena_estimate_add(mem, poses_sz, alignof(qk_md1_pose));
+  sz poses_sz = sizeof(md1_pose) * pos_len;
+  arena_estimate_add(mem, poses_sz, alignof(md1_pose));
 
   // Add processed vertices memory estimation
   u32 elm_len = 3 * (3 + 2);  // a->b->c * x,y,z, u,v
@@ -310,30 +309,29 @@ static void md1_load_image(const u8* p, u8* pixels, sz size) {
   u8* indices = (u8*)p;
   for (sz i = 0, j = 0; i < size; i++, j += 4) {
     u32 index = indices[i];
-    pixels[j + 0] = _qk_palette[index][0];  // red
-    pixels[j + 1] = _qk_palette[index][1];  // green
-    pixels[j + 2] = _qk_palette[index][2];  // blue
-    pixels[j + 3] = 255;                    // alpha, always opaque
+    pixels[j + 0] = quake1_palette[index][0];  // red
+    pixels[j + 1] = quake1_palette[index][1];  // green
+    pixels[j + 2] = quake1_palette[index][2];  // blue
+    pixels[j + 3] = 255;                       // alpha, always opaque
   }
 }
 
-static const u8* md1_load_skins(qk_md1_model* mdl, const u8* p) {
-  const qk_md1_header* hdr = &mdl->header;
+static const u8* md1_load_skins(md1_model* mdl, const u8* p) {
+  const md1_header* hdr = &mdl->header;
   arena* mem = &mdl->mem;
   u32 width = hdr->skin_width;
   u32 height = hdr->skin_height;
   sz skin_size = width * height;
 
-  sz memsz = sizeof(qk_md1_skin) * hdr->skins_length;
-  qk_md1_skin* skins =
-      (qk_md1_skin*)arena_alloc(mem, memsz, alignof(qk_md1_skin));
+  sz memsz = sizeof(md1_skin) * hdr->skins_length;
+  md1_skin* skins = (md1_skin*)arena_alloc(mem, memsz, alignof(md1_skin));
   notnull(skins);
 
   for (sz i = 0; i < hdr->skins_length; i++) {
     DBG("loading skins #%d", i);
-    qk_md1_skin_type* skin_type = (qk_md1_skin_type*)p;
+    md1_skin_type* skin_type = (md1_skin_type*)p;
     if (*skin_type == MD1_SKIN_SINGLE) {
-      p += sizeof(qk_md1_skin_type);
+      p += sizeof(md1_skin_type);
 
       sz pixel_sz = sizeof(u8) * skin_size * 4;
       u8* pixels = (u8*)arena_alloc(mem, pixel_sz, alignof(u8));
@@ -368,17 +366,15 @@ static const u8* md1_load_skins(qk_md1_model* mdl, const u8* p) {
   return p;
 }
 
-static const u8* md1_load_st(qk_md1_model* mdl,
-                             const u8* p,
-                             qk_md1_st** coords) {
+static const u8* md1_load_st(md1_model* mdl, const u8* p, md1_st** coords) {
   DBG("loading texture S/T coordinates");
   arena* mem = &mdl->mem;
-  const qk_md1_header* hdr = &mdl->header;
-  sz mem_sz = sizeof(qk_md1_st) * hdr->vertices_length;
-  *coords = (qk_md1_st*)arena_alloc(mem, mem_sz, alignof(qk_md1_st));
+  const md1_header* hdr = &mdl->header;
+  sz mem_sz = sizeof(md1_st) * hdr->vertices_length;
+  *coords = (md1_st*)arena_alloc(mem, mem_sz, alignof(md1_st));
   notnull(coords);
 
-  const qk_md1_st* src = (const qk_md1_st*)p;
+  const md1_st* src = (const md1_st*)p;
 
   for (sz i = 0; i < hdr->vertices_length; i++) {
     (*coords)[i].onseam = endian_i32(src->onseam);
@@ -390,19 +386,19 @@ static const u8* md1_load_st(qk_md1_model* mdl,
   return (const u8*)src;
 }
 
-static const u8* md1_load_triangles(qk_md1_model* mdl,
+static const u8* md1_load_triangles(md1_model* mdl,
                                     const u8* p,
-                                    const qk_md1_header* hdr,
-                                    qk_md1_faced_triangle** ftris) {
+                                    const md1_header* hdr,
+                                    md1_faced_triangle** ftris) {
   DBG("loading triangles");
   arena* mem = &mdl->mem;
-  sz mem_sz = sizeof(qk_md1_faced_triangle) * hdr->triangles_length;
-  *ftris = (qk_md1_faced_triangle*)arena_alloc(mem, mem_sz,
-                                               alignof(qk_md1_faced_triangle));
+  sz mem_sz = sizeof(md1_faced_triangle) * hdr->triangles_length;
+  *ftris = (md1_faced_triangle*)arena_alloc(mem, mem_sz,
+                                            alignof(md1_faced_triangle));
   notnull(ftris);
 
-  const qk_md1_faced_triangle* src =
-      (const qk_md1_faced_triangle*)p;  // Use separate pointer
+  const md1_faced_triangle* src =
+      (const md1_faced_triangle*)p;  // Use separate pointer
 
   for (sz i = 0; i < hdr->triangles_length; i++) {
     (*ftris)[i].frontface = endian_i32(src->frontface);
@@ -415,13 +411,13 @@ static const u8* md1_load_triangles(qk_md1_model* mdl,
   return (const u8*)src;
 }
 
-static const u8* md1_load_single_frame(qk_md1_model* mdl,
+static const u8* md1_load_single_frame(md1_model* mdl,
                                        u32 frm_idx,
                                        u32* pos_len,
                                        u32* pos_idx,
                                        char* oldname,
                                        const u8* p) {
-  const qk_md1_header* hdr = &mdl->header;
+  const md1_header* hdr = &mdl->header;
   md1_frame_single* snl = (md1_frame_single*)p;
 
   char name[16] = {0};
@@ -454,33 +450,32 @@ static const u8* md1_load_single_frame(qk_md1_model* mdl,
         HMM_MAX(snl->bbox_max.vertex[i], mdl->header.bbox_max.Elements[i]);
   }
 
-  qk_md1_normal_vertex* raw_verts = (qk_md1_normal_vertex*)(snl + 1);
-  qk_md1_vertex* frmverts = mdl->vertices + (hdr->vertices_length * frm_idx);
+  md1_normal_vertex* raw_verts = (md1_normal_vertex*)(snl + 1);
+  md1_vertex* frmverts = mdl->vertices + (hdr->vertices_length * frm_idx);
 
   for (u32 i = 0; i < hdr->vertices_length; i++) {
     frmverts[i].vertex = (hmm_v3){
         raw_verts[i].vertex[0], raw_verts[i].vertex[1], raw_verts[i].vertex[2]};
-    frmverts[i].normal = (hmm_v3){_qk_normals[raw_verts[i].normal_idx][0],
-                                  _qk_normals[raw_verts[i].normal_idx][1],
-                                  _qk_normals[raw_verts[i].normal_idx][2]};
+    frmverts[i].normal = (hmm_v3){quake1_normals[raw_verts[i].normal_idx][0],
+                                  quake1_normals[raw_verts[i].normal_idx][1],
+                                  quake1_normals[raw_verts[i].normal_idx][2]};
   }
   return (const u8*)(raw_verts + hdr->vertices_length);
 }
 
-static const u8* md1_load_frames(qk_md1_model* mdl, const u8* p) {
+static const u8* md1_load_frames(md1_model* mdl, const u8* p) {
   DBG("loading frames");
   arena* mem = &mdl->mem;
-  const qk_md1_header* hdr = &mdl->header;
+  const md1_header* hdr = &mdl->header;
   u32 frames_length = hdr->frames_length;
   u32 verts_length = hdr->vertices_length;
 
-  sz verts_sz = sizeof(qk_md1_vertex) * verts_length * frames_length;
-  mdl->vertices =
-      (qk_md1_vertex*)arena_alloc(mem, verts_sz, alignof(qk_md1_vertex));
+  sz verts_sz = sizeof(md1_vertex) * verts_length * frames_length;
+  mdl->vertices = (md1_vertex*)arena_alloc(mem, verts_sz, alignof(md1_vertex));
   notnull(mdl->vertices);
 
-  sz poses_sz = sizeof(qk_md1_pose) * mdl->header.poses_length;
-  mdl->poses = (qk_md1_pose*)arena_alloc(mem, poses_sz, alignof(qk_md1_pose));
+  sz poses_sz = sizeof(md1_pose) * mdl->header.poses_length;
+  mdl->poses = (md1_pose*)arena_alloc(mem, poses_sz, alignof(md1_pose));
   notnull(mdl->poses);
 
   u32 pos_idx = 0;
@@ -490,8 +485,8 @@ static const u8* md1_load_frames(qk_md1_model* mdl, const u8* p) {
   mdl->poses[0].start = 0;
 
   for (u32 i = 0; i < mdl->header.frames_length; i++) {
-    qk_md1_frame_type ft = endian_i32(*(qk_md1_frame_type*)p);
-    p += sizeof(qk_md1_frame_type);
+    md1_frame_type ft = endian_i32(*(md1_frame_type*)p);
+    p += sizeof(md1_frame_type);
 
     if (ft == MD1_FT_SINGLE) {
       p = md1_load_single_frame(mdl, i, &pos_len, &pos_idx, oldname, p);
@@ -503,12 +498,12 @@ static const u8* md1_load_frames(qk_md1_model* mdl, const u8* p) {
   return p;
 }
 
-static void md1_make_display_list(qk_md1_model* mdl,
-                                  const qk_md1_st* coords,
-                                  const qk_md1_faced_triangle* ftris) {
+static void md1_make_display_list(md1_model* mdl,
+                                  const md1_st* coords,
+                                  const md1_faced_triangle* ftris) {
   DBG("generating vertex buffer data");
   arena* mem = &mdl->mem;
-  qk_md1_header* hdr = &mdl->header;
+  md1_header* hdr = &mdl->header;
   hmm_v3* scl = &hdr->scale;
   hmm_v3* trn = &hdr->translate;
   hmm_v3* bbx_min = &hdr->bbox_min;
@@ -530,7 +525,7 @@ static void md1_make_display_list(qk_md1_model* mdl,
       for (u8 vrt_idx = 0; vrt_idx < 3; vrt_idx++) {
         i32 tri_abc = ftris[tri_idx].vertices_idx[vrt_idx];
 
-        const qk_md1_vertex* vrts = mdl->vertices + (vrt_len * frm_idx);
+        const md1_vertex* vrts = mdl->vertices + (vrt_len * frm_idx);
 
         f32 x = (vrts[tri_abc].vertex.X * scl->X) + trn->X;
         f32 y = (vrts[tri_abc].vertex.Y * scl->Y) + trn->Y;
@@ -560,10 +555,10 @@ static void md1_make_display_list(qk_md1_model* mdl,
   DBG("generated vertex buffer with %d items", frm_len * tri_len * elm_len);
 }
 
-void md1_scale_translate_bbox(qk_md1_model* mdl) {
+void md1_scale_translate_bbox(md1_model* mdl) {
   DBG("scaling and translating bbox data");
 
-  qk_md1_header* hdr = &mdl->header;
+  md1_header* hdr = &mdl->header;
   hmm_v3* scl = &hdr->scale;
   hmm_v3* trn = &hdr->translate;
   hmm_v3* bbx_min = &hdr->bbox_min;
@@ -577,28 +572,28 @@ void md1_scale_translate_bbox(qk_md1_model* mdl) {
   bbx_max->Z = (bbx_max->Z * scl->Z) + trn->Z;
 }
 
-void qk_get_frame_vertices(const qk_md1_model* mdl,
-                           u32 pos_idx,
-                           u32 frm_idx,
-                           const f32** vbuf,
-                           u32* vbuf_len) {
+void md1_get_vertices(const md1_model* mdl,
+                      u32 pos_idx,
+                      u32 frm_idx,
+                      const f32** vbuf,
+                      u32* vbuf_len) {
   makesure(pos_idx < mdl->header.poses_length, "invalid pose index");
   makesure(frm_idx < mdl->poses[pos_idx].frames_length,
            "invalid frame index in pose");
 
-  qk_md1_pose* pos = &mdl->poses[pos_idx];
+  md1_pose* pos = &mdl->poses[pos_idx];
   *vbuf = &mdl->vbuf[(pos->start + frm_idx) * mdl->header.vbuf_length];
   *vbuf_len = mdl->header.vbuf_length;
 }
 
-qk_md1_error qk_load_mdl(const u8* buf, sz bufsz, qk_md1_model* mdl) {
+md1_error md1_load(const u8* buf, sz bufsz, md1_model* mdl) {
   const u8* p = buf;
-  const qk_md1_raw_header* rhdr = (qk_md1_raw_header*)buf;
+  const md1_raw_header* rhdr = (md1_raw_header*)buf;
 
-  memset(mdl, 0, sizeof(qk_md1_model));
+  memset(mdl, 0, sizeof(md1_model));
 
   DBG("loading MD1 haeder ...");
-  mdl->header = (qk_md1_header){
+  mdl->header = (md1_header){
       .radius = endian_f32(rhdr->bounding_radius),
       .skin_width = endian_i32(rhdr->skin_width),
       .skin_height = endian_i32(rhdr->skin_height),
@@ -617,10 +612,10 @@ qk_md1_error qk_load_mdl(const u8* buf, sz bufsz, qk_md1_model* mdl) {
               .Z = endian_f32(rhdr->eye_position[2])},
   };
 
-  qk_md1_header* hdr = &mdl->header;
+  md1_header* hdr = &mdl->header;
   arena* mem = &mdl->mem;
-  qk_md1_st* stcoords = NULL;
-  qk_md1_faced_triangle* ftris = NULL;
+  md1_st* stcoords = NULL;
+  md1_faced_triangle* ftris = NULL;
 
   DBG("header/vertices: %d", hdr->vertices_length);
   DBG("header/triangles: %d", hdr->triangles_length);
@@ -630,7 +625,7 @@ qk_md1_error qk_load_mdl(const u8* buf, sz bufsz, qk_md1_model* mdl) {
 
   md1_estimate_memory(mem, rhdr, bufsz, hdr);
 
-  p += sizeof(qk_md1_raw_header);
+  p += sizeof(md1_raw_header);
   p = md1_load_skins(mdl, p);
   p = md1_load_st(mdl, p, &stcoords);
   p = md1_load_triangles(mdl, p, hdr, &ftris);
@@ -641,7 +636,7 @@ qk_md1_error qk_load_mdl(const u8* buf, sz bufsz, qk_md1_model* mdl) {
   return MD1_ERR_SUCCESS;
 }
 
-void qk_unload_mdl(qk_md1_model* mdl) {
+void md1_unload(md1_model* mdl) {
   for (u32 i = 0; i < mdl->header.skins_length; i++) {
     sg_destroy_image(mdl->skins[i].image);
     sg_destroy_sampler(mdl->skins[i].sampler);
@@ -650,5 +645,5 @@ void qk_unload_mdl(qk_md1_model* mdl) {
   arena_destroy(&mdl->mem);
 }
 
-#endif  // QK_MD1_IMPLEMENTATION
-#endif  // QK_MD1_HEADER_
+#endif  // MD1_IMPLEMENTATION
+#endif  // MD1_HEADER_

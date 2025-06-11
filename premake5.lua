@@ -105,8 +105,10 @@ project "mk_sqv"
   }
   files {
     "src/app.c",
-    "src/app_3d_draw.c",
-    "src/app_ui_draw.c"
+    "src/draw_model.c",
+    "src/draw_ui.c",
+    "src/draw_bsp.c",
+    "src/draw_texture.c",
   }
   buildoptions { "-std=c2x" }
   defines { "SOKOL_GLCORE" }

@@ -1,5 +1,5 @@
-#ifndef QK_FILES_HEADER_
-#define QK_FILES_HEADER_
+#ifndef KIND_HEADER_
+#define KIND_HEADER_
 
 #include <stdio.h>
 
@@ -7,18 +7,51 @@
 #include "../deps/sepi_macros.h"
 
 typedef enum {
-  QK_FILE_UNKNOWN = -1,
-  QK_FILE_QUAKE1_PAK = 0,
-  QK_FILE_QUAKE1_WAD,
-  QK_FILE_QUAKE1_MDL,
-} qk_file_type;
+  KIND_UNKNOWN = -1,
+
+  KIND_PAK = 0,
+  KIND_PK3,
+  KIND_TPAK,
+
+  KIND_MD1,
+  KIND_MD2,
+  KIND_MD3,
+  KIND_MS2,
+  KIND_BSP,
+  KIND_ENT,
+
+  KIND_MAP,
+  KIND_RAW,
+  KIND_DEM,
+  KIND_LIT,
+  KIND_LIGHTS,
+  KIND_RTLIGHTS,
+
+  KIND_WAD,
+  KIND_LMP,
+  KIND_PCX,
+  KIND_JPG,
+  KIND_PNG,
+  KIND_TGA,
+  KIND_SPR,
+  KIND_SPR32,
+  KIND_SKIN,
+
+  KIND_WAV,
+  KIND_OGG,
+
+  KIND_RC,
+  KIND_CFG,
+  KIND_TXT,
+
+} kind;
 
 /* ****************** API ****************** */
-qk_file_type qk_file_guess_type_from_path(cstr);
-qk_file_type qk_file_guess_type_from_buffer(cstr);
+kind kind_guess_file(cstr);
+kind kind_guess_buffer(cstr);
 /* ****************** API ****************** */
 
-#ifdef QK_FILES_IMPLEMENTATION
+#ifdef KIND_IMPLEMENTATION
 
 //  _                 _                           _        _   _
 // (_)               | |                         | |      | | (_)
@@ -31,17 +64,17 @@ qk_file_type qk_file_guess_type_from_buffer(cstr);
 
 static constexpr u32 MAXBUFSIZE = 8;
 
-static qk_file_type guess_file_type(cstr buf) {
+static kind guess_file_type(cstr buf) {
   if (strncmp(buf, "PACK", 4) == 0) {
-    return QK_FILE_QUAKE1_PAK;
+    return KIND_PAK;
   }
   if (strncmp(buf, "IDPO", 4) == 0) {
-    return QK_FILE_QUAKE1_MDL;
+    return KIND_MD1;
   }
-  return QK_FILE_UNKNOWN;
+  return KIND_UNKNOWN;
 }
 
-qk_file_type qk_file_guess_type_from_path(cstr path) {
+kind kind_guess_file(cstr path) {
   char buf[MAXBUFSIZE + 1] = {0};
 
   FILE* f = fopen(path, "rb");
@@ -51,10 +84,12 @@ qk_file_type qk_file_guess_type_from_path(cstr path) {
   rewind(f);
   isvalid(fread(buf, sizeof(char), MAXBUFSIZE, f) == MAXBUFSIZE);
 
+  fclose(f);
+
   return guess_file_type(buf);
 }
 
-qk_file_type qk_file_guess_type_from_buffer(cstr data) {
+kind kind_guess_buffer(cstr data) {
   char buf[9] = {0};
 
   notzero(!memcpy(buf, data, 8));
@@ -62,5 +97,5 @@ qk_file_type qk_file_guess_type_from_buffer(cstr data) {
   return guess_file_type(buf);
 }
 
-#endif  // QK_FILES_IMPLEMENTATION
-#endif  // QK_FILES_HEADER_
+#endif  // KIND_IMPLEMENTATION
+#endif  // KIND_HEADER_
