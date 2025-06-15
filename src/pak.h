@@ -1,10 +1,13 @@
 #ifndef PAK_HEADER_
 #define PAK_HEADER_
 
+#include <string.h>
+
 #include "../deps/log.h"
 #include "../deps/sepi_macros.h"
 #include "../deps/sepi_types.h"
 #include "../deps/sepi_arena.h"
+#include "../deps/sepi_endian.h"
 
 #include "kind.h"
 
@@ -56,6 +59,8 @@ void pak_unload(pak*);
 // |_|_| |_| |_| .__/|_|\___|_| |_| |_|\___|_| |_|\__\__,_|\__|_|\___/|_| |_|
 //             | |
 //             |_|
+
+#ifdef PAK_IMPLEMENTATION
 
 static pak_err pak_estimate_memory(cbuf buf, pak* pak, i32 offset) {
   DBG("trying to estimate required memory");
@@ -145,9 +150,9 @@ pak_err pak_load(cbuf buf, sz bufsz, pak* pak) {
   return PAK_ERR_SUCCESS;
 }
 
-void pak_unload(pak* pak) {}
-
-#ifdef PAK_IMPLEMENTATION
+void pak_unload(pak* pak) {
+  arena_destroy(&pak->mem);
+}
 
 #endif  // PAK_IMPLEMENTATION
 #endif  // PAK_HEADER_

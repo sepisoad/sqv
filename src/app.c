@@ -1,3 +1,4 @@
+#define PAK_IMPLEMENTATION
 #define MD1_IMPLEMENTATION
 #define KIND_IMPLEMENTATION
 
@@ -17,6 +18,7 @@
 #include "../deps/sepi_types.h"
 #include "../deps/sepi_alloc.h"
 #include "../deps/sepi_endian.h"
+#include "../deps/sepi_io.h"
 
 #include "glsl_default.h"
 #include "kind.h"
@@ -35,8 +37,9 @@ static u64 last_frame_tick = 0;
 
 void update_offscreen_target(state* s, int width, int height);
 void create_offscreen_target(state* s, cstr path);
-void draw_3d(state* s);
-void draw_ui(state* s);
+void render_3d(state* s);
+void render_ui(state* s);
+void render_pak(state* s);
 
 void set_skin(u32 idx) {
   makesure(idx <= s.mdl.header.skins_length, "invalid skin index");
@@ -143,8 +146,6 @@ static void set_major_mode(major_mode m) {
 
 static void set_minor_mode(minor_mode m) {
   if (s.mnm != m) {
-    /* DBG("changing mode from '%s' to '%s'", major_mode_str(s.mjm), */
-    /*     major_mode_str(m)); */
     s.mnm = m;
   }
 }
@@ -165,9 +166,10 @@ static void update(void) {
 
 static void frame(void) {
   if (s.knd == KIND_MDL) {
-    draw_3d(&s);
+    render_3d(&s);
   }
-  draw_ui(&s);
+  /* render_ui(&s); */
+  render_pak(&s);
   update();
 
   if (s.mjm == MAJOR_MODE_INIT &&
@@ -281,7 +283,16 @@ static void mode_poses_input(const sapp_event* e) {
 
 static void handle_file(cstr path) {
   s.knd = kind_guess_file(path);
-  if (s.knd == KIND_MDL) {
+
+  if (s.knd == KIND_PAK) {
+    pak p;
+    u8* buf = NULL;
+    sz bufsz = sepi_io_load_file(path, &buf);
+    // TODO: handle errors
+
+    pak_err err = pak_load(buf, bufsz, &s.pak);
+    // TODO: handle errors
+  } else if (s.knd == KIND_MDL) {
     create_offscreen_target(&s, path);
   }
 }
@@ -324,6 +335,7 @@ static void input(const sapp_event* e) {
 static void cleanup(void) {
   log_info("shutting down");
 
+  pak_unload(&s.pak);
   md1_unload(&s.mdl);
   if (sg_isvalid()) {
     snk_destroy_image(s.ctx3d->nk_img);
@@ -381,20 +393,6 @@ static void init(void) {
 
 sapp_desc sokol_main(i32 argc, char* argv[]) {
   log_info("starting");
-
-  //=====================================
-  FILE* f = fopen("KEEP/pak0.pak", "rb");
-  fseek(f, 0, SEEK_END);
-  sz bufsz = ftell(f);
-  fseek(f, 0, SEEK_SET);
-  buf buf = malloc(sizeof(unsigned char) * bufsz);
-  fread((void*)buf, sizeof(unsigned char), bufsz, f);
-  fclose(f);
-  pak pak;
-  pak_load(buf, bufsz, &pak);
-  free(buf);
-  exit(0);
-  //=====================================
 
   sargs_setup(&(sargs_desc){
       .argc = argc,

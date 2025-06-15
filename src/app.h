@@ -2,6 +2,8 @@
 #define SQV_APP_HEADER_
 
 #include "../deps/sokol_gfx.h"
+#include "pak.h"
+#include "md1.h"
 #include "kind.h"
 
 typedef struct nk_context contextui;
@@ -48,6 +50,7 @@ typedef struct {
   context3d* ctx3d;
 
   // mdl model states
+  pak pak;
   md1 mdl;
   u32 mdl_pos;
   u32 mdl_frm;

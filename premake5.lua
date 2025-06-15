@@ -105,9 +105,10 @@ project "mk_sqv"
   }
   files {
     "src/app.c",
+    "src/render_pak.c",
+    "src/render_md1.c",
     "src/render_bsp.c",
     "src/render_lmp.c",
-    "src/render_md1.c",
     "src/render_ui.c",
   }
   buildoptions { "-std=c2x" }

@@ -304,7 +304,7 @@ static void draw_poses_mode(state* s) {
   ctx->style.button = old_button_style;
 }
 
-void draw_ui(state* s) {
+void render_ui(state* s) {
   s->ctxui = snk_new_frame();
   nk_style_hide_cursor(s->ctxui);
 
