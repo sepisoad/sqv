@@ -20,6 +20,7 @@
 
 #include "glsl_default.h"
 #include "kind.h"
+#include "pak.h"
 #include "md1.h"
 #include "app.h"
 
@@ -163,7 +164,7 @@ static void update(void) {
 }
 
 static void frame(void) {
-  if (s.knd == KIND_MD1) {
+  if (s.knd == KIND_MDL) {
     draw_3d(&s);
   }
   draw_ui(&s);
@@ -280,7 +281,7 @@ static void mode_poses_input(const sapp_event* e) {
 
 static void handle_file(cstr path) {
   s.knd = kind_guess_file(path);
-  if (s.knd == KIND_MD1) {
+  if (s.knd == KIND_MDL) {
     create_offscreen_target(&s, path);
   }
 }
@@ -380,6 +381,20 @@ static void init(void) {
 
 sapp_desc sokol_main(i32 argc, char* argv[]) {
   log_info("starting");
+
+  //=====================================
+  FILE* f = fopen("KEEP/pak0.pak", "rb");
+  fseek(f, 0, SEEK_END);
+  sz bufsz = ftell(f);
+  fseek(f, 0, SEEK_SET);
+  buf buf = malloc(sizeof(unsigned char) * bufsz);
+  fread((void*)buf, sizeof(unsigned char), bufsz, f);
+  fclose(f);
+  pak pak;
+  pak_load(buf, bufsz, &pak);
+  free(buf);
+  exit(0);
+  //=====================================
 
   sargs_setup(&(sargs_desc){
       .argc = argc,

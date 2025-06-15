@@ -22,6 +22,9 @@ typedef intptr_t iptr;
 typedef uintptr_t uptr;
 typedef ptrdiff_t xptr;
 
+typedef char* str;
 typedef const char* cstr;
+typedef unsigned char* buf;
+typedef const unsigned char* cbuf;
 
 #endif  // SEPI_TYPES_HEADER_

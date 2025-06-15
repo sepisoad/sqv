@@ -93,16 +93,6 @@ typedef struct {
   md1_normal_vertex bbox_max;
 } md1_frames_group;
 
-typedef enum {
-  MD1_ERR_UNKNOWN = -1,
-  MD1_ERR_SUCCESS = 0,
-  MD1_ERR_FILE_OPEN,
-  MD1_ERR_MEM_ALLOC,
-  MD1_ERR_READ_SIZE,
-  MD1_ERR_RAME_IDX,
-  MD1_ERR_INVALID,
-} md1_error;
-
 typedef struct {
   f32 radius;
   u32 skin_width;
@@ -144,12 +134,22 @@ typedef struct {
   md1_pose* poses;
   f32* vbuf;
   arena mem;
-} md1_model;
+} md1;
+
+typedef enum {
+  MD1_ERR_UNKNOWN = -1,
+  MD1_ERR_SUCCESS = 0,
+  MD1_ERR_FILE_OPEN,
+  MD1_ERR_MEM_ALLOC,
+  MD1_ERR_READ_SIZE,
+  MD1_ERR_RAME_IDX,
+  MD1_ERR_INVALID,
+} md1_err;
 
 /* ****************** quake::mdl API ****************** */
-md1_error md1_load(const u8*, sz, md1_model*);
-void md1_unload(md1_model*);
-void md1_get_vertices(const md1_model*, u32, u32, const f32**, u32*);
+md1_err md1_load(const u8*, sz, md1*);
+void md1_unload(md1*);
+void md1_get_vertices(const md1*, u32, u32, const f32**, u32*);
 /* ****************** quake::mdl API ****************** */
 
 //  _                 _                           _        _   _
@@ -316,7 +316,7 @@ static void md1_load_image(const u8* p, u8* pixels, sz size) {
   }
 }
 
-static const u8* md1_load_skins(md1_model* mdl, const u8* p) {
+static const u8* md1_load_skins(md1* mdl, const u8* p) {
   const md1_header* hdr = &mdl->header;
   arena* mem = &mdl->mem;
   u32 width = hdr->skin_width;
@@ -366,7 +366,7 @@ static const u8* md1_load_skins(md1_model* mdl, const u8* p) {
   return p;
 }
 
-static const u8* md1_load_st(md1_model* mdl, const u8* p, md1_st** coords) {
+static const u8* md1_load_st(md1* mdl, const u8* p, md1_st** coords) {
   DBG("loading texture S/T coordinates");
   arena* mem = &mdl->mem;
   const md1_header* hdr = &mdl->header;
@@ -386,7 +386,7 @@ static const u8* md1_load_st(md1_model* mdl, const u8* p, md1_st** coords) {
   return (const u8*)src;
 }
 
-static const u8* md1_load_triangles(md1_model* mdl,
+static const u8* md1_load_triangles(md1* mdl,
                                     const u8* p,
                                     const md1_header* hdr,
                                     md1_faced_triangle** ftris) {
@@ -411,7 +411,7 @@ static const u8* md1_load_triangles(md1_model* mdl,
   return (const u8*)src;
 }
 
-static const u8* md1_load_single_frame(md1_model* mdl,
+static const u8* md1_load_single_frame(md1* mdl,
                                        u32 frm_idx,
                                        u32* pos_len,
                                        u32* pos_idx,
@@ -463,7 +463,7 @@ static const u8* md1_load_single_frame(md1_model* mdl,
   return (const u8*)(raw_verts + hdr->vertices_length);
 }
 
-static const u8* md1_load_frames(md1_model* mdl, const u8* p) {
+static const u8* md1_load_frames(md1* mdl, const u8* p) {
   DBG("loading frames");
   arena* mem = &mdl->mem;
   const md1_header* hdr = &mdl->header;
@@ -498,7 +498,7 @@ static const u8* md1_load_frames(md1_model* mdl, const u8* p) {
   return p;
 }
 
-static void md1_make_display_list(md1_model* mdl,
+static void md1_make_display_list(md1* mdl,
                                   const md1_st* coords,
                                   const md1_faced_triangle* ftris) {
   DBG("generating vertex buffer data");
@@ -555,7 +555,7 @@ static void md1_make_display_list(md1_model* mdl,
   DBG("generated vertex buffer with %d items", frm_len * tri_len * elm_len);
 }
 
-void md1_scale_translate_bbox(md1_model* mdl) {
+void md1_scale_translate_bbox(md1* mdl) {
   DBG("scaling and translating bbox data");
 
   md1_header* hdr = &mdl->header;
@@ -572,7 +572,7 @@ void md1_scale_translate_bbox(md1_model* mdl) {
   bbx_max->Z = (bbx_max->Z * scl->Z) + trn->Z;
 }
 
-void md1_get_vertices(const md1_model* mdl,
+void md1_get_vertices(const md1* mdl,
                       u32 pos_idx,
                       u32 frm_idx,
                       const f32** vbuf,
@@ -586,11 +586,11 @@ void md1_get_vertices(const md1_model* mdl,
   *vbuf_len = mdl->header.vbuf_length;
 }
 
-md1_error md1_load(const u8* buf, sz bufsz, md1_model* mdl) {
+md1_err md1_load(const u8* buf, sz bufsz, md1* mdl) {
   const u8* p = buf;
   const md1_raw_header* rhdr = (md1_raw_header*)buf;
 
-  memset(mdl, 0, sizeof(md1_model));
+  memset(mdl, 0, sizeof(md1));
 
   DBG("loading MD1 haeder ...");
   mdl->header = (md1_header){
@@ -636,7 +636,7 @@ md1_error md1_load(const u8* buf, sz bufsz, md1_model* mdl) {
   return MD1_ERR_SUCCESS;
 }
 
-void md1_unload(md1_model* mdl) {
+void md1_unload(md1* mdl) {
   for (u32 i = 0; i < mdl->header.skins_length; i++) {
     sg_destroy_image(mdl->skins[i].image);
     sg_destroy_sampler(mdl->skins[i].sampler);

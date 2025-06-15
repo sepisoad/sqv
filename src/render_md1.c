@@ -24,8 +24,8 @@
 extern context3d ctx3d;
 
 void reset_state();
-void load_3d_model(cstr path, md1_model* m);
-void unload_3d_model(md1_model* m);
+void load_3d_model(cstr path, md1* m);
+void unload_3d_model(md1* m);
 
 void update_offscreen_target(state* s, int width, int height) {
   snk_destroy_image(s->ctx3d->nk_img);
@@ -126,19 +126,19 @@ void create_offscreen_target(state* s, cstr path) {
   };
 }
 
-void load_3d_model(cstr path, md1_model* m) {
+void load_3d_model(cstr path, md1* m) {
   notnull(path);
   notnull(m);
 
   u8* bf = NULL;
   sz bfsz = notzero(sepi_io_load_file(path, &bf));
 
-  md1_error err = md1_load(bf, bfsz, m);
+  md1_err err = md1_load(bf, bfsz, m);
   makesure(err == MD1_ERR_SUCCESS, "qk_load_mdl failed");
   free(bf);
 }
 
-void unload_3d_model(md1_model* m) {
+void unload_3d_model(md1* m) {
   notnull(m);
   md1_unload(m);
 }
@@ -146,7 +146,7 @@ void unload_3d_model(md1_model* m) {
 // SEPI: this function is called in the main loop so we should avoid unnecessary
 // operations
 void draw_3d(state* s) {
-  md1_model* m = &s->mdl;
+  md1* m = &s->mdl;
   hmm_v3* bbmin = &m->header.bbox_min;
   hmm_v3* bbmax = &m->header.bbox_max;
   hmm_vec3 center = HMM_MultiplyVec3f(HMM_AddVec3(*bbmin, *bbmax), 0.5f);

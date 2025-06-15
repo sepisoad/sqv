@@ -48,7 +48,7 @@ typedef struct {
   context3d* ctx3d;
 
   // mdl model states
-  md1_model mdl;
+  md1 mdl;
   u32 mdl_pos;
   u32 mdl_frm;
   u32 mdl_skn;

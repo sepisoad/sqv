@@ -105,10 +105,10 @@ project "mk_sqv"
   }
   files {
     "src/app.c",
-    "src/draw_model.c",
-    "src/draw_ui.c",
-    "src/draw_bsp.c",
-    "src/draw_texture.c",
+    "src/render_bsp.c",
+    "src/render_lmp.c",
+    "src/render_md1.c",
+    "src/render_ui.c",
   }
   buildoptions { "-std=c2x" }
   defines { "SOKOL_GLCORE" }

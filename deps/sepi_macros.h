@@ -15,6 +15,15 @@ static char error_buffer[1024];  // removed const so snprintf can write into it
     _val;                            \
   })
 
+#define errorout(expr, err)     \
+  ({                            \
+    typeof(expr) _val = (expr); \
+    if (!_val) {                \
+      return (err);             \
+    }                           \
+    _val;                       \
+  })
+
 #define notnull(val) makesure((val), "NULL")
 #define notzero(val) makesure((val), "zero")
 #define isvalid(val) makesure((val), "not valid")
