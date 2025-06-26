@@ -16,18 +16,17 @@
 #include "../deps/sokol_time.h"
 #include "../deps/sokol_log.h"
 #include "../deps/sepi_types.h"
-#include "../deps/sepi_alloc.h"
-#include "../deps/sepi_endian.h"
 #include "../deps/sepi_io.h"
 
-#include "glsl_default.h"
-#include "kind.h"
-#include "pak.h"
-#include "md1.h"
-#include "app.h"
+#include "./glsl_default.h"
+#include "./kind.h"
+#include "./pak.h"
+#include "./md1.h"
+#include "./app.h"
 
 #ifdef DEBUG
 #include "../deps/sokol_memtrack.h"
+#include "../deps/sepi_alloc.h"
 #endif
 
 context3d ctx3d = {0};

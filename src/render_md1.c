@@ -2,7 +2,6 @@
 #include <stdio.h>
 
 #include "../deps/hmm.h"
-#include "../deps/log.h"
 #include "../deps/nuklear.h"
 #include "../deps/sokol_app.h"
 #include "../deps/sokol_args.h"

@@ -1,10 +1,14 @@
 #ifndef SQV_APP_HEADER_
 #define SQV_APP_HEADER_
 
+#include "../deps/nuklear.h"
 #include "../deps/sokol_gfx.h"
-#include "pak.h"
-#include "md1.h"
-#include "kind.h"
+#include "../deps/sokol_app.h"
+#include "../deps/sokol_nuklear.h"
+#include "../deps/sepi_types.h"
+
+#include "./pak.h"
+#include "./md1.h"
 
 typedef struct nk_context contextui;
 

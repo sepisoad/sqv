@@ -11,10 +11,11 @@
 #include <ctype.h>
 
 #include "../deps/hmm.h"
+#include "../deps/nuklear.h"
+#include "../deps/sokol_app.h"
 #include "../deps/sokol_gfx.h"
-#include "../deps/sepi_macros.h"
+#include "../deps/sokol_nuklear.h"
 #include "../deps/sepi_types.h"
-#include "../deps/sepi_endian.h"
 #include "../deps/sepi_arena.h"
 
 #define MAX_STATIC_MEM 8192

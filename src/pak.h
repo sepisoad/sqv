@@ -3,13 +3,11 @@
 
 #include <string.h>
 
-#include "../deps/log.h"
-#include "../deps/sepi_macros.h"
 #include "../deps/sepi_types.h"
-#include "../deps/sepi_arena.h"
 #include "../deps/sepi_endian.h"
+#include "../deps/sepi_arena.h"
 
-#include "kind.h"
+#include "./kind.h"
 
 #define PAK_HEADER_LEN 4
 #define PAK_ENTRY_NAME_LEN 56
