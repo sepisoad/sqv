@@ -31,12 +31,13 @@ typedef enum {
 typedef enum {
   MINOR_MODE_UNKNOWN = BIN_FLAG(0),
   MINOR_MODE_INIT = BIN_FLAG(1),
-  MINOR_MODE_INFO = BIN_FLAG(2),
-  MINOR_MODE_HELP = BIN_FLAG(3),
+  MINOR_MODE_HELP = BIN_FLAG(2),
+  MINOR_MODE_INFO = BIN_FLAG(3),
   MINOR_MODE_TREE = BIN_FLAG(4),
   MINOR_MODE_SKINS = BIN_FLAG(5),
   MINOR_MODE_POSES = BIN_FLAG(6),
   MINOR_MODE_FRAMES = BIN_FLAG(7),
+  MINOR_MODE_COMMANDLINE = BIN_FLAG(8),
 } minor_mode;
 
 typedef struct {
@@ -56,8 +57,8 @@ typedef struct {
   sg_pipeline pip;
   sg_bindings bind;
   sg_pass_action pass_action;
-  contextui *ctxui;
-  context3d *ctx3d;
+  contextui* ctxui;
+  context3d* ctx3d;
 
   // mdl model states
   pak pak;
@@ -73,6 +74,8 @@ typedef struct {
   kind knd;
   major_mode mjm;
   minor_mode mnm;
+
+  char cmd[2048];
 } state;
 
 #define MAX_INIT_DELAY 10
@@ -85,4 +88,4 @@ typedef struct {
 #define MIN_FRAME_RATE 1
 #define MAX_FRAME_RATE 1000
 
-#endif // SQV_APP_HEADER_
+#endif  // SQV_APP_HEADER_

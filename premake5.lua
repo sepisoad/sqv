@@ -1,128 +1,129 @@
 ---@diagnostic disable: undefined-global
 
 workspace "ProjectWorkspace"
-  configurations { "Debug", "Release" }
-  location "."
-  toolset "clang"
+configurations { "Debug", "Release" }
+location "."
+toolset "clang"
 
-  filter "configurations:Debug"
-    defines { "DEBUG" }
-    symbols "On"
-    optimize "Off"
-    buildoptions { "-fsanitize=address" }
-    linkoptions { "-fsanitize=address" }
+filter "configurations:Debug"
+defines { "DEBUG" }
+symbols "On"
+optimize "Off"
+buildoptions { "-fsanitize=address" }
+linkoptions { "-fsanitize=address" }
 
-  filter "configurations:Release"
-    defines { "NDEBUG" }
-    optimize "Speed"
+filter "configurations:Release"
+defines { "NDEBUG" }
+optimize "Speed"
 
 -- Rxi Log Library
 project "mk_log"
-  kind "StaticLib"
-  language "C"
-  location "BUILD"
-  targetdir "BUILD/"
-  objdir "BUILD/obj"
-  targetname "log"
-  files {"deps/log.c"}
+kind "StaticLib"
+language "C"
+location "BUILD"
+targetdir "BUILD/"
+objdir "BUILD/obj"
+targetname "log"
+files { "deps/log.c" }
 
 -- Rxi INI Library
 project "mk_ini"
-  kind "StaticLib"
-  language "C"
-  location "BUILD"
-  targetdir "BUILD/"
-  objdir "BUILD/obj"
-  targetname "ini"
-  files {"deps/ini.c"}
+kind "StaticLib"
+language "C"
+location "BUILD"
+targetdir "BUILD/"
+objdir "BUILD/obj"
+targetname "ini"
+files { "deps/ini.c" }
 
 -- Sokol Library
 project "mk_sokol"
-  kind "StaticLib"
-  language "C"
-  location "BUILD"
-  targetdir "BUILD/"
-  objdir "BUILD/obj"
-  targetname "sokol"
-  files {"deps/sokol.c"}
+kind "StaticLib"
+language "C"
+location "BUILD"
+targetdir "BUILD/"
+objdir "BUILD/obj"
+targetname "sokol"
+files { "deps/sokol.c" }
 
-  filter "system:macosx"
-    defines { "SOKOL_GLCORE" }
-    links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
-    buildoptions { "-x objective-c" }
+filter "system:macosx"
+defines { "SOKOL_GLCORE" }
+links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
+buildoptions { "-x objective-c" }
 
-  filter "system:linux"
-    defines { "SOKOL_GLCORE" }
-    links { "X11", "Xi", "Xcursor", "GL", "m" }
+filter "system:linux"
+defines { "SOKOL_GLCORE" }
+links { "X11", "Xi", "Xcursor", "GL", "m" }
 
 -- Handmade Math (HMM) Library
 project "mk_hmm"
-  kind "StaticLib"
-  language "C"
-  location "BUILD"
-  targetdir "BUILD/"
-  objdir "BUILD/obj"
-  targetname "hmm"
-  files {"deps/hmm.c"}
+kind "StaticLib"
+language "C"
+location "BUILD"
+targetdir "BUILD/"
+objdir "BUILD/obj"
+targetname "hmm"
+files { "deps/hmm.c" }
 
 -- STB Library
 project "mk_stb"
-  kind "StaticLib"
-  language "C"
-  location "BUILD"
-  targetdir "BUILD/"
-  objdir "BUILD/obj"
-  targetname "stb"
-  buildoptions { "-Wno-deprecated-declarations" }
-  files {"deps/stb.c"}
+kind "StaticLib"
+language "C"
+location "BUILD"
+targetdir "BUILD/"
+objdir "BUILD/obj"
+targetname "stb"
+buildoptions { "-Wno-deprecated-declarations" }
+files { "deps/stb.c" }
 
 -- STB Library
 project "mk_sepi"
-  kind "StaticLib"
-  language "C"
-  location "BUILD"
-  targetdir "BUILD/"
-  objdir "BUILD/obj"
-  targetname "sepi"
-  buildoptions { "-Wno-deprecated-declarations" }
-  buildoptions { "-std=c23" }
-  files {"deps/sepi.c"}
+kind "StaticLib"
+language "C"
+location "BUILD"
+targetdir "BUILD/"
+objdir "BUILD/obj"
+targetname "sepi"
+buildoptions { "-Wno-deprecated-declarations" }
+buildoptions { "-std=c23" }
+files { "deps/sepi.c" }
 
 -- Main Application
 project "mk_sqv"
-  kind "ConsoleApp"
-  language "C"
-  location "BUILD"
-  targetdir "BUILD/"
-  objdir "BUILD/obj"
-  targetname "sqv"
-  includedirs {"src", "deps"}
-  links {
-    "mk_log:static",
-    "mk_ini:static",
-    "mk_stb:static",
-    "mk_hmm:static",
-    "mk_sepi:static",
-    "mk_sokol:static",
-  }
-  files {
-    "src/app.c",
-    "src/render_init.c",
-    "src/render_lmp.c",
-    "src/render_md1.c",
-    "src/render_pak.c",
-    "src/render_ui.c",
-    "src/render_wad.c",
-  }
-  buildoptions { "-std=c23" }
-  defines { "SOKOL_GLCORE" }
-  defines { "_POSIX_C_SOURCE=199309L" }  -- Needed for some C23 features
+kind "ConsoleApp"
+language "C"
+location "BUILD"
+targetdir "BUILD/"
+objdir "BUILD/obj"
+targetname "sqv"
+includedirs { "src", "deps" }
+links {
+  "mk_log:static",
+  "mk_ini:static",
+  "mk_stb:static",
+  "mk_hmm:static",
+  "mk_sepi:static",
+  "mk_sokol:static",
+}
+files {
+  "src/app.c",
+  "src/render_common.c",
+  "src/render_init.c",
+  "src/render_lmp.c",
+  "src/render_md1.c",
+  "src/render_pak.c",
+  "src/render_ui.c",
+  "src/render_wad.c",
+}
+buildoptions { "-std=c23" }
+defines { "SOKOL_GLCORE" }
+defines { "_POSIX_C_SOURCE=199309L" }   -- Needed for some C23 features
 
-  filter "system:macosx"
-    links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
+filter "system:macosx"
+links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
 
-  filter "system:linux"
-    links { "X11", "Xi", "Xcursor", "GL", "m" }
+filter "system:linux"
+links { "X11", "Xi", "Xcursor", "GL", "m" }
 
 -- GLSL Shader Compilation Action
 newaction {
@@ -174,4 +175,3 @@ newaction {
     os.execute("BUILD/sqv -i=" .. args_str)
   end
 }
-

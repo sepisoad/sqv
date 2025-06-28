@@ -120,6 +120,8 @@ static void set_frame_rate(f32 val) {
 
 static cstr major_mode_str(major_mode m) {
   switch (m) {
+    case MAJOR_MODE_INIT:
+      return "INIT";
     case MAJOR_MODE_PAK:
       return "PAK";
     case MAJOR_MODE_MD1:
@@ -149,9 +151,15 @@ static cstr minor_mode_str(minor_mode m) {
       return "POSES";
     case MINOR_MODE_FRAMES:
       return "FRAMES";
+    case MINOR_MODE_COMMANDLINE:
+      return "COMMANDLINE";
     default:
       return "UNKNOWN";
   }
+}
+
+static void clean_commandline() {
+  memset(s.cmd, 0, sizeof(s.cmd) - 1);
 }
 
 static void set_major_mode(major_mode m) {
@@ -162,9 +170,56 @@ static void set_major_mode(major_mode m) {
   }
 }
 
+static void reset_minor_mode(minor_mode m) {
+  DBG("reseting minor mode to '%s'", minor_mode_str(m));
+  s.mnm = m;
+}
+
+static void enable_minor_mode(minor_mode m) {
+  DBG("enabling minor mode '%s'", minor_mode_str(m));
+
+  if (m == MINOR_MODE_COMMANDLINE) {
+    if (!(s.mnm & MINOR_MODE_COMMANDLINE)) {
+      clean_commandline();
+    }
+    s.mnm |= MINOR_MODE_COMMANDLINE;
+    return;
+  }
+
+  s.mnm |= m;
+}
+
+static void clear_minor_mode(minor_mode m) {
+  DBG("clearing minor mode '%s'", minor_mode_str(m));
+  s.mnm &= ~m;
+}
+
 static void toggle_minor_mode(minor_mode m) {
-  DBG("toggleing minor mode '%s' '%s'\n", minor_mode_str(m),
+  switch (m) {
+    case MINOR_MODE_COMMANDLINE:
+      clear_minor_mode(MINOR_MODE_HELP);
+      clear_minor_mode(MINOR_MODE_INFO);
+      break;
+    // case MINOR_MODE_HELP:
+    //   clear_minor_mode(MINOR_MODE_COMMANDLINE);
+    //   clear_minor_mode(MINOR_MODE_INFO);
+    //   break;
+    // case MINOR_MODE_INFO:
+    //   clear_minor_mode(MINOR_MODE_HELP);
+    //   clear_minor_mode(MINOR_MODE_COMMANDLINE);
+    //   break;
+    default:
+      break;
+  }
+
+  if (s.mnm & MINOR_MODE_COMMANDLINE) {
+    DBG("cannot toggle minor mode '%s'", minor_mode_str(m));
+    return;
+  }
+
+  DBG("toggleing minor mode '%s' '%s'", minor_mode_str(m),
       m & s.mnm ? "off" : "on");
+
   s.mnm ^= m;
 }
 
@@ -173,7 +228,11 @@ static void mode_init_input(const sapp_event* e) {
     switch (e->key_code) {
       case SAPP_KEYCODE_SLASH:
         if (e->modifiers & SAPP_MODIFIER_SHIFT)
-          toggle_minor_mode(MINOR_MODE_HELP);
+          enable_minor_mode(MINOR_MODE_HELP);
+        break;
+      case SAPP_KEYCODE_SEMICOLON:
+        if (e->modifiers & SAPP_MODIFIER_SHIFT)
+          enable_minor_mode(MINOR_MODE_COMMANDLINE);
         break;
       default:
         break;
@@ -241,9 +300,9 @@ static void handle_file(cstr path) {
     u8* buf = NULL;  // IWYU pragma: always_keep
     sz bufsz = sepi_io_load_file(path, &buf);
     // TODO: handle errors
-
     pak_load(buf, bufsz, &s.pak);
     // TODO: handle errors
+    set_major_mode(MAJOR_MODE_PAK);
   } else if (s.knd == KIND_MDL) {
     // create_offscreen_target(&s, path);
   }
@@ -260,9 +319,20 @@ static void input(const sapp_event* e) {
     handle_file(sapp_get_dropped_file_path(0));
   }
 
+  if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
+    switch (e->key_code) {
+      case SAPP_KEYCODE_ESCAPE:
+        reset_minor_mode(MINOR_MODE_INIT);
+        break;
+      default:
+        break;
+    }
+  }
+
   switch (s.mjm) {
     case MAJOR_MODE_INIT:
       mode_init_input(e);
+      break;
     case MAJOR_MODE_PAK:
       mode_pak_input(e);
       break;
@@ -380,6 +450,7 @@ static void init(void) {
   s.zoom = 1;
   s.rotating = true;
   s.animating = false;
+  s.cmd[0] = 0;
   last_frame_tick = stm_now();
 
   cstr path = (cstr)sapp_userdata();
