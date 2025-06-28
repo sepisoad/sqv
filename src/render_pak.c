@@ -29,8 +29,6 @@ void render_pak(state* s) {
 
   if (s->mnm & MINOR_MODE_HELP) {
     draw_help(s);
-  } else if (s->mnm & MINOR_MODE_COMMANDLINE) {
-    // draw_help(s);
   } else {
     draw_default(s);
   }

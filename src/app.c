@@ -34,18 +34,21 @@ static state s;
 static u64 init_tm = 0;
 static u64 last_frame_tick = 0;
 
-// void update_offscreen_target(state* s, int width, int height);
-// void create_offscreen_target(state* s, cstr path);
-void render_init(state* s);
-void render_pak(state* s);
-void render_md1(state* s);
-void render_wad(state* s);
-void render_lmp(state* s);
+void render_init(state*);
+void render_pak(state*);
+void render_md1(state*);
+void render_wad(state*);
+void render_lmp(state*);
 
 void set_skin(u32 idx) {
   makesure(idx <= s.mdl.header.skins_length, "invalid skin index");
   s.bind.images[IMG_tex] = s.mdl.skins[idx].image;
   s.bind.samplers[SMP_smp] = s.mdl.skins[idx].sampler;
+}
+
+static void clean_commandline() {
+  memset(s.cmd, 0, sizeof(s.cmd) - 1);
+  s.show_cmd = 0;
 }
 
 void reset_state() {
@@ -54,6 +57,7 @@ void reset_state() {
   s.mdl_frm = 0;
   s.zoom = 1;
   s.frame_rate = 60;
+  clean_commandline();
 }
 
 // PRIVATE FUNCTIONS
@@ -151,15 +155,9 @@ static cstr minor_mode_str(minor_mode m) {
       return "POSES";
     case MINOR_MODE_FRAMES:
       return "FRAMES";
-    case MINOR_MODE_COMMANDLINE:
-      return "COMMANDLINE";
     default:
       return "UNKNOWN";
   }
-}
-
-static void clean_commandline() {
-  memset(s.cmd, 0, sizeof(s.cmd) - 1);
 }
 
 static void set_major_mode(major_mode m) {
@@ -177,15 +175,6 @@ static void reset_minor_mode(minor_mode m) {
 
 static void enable_minor_mode(minor_mode m) {
   DBG("enabling minor mode '%s'", minor_mode_str(m));
-
-  if (m == MINOR_MODE_COMMANDLINE) {
-    if (!(s.mnm & MINOR_MODE_COMMANDLINE)) {
-      clean_commandline();
-    }
-    s.mnm |= MINOR_MODE_COMMANDLINE;
-    return;
-  }
-
   s.mnm |= m;
 }
 
@@ -195,28 +184,6 @@ static void clear_minor_mode(minor_mode m) {
 }
 
 static void toggle_minor_mode(minor_mode m) {
-  switch (m) {
-    case MINOR_MODE_COMMANDLINE:
-      clear_minor_mode(MINOR_MODE_HELP);
-      clear_minor_mode(MINOR_MODE_INFO);
-      break;
-    // case MINOR_MODE_HELP:
-    //   clear_minor_mode(MINOR_MODE_COMMANDLINE);
-    //   clear_minor_mode(MINOR_MODE_INFO);
-    //   break;
-    // case MINOR_MODE_INFO:
-    //   clear_minor_mode(MINOR_MODE_HELP);
-    //   clear_minor_mode(MINOR_MODE_COMMANDLINE);
-    //   break;
-    default:
-      break;
-  }
-
-  if (s.mnm & MINOR_MODE_COMMANDLINE) {
-    DBG("cannot toggle minor mode '%s'", minor_mode_str(m));
-    return;
-  }
-
   DBG("toggleing minor mode '%s' '%s'", minor_mode_str(m),
       m & s.mnm ? "off" : "on");
 
@@ -232,7 +199,8 @@ static void mode_init_input(const sapp_event* e) {
         break;
       case SAPP_KEYCODE_SEMICOLON:
         if (e->modifiers & SAPP_MODIFIER_SHIFT)
-          enable_minor_mode(MINOR_MODE_COMMANDLINE);
+          if (!s.show_cmd)
+            s.show_cmd = true;
         break;
       default:
         break;
@@ -323,6 +291,7 @@ static void input(const sapp_event* e) {
     switch (e->key_code) {
       case SAPP_KEYCODE_ESCAPE:
         reset_minor_mode(MINOR_MODE_INIT);
+        clean_commandline();
         break;
       default:
         break;
@@ -385,19 +354,6 @@ static void frame(void) {
     default:
       render_init(&s);
   }
-
-  // if (s.knd == KIND_MDL) {
-  //   render_3d(&s);
-  // }
-  // /* render_ui(&s); */
-  // render_pak(&s);
-
-  // update();
-
-  // if (s.mjm == MAJOR_MODE_PAK && stm_sec(stm_since(init_tm)) >
-  // MAX_INIT_DELAY) {
-  //   set_major_mode(MAJOR_MODE_MD1);
-  // }
 }
 
 static void cleanup(void) {
@@ -450,7 +406,8 @@ static void init(void) {
   s.zoom = 1;
   s.rotating = true;
   s.animating = false;
-  s.cmd[0] = 0;
+  s.show_cmd = false;
+  clean_commandline();
   last_frame_tick = stm_now();
 
   cstr path = (cstr)sapp_userdata();

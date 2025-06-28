@@ -37,7 +37,6 @@ typedef enum {
   MINOR_MODE_SKINS = BIN_FLAG(5),
   MINOR_MODE_POSES = BIN_FLAG(6),
   MINOR_MODE_FRAMES = BIN_FLAG(7),
-  MINOR_MODE_COMMANDLINE = BIN_FLAG(8),
 } minor_mode;
 
 typedef struct {
@@ -71,6 +70,7 @@ typedef struct {
   f32 zoom;
   bool rotating;
   bool animating;
+  bool show_cmd;
   kind knd;
   major_mode mjm;
   minor_mode mnm;
