@@ -6,6 +6,7 @@
 #include "../deps/nuklear.h"
 #include "../deps/sokol_nuklear.h"
 #include "../deps/sokol_glue.h"
+#include "../deps/sepi_types.h"
 
 #include "md1.h"
 #include "app.h"
@@ -31,8 +32,6 @@ static struct nk_rect view_max() {
 }
 
 static void draw_init_mode(state* s) {
-  i32 w = sapp_width();
-  i32 h = sapp_height();
   cstr txt = "press '?' for help";
   i32 len = strlen(txt);
   contextui* ctx = s->ctxui;
@@ -136,7 +135,6 @@ static void draw_help_mode(state* s) {
     nk_image(ctx, nk_image_handle(snk_nkhandle(s->ctx3d->nk_img)));
     nk_layout_space_end(ctx);
 
-    char buf[256] = {0};
     if (nk_popup_begin(ctx, NK_POPUP_STATIC, "", NK_WINDOW_NO_SCROLLBAR,
                        view_max())) {
       nk_layout_row_dynamic(ctx, 12, 3);
@@ -252,8 +250,6 @@ static void draw_skins_mode(state* s) {
 static void draw_poses_mode(state* s) {
   f32 w = (f32)sapp_width();
   f32 h = (f32)sapp_height();
-  f32 iw = s->mdl.header.skin_width;
-  f32 ih = s->mdl.header.skin_height;
   struct nk_context* ctx = s->ctxui;
 
   struct nk_style_window old_window_style = ctx->style.window;

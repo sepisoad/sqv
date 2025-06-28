@@ -1,15 +1,16 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "../deps/sokol_app.h"
 #include "../deps/sokol_gfx.h"
 #include "../deps/nuklear.h"
 #include "../deps/sokol_nuklear.h"
 #include "../deps/sokol_glue.h"
+#include "../deps/sepi_types.h"
 
-#include "pak.h"
-#include "md1.h"
 #include "app.h"
+
 
 static struct nk_color BKG = {0, 0, 0, 180};
 static struct nk_color TXT = {255, 255, 255, 255};
@@ -34,8 +35,6 @@ void render_pak(state* s) {
   nk_style_hide_cursor(s->ctxui);
 
   //////
-  i32 w = sapp_width();
-  i32 h = sapp_height();
   cstr txt = "press '?' for help";
   i32 len = strlen(txt);
   contextui* ctx = s->ctxui;

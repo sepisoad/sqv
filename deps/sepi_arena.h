@@ -8,7 +8,7 @@
 #include <assert.h>
 
 #include "sepi_types.h"
-#include "sepi_macros.h"
+#include "sepi_macros.h"  // IWYU pragma: keep
 
 #define ARENA_DEFAULT_SIZE (1024 * 1024)  // 1MB default size
 #define ALIGNMENT 16                      // Default alignment

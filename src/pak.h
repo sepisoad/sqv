@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include "../deps/sepi_types.h"
-#include "../deps/sepi_endian.h"
+#include "../deps/sepi_endian.h"  // IWYU pragma: keep
 #include "../deps/sepi_arena.h"
 
 #include "./kind.h"

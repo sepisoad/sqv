@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 #include "sepi_types.h"
-#include "sepi_macros.h"
+#include "sepi_macros.h"  // IWYU pragma: keep
 
 /* ****************** utils::io API ****************** */
 size_t sepi_io_load_file(cstr, u8**);

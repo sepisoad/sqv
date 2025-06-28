@@ -126,7 +126,7 @@ newaction {
   trigger = "glsl",
   description = "Compile shaders into C headers",
   execute = function()
-    os.execute("sokol-shdc -i res/shaders/default.glsl -l glsl410 -f sokol -o src/glsl_default.h")
+    os.execute("sokol-shdc -i res/shaders/default.glsl -l glsl410 -f sokol -o res/shaders/default.glsl.h")
   end
 }
 
