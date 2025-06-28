@@ -3,6 +3,7 @@
 workspace "ProjectWorkspace"
   configurations { "Debug", "Release" }
   location "."
+  toolset "clang"
 
   filter "configurations:Debug"
     defines { "DEBUG" }
@@ -84,8 +85,9 @@ project "mk_sepi"
   objdir "BUILD/obj"
   targetname "sepi"
   buildoptions { "-Wno-deprecated-declarations" }
+  buildoptions { "-std=c23" }
   files {"deps/sepi.c"}
-  
+
 -- Main Application
 project "mk_sqv"
   kind "ConsoleApp"
@@ -101,17 +103,18 @@ project "mk_sqv"
     "mk_stb:static",
     "mk_hmm:static",
     "mk_sepi:static",
-    "mk_sokol:static",    
+    "mk_sokol:static",
   }
   files {
     "src/app.c",
-    "src/render_pak.c",
-    "src/render_md1.c",
-    "src/render_bsp.c",
+    "src/render_init.c",
     "src/render_lmp.c",
+    "src/render_md1.c",
+    "src/render_pak.c",
     "src/render_ui.c",
+    "src/render_wad.c",
   }
-  buildoptions { "-std=c2x" }
+  buildoptions { "-std=c23" }
   defines { "SOKOL_GLCORE" }
   defines { "_POSIX_C_SOURCE=199309L" }  -- Needed for some C23 features
 

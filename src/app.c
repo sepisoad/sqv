@@ -34,11 +34,13 @@ static state s;
 static u64 init_tm = 0;
 static u64 last_frame_tick = 0;
 
-void update_offscreen_target(state *s, int width, int height);
-void create_offscreen_target(state *s, cstr path);
-void render_3d(state *s);
-void render_ui(state *s);
-void render_pak(state *s);
+// void update_offscreen_target(state* s, int width, int height);
+// void create_offscreen_target(state* s, cstr path);
+void render_init(state* s);
+void render_pak(state* s);
+void render_md1(state* s);
+void render_wad(state* s);
+void render_lmp(state* s);
 
 void set_skin(u32 idx) {
   makesure(idx <= s.mdl.header.skins_length, "invalid skin index");
@@ -118,37 +120,37 @@ static void set_frame_rate(f32 val) {
 
 static cstr major_mode_str(major_mode m) {
   switch (m) {
-  case MAJOR_MODE_PAK:
-    return "PAK";
-  case MAJOR_MODE_MD1:
-    return "MD1";
-  case MAJOR_MODE_WAD:
-    return "WAD";
-  case MAJOR_MODE_LMP:
-    return "LMP";
-  default:
-    return "UNKNOWN";
+    case MAJOR_MODE_PAK:
+      return "PAK";
+    case MAJOR_MODE_MD1:
+      return "MD1";
+    case MAJOR_MODE_WAD:
+      return "WAD";
+    case MAJOR_MODE_LMP:
+      return "LMP";
+    default:
+      return "UNKNOWN";
   }
 }
 
 static cstr minor_mode_str(minor_mode m) {
   switch (m) {
-  case MINOR_MODE_INIT:
-    return "INIT";
-  case MINOR_MODE_INFO:
-    return "INFO";
-  case MINOR_MODE_HELP:
-    return "HELP";
-  case MINOR_MODE_TREE:
-    return "TREE";
-  case MINOR_MODE_SKINS:
-    return "SKINS";
-  case MINOR_MODE_POSES:
-    return "POSES";
-  case MINOR_MODE_FRAMES:
-    return "FRAMES";
-  default:
-    return "UNKNOWN";
+    case MINOR_MODE_INIT:
+      return "INIT";
+    case MINOR_MODE_INFO:
+      return "INFO";
+    case MINOR_MODE_HELP:
+      return "HELP";
+    case MINOR_MODE_TREE:
+      return "TREE";
+    case MINOR_MODE_SKINS:
+      return "SKINS";
+    case MINOR_MODE_POSES:
+      return "POSES";
+    case MINOR_MODE_FRAMES:
+      return "FRAMES";
+    default:
+      return "UNKNOWN";
   }
 }
 
@@ -166,86 +168,59 @@ static void toggle_minor_mode(minor_mode m) {
   s.mnm ^= m;
 }
 
-static void update(void) {
-  if (s.rotating) {
-    s.mdl_roty += ROT_FACTOR;
-  }
-
-  if (s.animating && (stm_ms(stm_since(last_frame_tick)) > s.frame_rate)) {
-    last_frame_tick = stm_now();
-    s.mdl_frm++;
-    if (s.mdl_frm >= s.mdl.poses[s.mdl_pos].frames_length) {
-      s.mdl_frm = 0;
+static void mode_init_input(const sapp_event* e) {
+  if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
+    switch (e->key_code) {
+      case SAPP_KEYCODE_SLASH:
+        if (e->modifiers & SAPP_MODIFIER_SHIFT)
+          toggle_minor_mode(MINOR_MODE_HELP);
+        break;
+      default:
+        break;
     }
   }
 }
 
-static void frame(void) {
-  if (s.knd == KIND_MDL) {
-    render_3d(&s);
-  }
-  /* render_ui(&s); */
-  render_pak(&s);
-  update();
+static void mode_pak_input(const sapp_event* e) {}
 
-  if (s.mjm == MAJOR_MODE_PAK && stm_sec(stm_since(init_tm)) > MAX_INIT_DELAY) {
-    set_major_mode(MAJOR_MODE_MD1);
-  }
-}
-
-static void mode_init_input(const sapp_event *e) {
+static void mode_md1_input(const sapp_event* e) {
   if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
     switch (e->key_code) {
-    case SAPP_KEYCODE_SLASH:
-      if (e->modifiers & SAPP_MODIFIER_SHIFT)
-        toggle_minor_mode(MINOR_MODE_HELP);
-      break;
-    default:
-      break;
-    }
-  }
-}
-
-static void mode_pak_input(const sapp_event *e) {}
-
-static void mode_md1_input(const sapp_event *e) {
-  if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
-    switch (e->key_code) {
-    case SAPP_KEYCODE_SLASH:
-      if (e->modifiers & SAPP_MODIFIER_SHIFT)
-        toggle_minor_mode(MINOR_MODE_HELP);
-      break;
-    case SAPP_KEYCODE_I:
-      toggle_minor_mode(MINOR_MODE_INFO);
-      break;
-    case SAPP_KEYCODE_R:
-      s.rotating = !s.rotating;
-      break;
-    case SAPP_KEYCODE_S:
-      toggle_minor_mode(MINOR_MODE_SKINS);
-      break;
-    case SAPP_KEYCODE_P:
-      toggle_minor_mode(MINOR_MODE_POSES);
-      break;
-    case SAPP_KEYCODE_A:
-      s.animating = !s.animating;
-      break;
-    case SAPP_KEYCODE_PERIOD:
-      if (e->modifiers & SAPP_MODIFIER_SHIFT) {
-        next_pose();
-      } else {
-        next_frame();
-      }
-      break;
-    case SAPP_KEYCODE_COMMA:
-      if (e->modifiers & SAPP_MODIFIER_SHIFT) {
-        prev_pose();
-      } else {
-        prev_frame();
-      }
-      break;
-    default:
-      break;
+      case SAPP_KEYCODE_SLASH:
+        if (e->modifiers & SAPP_MODIFIER_SHIFT)
+          toggle_minor_mode(MINOR_MODE_HELP);
+        break;
+      case SAPP_KEYCODE_I:
+        toggle_minor_mode(MINOR_MODE_INFO);
+        break;
+      case SAPP_KEYCODE_R:
+        s.rotating = !s.rotating;
+        break;
+      case SAPP_KEYCODE_S:
+        toggle_minor_mode(MINOR_MODE_SKINS);
+        break;
+      case SAPP_KEYCODE_P:
+        toggle_minor_mode(MINOR_MODE_POSES);
+        break;
+      case SAPP_KEYCODE_A:
+        s.animating = !s.animating;
+        break;
+      case SAPP_KEYCODE_PERIOD:
+        if (e->modifiers & SAPP_MODIFIER_SHIFT) {
+          next_pose();
+        } else {
+          next_frame();
+        }
+        break;
+      case SAPP_KEYCODE_COMMA:
+        if (e->modifiers & SAPP_MODIFIER_SHIFT) {
+          prev_pose();
+        } else {
+          prev_frame();
+        }
+        break;
+      default:
+        break;
     }
   }
 
@@ -255,30 +230,30 @@ static void mode_md1_input(const sapp_event *e) {
   }
 }
 
-static void mode_wad_input(const sapp_event *e) {}
+static void mode_wad_input(const sapp_event* e) {}
 
-static void mode_lmp_input(const sapp_event *e) {}
+static void mode_lmp_input(const sapp_event* e) {}
 
 static void handle_file(cstr path) {
   s.knd = kind_guess_file(path);
 
   if (s.knd == KIND_PAK) {
-    u8 *buf = NULL; // IWYU pragma: always_keep
+    u8* buf = NULL;  // IWYU pragma: always_keep
     sz bufsz = sepi_io_load_file(path, &buf);
     // TODO: handle errors
 
     pak_load(buf, bufsz, &s.pak);
     // TODO: handle errors
   } else if (s.knd == KIND_MDL) {
-    create_offscreen_target(&s, path);
+    // create_offscreen_target(&s, path);
   }
 }
 
-static void input(const sapp_event *e) {
+static void input(const sapp_event* e) {
   snk_handle_event(e);
 
   if (e->type == SAPP_EVENTTYPE_RESIZED) {
-    update_offscreen_target(&s, e->window_width, e->window_height);
+    // update_offscreen_target(&s, e->window_width, e->window_height);
   }
 
   if (e->type == SAPP_EVENTTYPE_FILES_DROPPED) {
@@ -286,24 +261,73 @@ static void input(const sapp_event *e) {
   }
 
   switch (s.mjm) {
-  case MAJOR_MODE_INIT:
-    mode_init_input(e);
-  case MAJOR_MODE_PAK:
-    mode_pak_input(e);
-    break;
-  case MAJOR_MODE_MD1:
-    mode_md1_input(e);
-    break;
-  case MAJOR_MODE_WAD:
-    mode_wad_input(e);
-    break;
-  case MAJOR_MODE_LMP:
-    mode_lmp_input(e);
-    break;
-  default:
-    mode_init_input(e);
-    break;
+    case MAJOR_MODE_INIT:
+      mode_init_input(e);
+    case MAJOR_MODE_PAK:
+      mode_pak_input(e);
+      break;
+    case MAJOR_MODE_MD1:
+      mode_md1_input(e);
+      break;
+    case MAJOR_MODE_WAD:
+      mode_wad_input(e);
+      break;
+    case MAJOR_MODE_LMP:
+      mode_lmp_input(e);
+      break;
+    default:
+      mode_init_input(e);
+      break;
   }
+}
+
+// static void update(void) {
+//   if (s.rotating) {
+//     s.mdl_roty += ROT_FACTOR;
+//   }
+
+//   if (s.animating && (stm_ms(stm_since(last_frame_tick)) > s.frame_rate)) {
+//     last_frame_tick = stm_now();
+//     s.mdl_frm++;
+//     if (s.mdl_frm >= s.mdl.poses[s.mdl_pos].frames_length) {
+//       s.mdl_frm = 0;
+//     }
+//   }
+// }
+
+static void frame(void) {
+  switch (s.mjm) {
+    case MAJOR_MODE_INIT:
+      render_init(&s);
+      break;
+    case MAJOR_MODE_PAK:
+      render_pak(&s);
+      break;
+    case MAJOR_MODE_MD1:
+      render_md1(&s);
+      break;
+    case MAJOR_MODE_WAD:
+      render_wad(&s);
+      break;
+    case MAJOR_MODE_LMP:
+      render_lmp(&s);
+      break;
+    default:
+      render_init(&s);
+  }
+
+  // if (s.knd == KIND_MDL) {
+  //   render_3d(&s);
+  // }
+  // /* render_ui(&s); */
+  // render_pak(&s);
+
+  // update();
+
+  // if (s.mjm == MAJOR_MODE_PAK && stm_sec(stm_since(init_tm)) >
+  // MAX_INIT_DELAY) {
+  //   set_major_mode(MAJOR_MODE_MD1);
+  // }
 }
 
 static void cleanup(void) {
@@ -365,7 +389,7 @@ static void init(void) {
   }
 }
 
-sapp_desc sokol_main(i32 argc, char *argv[]) {
+sapp_desc sokol_main(i32 argc, char* argv[]) {
   log_info("starting");
 
   sargs_setup(&(sargs_desc){

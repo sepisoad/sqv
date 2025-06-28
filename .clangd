@@ -1,5 +1,7 @@
 CompileFlags:
   Add:
     - "-xc"
+    - "-std=c23"
     - "-Wall"
     - "-DDEBUG"
+  Compiler: clang-20

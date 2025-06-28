@@ -142,9 +142,7 @@ void unload_3d_model(md1 *m) {
   md1_unload(m);
 }
 
-// SEPI: this function is called in the main loop so we should avoid unnecessary
-// operations
-void render_3d(state *s) {
+void render_md1(state *s) {
   md1 *m = &s->mdl;
   hmm_v3 *bbmin = &m->header.bbox_min;
   hmm_v3 *bbmax = &m->header.bbox_max;

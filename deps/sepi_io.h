@@ -5,11 +5,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "sepi_macros.h" // IWYU pragma: keep
 #include "sepi_types.h"
-#include "sepi_macros.h"  // IWYU pragma: keep
 
 /* ****************** utils::io API ****************** */
-size_t sepi_io_load_file(cstr, u8**);
+size_t sepi_io_load_file(cstr, u8 **);
 /* ****************** utils::io API ****************** */
 
 #ifdef SEPI_IO_IMPLEMENTATION
@@ -25,15 +25,15 @@ size_t sepi_io_load_file(cstr, u8**);
 // |            |_|                                                           |
 // '--------------------------------------------------------------------------'
 
-size_t sepi_io_load_file(cstr path, u8** buf) {
-  FILE* f = fopen(path, "rb");
+size_t sepi_io_load_file(cstr path, u8 **buf) {
+  FILE *f = fopen(path, "rb");
   notnull(f);
 
   fseek(f, 0, SEEK_END);
   sz fsize = ftell(f);
   rewind(f);
 
-  *buf = (u8*)malloc(sizeof(u8) * fsize);
+  *buf = (u8 *)malloc(sizeof(u8) * fsize);
   notnull(*buf);
 
   sz rsize = fread(*buf, 1, fsize, f);
@@ -47,5 +47,5 @@ size_t sepi_io_load_file(cstr path, u8** buf) {
   return fsize;
 }
 
-#endif  // UTILS_IO_IMPLEMENTATION
-#endif  // SEPI_IO_HEADER_
+#endif // SEPI_IO_IMPLEMENTATION
+#endif // SEPI_IO_HEADER_

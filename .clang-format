@@ -3,4 +3,3 @@ TabWidth: 2
 IndentWidth: 2
 ColumnLimit: 80
 SortIncludes: false
-Language: C
