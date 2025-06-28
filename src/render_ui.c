@@ -1,15 +1,15 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "../deps/nuklear.h"
+#include "../deps/sepi_types.h"
 #include "../deps/sokol_app.h"
 #include "../deps/sokol_gfx.h"
-#include "../deps/nuklear.h"
-#include "../deps/sokol_nuklear.h"
 #include "../deps/sokol_glue.h"
-#include "../deps/sepi_types.h"
+#include "../deps/sokol_nuklear.h"
 
-#include "md1.h"
 #include "app.h"
+#include "md1.h"
 
 void set_skin(u32 idx);
 
@@ -31,11 +31,11 @@ static struct nk_rect view_max() {
   return nk_rect(5, 5, w - 10, h - 10);
 }
 
-static void draw_init_mode(state* s) {
+static void draw_init_mode(state *s) {
   cstr txt = "press '?' for help";
   i32 len = strlen(txt);
-  contextui* ctx = s->ctxui;
-  const struct nk_user_font* fnt = ctx->style.font;
+  contextui *ctx = s->ctxui;
+  const struct nk_user_font *fnt = ctx->style.font;
 
   if (nk_begin(ctx, "", win_max(), NK_WINDOW_NO_SCROLLBAR)) {
     nk_layout_space_begin(ctx, NK_STATIC, sapp_height(), 2);
@@ -43,15 +43,15 @@ static void draw_init_mode(state* s) {
     nk_image(ctx, nk_image_handle(snk_nkhandle(s->ctx3d->nk_img)));
     nk_layout_space_end(ctx);
 
-    struct nk_command_buffer* canvas = nk_window_get_canvas(ctx);
+    struct nk_command_buffer *canvas = nk_window_get_canvas(ctx);
     nk_fill_rect(canvas, nk_rect(5, 5, 135, 22), 1, BKG);
     nk_draw_text(canvas, nk_rect(10, 10, 200, 20), txt, len, fnt, BRD, TXT);
   }
   nk_end(ctx);
 }
 
-static void draw_normal_mode(state* s) {
-  contextui* ctx = s->ctxui;
+static void draw_normal_mode(state *s) {
+  contextui *ctx = s->ctxui;
 
   if (nk_begin(ctx, "sqv - sepi's quake md1 viewer",
                nk_rect(0, 0, sapp_width(), sapp_height()),
@@ -62,10 +62,10 @@ static void draw_normal_mode(state* s) {
   nk_end(ctx);
 }
 
-static void draw_info_mode(state* s) {
+static void draw_info_mode(state *s) {
   f32 w = (f32)sapp_width();
   f32 h = (f32)sapp_height();
-  struct nk_context* ctx = s->ctxui;
+  struct nk_context *ctx = s->ctxui;
 
   struct nk_style_window old_style = ctx->style.window;
   ctx->style.window.fixed_background = nk_style_item_color(BKG);
@@ -77,7 +77,7 @@ static void draw_info_mode(state* s) {
     nk_image(ctx, nk_image_handle(snk_nkhandle(s->ctx3d->nk_img)));
     nk_layout_space_end(ctx);
 
-    md1_header* hdr = &s->mdl.header;
+    md1_header *hdr = &s->mdl.header;
     char buf[256] = {0};
     if (nk_popup_begin(ctx, NK_POPUP_STATIC, "", NK_WINDOW_NO_SCROLLBAR,
                        view_max())) {
@@ -120,10 +120,10 @@ static void draw_info_mode(state* s) {
   ctx->style.window = old_style;
 }
 
-static void draw_help_mode(state* s) {
+static void draw_help_mode(state *s) {
   f32 w = (f32)sapp_width();
   f32 h = (f32)sapp_height();
-  contextui* ctx = s->ctxui;
+  contextui *ctx = s->ctxui;
 
   struct nk_style_window old_style = ctx->style.window;
   ctx->style.window.fixed_background = nk_style_item_color(BKG);
@@ -201,12 +201,12 @@ static void draw_help_mode(state* s) {
   ctx->style.window = old_style;
 }
 
-static void draw_skins_mode(state* s) {
+static void draw_skins_mode(state *s) {
   f32 w = (f32)sapp_width();
   f32 h = (f32)sapp_height();
   f32 iw = s->mdl.header.skin_width;
   f32 ih = s->mdl.header.skin_height;
-  struct nk_context* ctx = s->ctxui;
+  struct nk_context *ctx = s->ctxui;
 
   struct nk_style_window old_window_style = ctx->style.window;
   struct nk_style_button old_button_style = ctx->style.button;
@@ -247,10 +247,10 @@ static void draw_skins_mode(state* s) {
   ctx->style.button = old_button_style;
 }
 
-static void draw_poses_mode(state* s) {
+static void draw_poses_mode(state *s) {
   f32 w = (f32)sapp_width();
   f32 h = (f32)sapp_height();
-  struct nk_context* ctx = s->ctxui;
+  struct nk_context *ctx = s->ctxui;
 
   struct nk_style_window old_window_style = ctx->style.window;
   struct nk_style_button old_button_style = ctx->style.button;
@@ -272,9 +272,9 @@ static void draw_poses_mode(state* s) {
   }
   nk_end(ctx);
 
-  if (nk_begin(
-          ctx, "poses", nk_rect(5, 5, 100, h - 10),
-          NK_WINDOW_MOVABLE | NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_SCALABLE)) {
+  if (nk_begin(ctx, "poses", nk_rect(5, 5, 100, h - 10),
+               NK_WINDOW_MOVABLE | NK_WINDOW_NO_SCROLLBAR |
+                   NK_WINDOW_SCALABLE)) {
     nk_layout_row_dynamic(ctx, 15, 1);
     nk_label(ctx, "POSES", NK_TEXT_CENTERED);
 
@@ -300,7 +300,7 @@ static void draw_poses_mode(state* s) {
   ctx->style.button = old_button_style;
 }
 
-void render_ui(state* s) {
+void render_ui(state *s) {
   s->ctxui = snk_new_frame();
   nk_style_hide_cursor(s->ctxui);
 
@@ -309,29 +309,30 @@ void render_ui(state* s) {
   s->ctxui->style.window.padding = nk_vec2(0, 0);
   s->ctxui->style.window.spacing = nk_vec2(0, 0);
 
-  switch (s->mjm) {
-    case MAJOR_MODE_INIT:
-      draw_init_mode(s);
-      break;
-    case MAJOR_MODE_NORMAL:
-      draw_normal_mode(s);
-      break;
-    case MAJOR_MODE_INFO:
-      draw_info_mode(s);
-      break;
-    case MAJOR_MODE_HELP:
-      draw_help_mode(s);
-      break;
-    case MAJOR_MODE_SKINS:
-      draw_skins_mode(s);
-      break;
-    case MAJOR_MODE_POSES:
-      draw_poses_mode(s);
-      break;
-    default:
-      log_warn("this mode should have not happened!");
-      break;
-  }
+  // TODO:
+  // switch (s->mjm) {
+  // case MAJOR_MODE_PAK:
+  //   draw_init_mode(s);
+  //   break;
+  // case MAJOR_MODE_MD1:
+  //   draw_normal_mode(s);
+  //   break;
+  // case MAJOR_MODE_WAD:
+  //   draw_info_mode(s);
+  //   break;
+  // case MAJOR_MODE_LMP:
+  //   draw_help_mode(s);
+  //   break;
+  // case MAJOR_MODE_SKINS:
+  //   draw_skins_mode(s);
+  //   break;
+  // case MAJOR_MODE_POSES:
+  //   draw_poses_mode(s);
+  //   break;
+  // default:
+  //   log_warn("this mode should have not happened!");
+  //   break;
+  // }
 
   s->ctxui->style.window.padding = default_window_style.padding;
   s->ctxui->style.window.spacing = default_spacing;

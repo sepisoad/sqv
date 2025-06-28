@@ -118,18 +118,35 @@ static void set_frame_rate(f32 val) {
 
 static cstr major_mode_str(major_mode m) {
   switch (m) {
-  case MAJOR_MODE_INIT:
+  case MAJOR_MODE_PAK:
+    return "PAK";
+  case MAJOR_MODE_MD1:
+    return "MD1";
+  case MAJOR_MODE_WAD:
+    return "WAD";
+  case MAJOR_MODE_LMP:
+    return "LMP";
+  default:
+    return "UNKNOWN";
+  }
+}
+
+static cstr minor_mode_str(minor_mode m) {
+  switch (m) {
+  case MINOR_MODE_INIT:
     return "INIT";
-  case MAJOR_MODE_NORMAL:
-    return "NORMAL";
-  case MAJOR_MODE_HELP:
-    return "HELP";
-  case MAJOR_MODE_INFO:
+  case MINOR_MODE_INFO:
     return "INFO";
-  case MAJOR_MODE_SKINS:
+  case MINOR_MODE_HELP:
+    return "HELP";
+  case MINOR_MODE_TREE:
+    return "TREE";
+  case MINOR_MODE_SKINS:
     return "SKINS";
-  case MAJOR_MODE_POSES:
+  case MINOR_MODE_POSES:
     return "POSES";
+  case MINOR_MODE_FRAMES:
+    return "FRAMES";
   default:
     return "UNKNOWN";
   }
@@ -137,10 +154,16 @@ static cstr major_mode_str(major_mode m) {
 
 static void set_major_mode(major_mode m) {
   if (s.mjm != m) {
-    DBG("changing mode from '%s' to '%s'", major_mode_str(s.mjm),
+    DBG("changing major mode from '%s' to '%s'", major_mode_str(s.mjm),
         major_mode_str(m));
     s.mjm = m;
   }
+}
+
+static void toggle_minor_mode(minor_mode m) {
+  DBG("toggleing minor mode '%s' '%s'\n", minor_mode_str(m),
+      m & s.mnm ? "off" : "on");
+  s.mnm ^= m;
 }
 
 static void update(void) {
@@ -165,31 +188,44 @@ static void frame(void) {
   render_pak(&s);
   update();
 
-  if (s.mjm == MAJOR_MODE_INIT &&
-      stm_sec(stm_since(init_tm)) > MAX_INIT_DELAY) {
-    set_major_mode(MAJOR_MODE_NORMAL);
+  if (s.mjm == MAJOR_MODE_PAK && stm_sec(stm_since(init_tm)) > MAX_INIT_DELAY) {
+    set_major_mode(MAJOR_MODE_MD1);
   }
 }
 
-static void mode_normal_input(const sapp_event *e) {
+static void mode_init_input(const sapp_event *e) {
   if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
     switch (e->key_code) {
     case SAPP_KEYCODE_SLASH:
-      if (e->modifiers & SAPP_MODIFIER_SHIFT) {
-        set_major_mode(MAJOR_MODE_HELP);
-      }
+      if (e->modifiers & SAPP_MODIFIER_SHIFT)
+        toggle_minor_mode(MINOR_MODE_HELP);
+      break;
+    default:
+      break;
+    }
+  }
+}
+
+static void mode_pak_input(const sapp_event *e) {}
+
+static void mode_md1_input(const sapp_event *e) {
+  if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
+    switch (e->key_code) {
+    case SAPP_KEYCODE_SLASH:
+      if (e->modifiers & SAPP_MODIFIER_SHIFT)
+        toggle_minor_mode(MINOR_MODE_HELP);
       break;
     case SAPP_KEYCODE_I:
-      set_major_mode(MAJOR_MODE_INFO);
+      toggle_minor_mode(MINOR_MODE_INFO);
       break;
     case SAPP_KEYCODE_R:
       s.rotating = !s.rotating;
       break;
     case SAPP_KEYCODE_S:
-      set_major_mode(MAJOR_MODE_SKINS);
+      toggle_minor_mode(MINOR_MODE_SKINS);
       break;
     case SAPP_KEYCODE_P:
-      set_major_mode(MAJOR_MODE_POSES);
+      toggle_minor_mode(MINOR_MODE_POSES);
       break;
     case SAPP_KEYCODE_A:
       s.animating = !s.animating;
@@ -219,60 +255,9 @@ static void mode_normal_input(const sapp_event *e) {
   }
 }
 
-static void mode_init_input(const sapp_event *e) {
-  if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
-    set_major_mode(MAJOR_MODE_NORMAL);
-    mode_normal_input(e);
-  }
-}
+static void mode_wad_input(const sapp_event *e) {}
 
-static void mode_info_input(const sapp_event *e) {
-  if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
-    switch (e->key_code) {
-    case SAPP_KEYCODE_ESCAPE:
-      set_major_mode(MAJOR_MODE_NORMAL);
-      break;
-    default:
-      break;
-    }
-  }
-}
-
-static void mode_help_input(const sapp_event *e) {
-  if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
-    switch (e->key_code) {
-    case SAPP_KEYCODE_ESCAPE:
-      set_major_mode(MAJOR_MODE_NORMAL);
-      break;
-    default:
-      break;
-    }
-  }
-}
-
-static void mode_skins_input(const sapp_event *e) {
-  if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
-    switch (e->key_code) {
-    case SAPP_KEYCODE_ESCAPE:
-      set_major_mode(MAJOR_MODE_NORMAL);
-      break;
-    default:
-      break;
-    }
-  }
-}
-
-static void mode_poses_input(const sapp_event *e) {
-  if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
-    switch (e->key_code) {
-    case SAPP_KEYCODE_ESCAPE:
-      set_major_mode(MAJOR_MODE_NORMAL);
-      break;
-    default:
-      break;
-    }
-  }
-}
+static void mode_lmp_input(const sapp_event *e) {}
 
 static void handle_file(cstr path) {
   s.knd = kind_guess_file(path);
@@ -303,23 +288,20 @@ static void input(const sapp_event *e) {
   switch (s.mjm) {
   case MAJOR_MODE_INIT:
     mode_init_input(e);
+  case MAJOR_MODE_PAK:
+    mode_pak_input(e);
     break;
-  case MAJOR_MODE_NORMAL:
-    mode_normal_input(e);
+  case MAJOR_MODE_MD1:
+    mode_md1_input(e);
     break;
-  case MAJOR_MODE_INFO:
-    mode_info_input(e);
+  case MAJOR_MODE_WAD:
+    mode_wad_input(e);
     break;
-  case MAJOR_MODE_HELP:
-    mode_help_input(e);
-    break;
-  case MAJOR_MODE_SKINS:
-    mode_skins_input(e);
-    break;
-  case MAJOR_MODE_POSES:
-    mode_poses_input(e);
+  case MAJOR_MODE_LMP:
+    mode_lmp_input(e);
     break;
   default:
+    mode_init_input(e);
     break;
   }
 }
@@ -367,7 +349,7 @@ static void init(void) {
   init_tm = stm_now();
   s.ctx3d = &ctx3d;
   s.mjm = MAJOR_MODE_INIT;
-  s.mnm = MINOR_MODE_UNKNOWN;
+  s.mnm = MINOR_MODE_INIT;
   s.mdl_pos = 0;
   s.mdl_skn = 0;
   s.frame_rate = 60;

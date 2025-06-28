@@ -141,6 +141,16 @@ newaction {
 
 -- Run Action 1
 newaction {
+  trigger = "p",
+  description = "execute",
+  execute = function()
+    os.execute("BUILD/sqv")
+  end
+}
+
+
+-- Run Action 1
+newaction {
   trigger = "r",
   description = "quick execute",
   execute = function()
