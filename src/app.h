@@ -1,11 +1,11 @@
 #ifndef SQV_APP_HEADER_
 #define SQV_APP_HEADER_
 
-#include "../deps/nuklear.h"
-#include "../deps/sepi_types.h"
-#include "../deps/sokol_app.h"
-#include "../deps/sokol_gfx.h"
-#include "../deps/sokol_nuklear.h"
+#include "../deps/nuklear/nuklear.h"
+#include "../deps/sepi/types.h"
+#include "../deps/sokol/sokol_app.h"
+#include "../deps/sokol/sokol_gfx.h"
+#include "../deps/sokol/sokol_nuklear.h"
 
 #include "./md1.h"
 #include "./pak.h"

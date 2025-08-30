@@ -5,7 +5,8 @@
 #include <ctype.h>
 #include <string.h>
 
-#include "../deps/sepi_types.h"
+#include "../deps/sepi/types.h"
+#include "../deps/sepi/macros.h"
 
 typedef enum {
   KIND_UNKNOWN = -1,
@@ -89,7 +90,6 @@ static kind guess_file_type(cstr buf) {
 kind kind_guess_entry(cstr path, u32 len) {
   char ext[32] = {0};
   i32 ridx = len;
-  i32 idx = 0;
   i32 end = 0;
   i32 start = 0;
   i32 extlen = 0;

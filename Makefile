@@ -10,7 +10,6 @@ endif
 
 ifeq ($(config),debug)
   mk_log_config = debug
-  mk_ini_config = debug
   mk_sokol_config = debug
   mk_hmm_config = debug
   mk_stb_config = debug
@@ -19,7 +18,6 @@ ifeq ($(config),debug)
 
 else ifeq ($(config),release)
   mk_log_config = release
-  mk_ini_config = release
   mk_sokol_config = release
   mk_hmm_config = release
   mk_stb_config = release
@@ -30,7 +28,7 @@ else
   $(error "invalid configuration $(config)")
 endif
 
-PROJECTS := mk_log mk_ini mk_sokol mk_hmm mk_stb mk_sepi mk_sqv
+PROJECTS := mk_log mk_sokol mk_hmm mk_stb mk_sepi mk_sqv
 
 .PHONY: all clean help $(PROJECTS) 
 
@@ -40,12 +38,6 @@ mk_log:
 ifneq (,$(mk_log_config))
 	@echo "==== Building mk_log ($(mk_log_config)) ===="
 	@${MAKE} --no-print-directory -C BUILD -f mk_log.make config=$(mk_log_config)
-endif
-
-mk_ini:
-ifneq (,$(mk_ini_config))
-	@echo "==== Building mk_ini ($(mk_ini_config)) ===="
-	@${MAKE} --no-print-directory -C BUILD -f mk_ini.make config=$(mk_ini_config)
 endif
 
 mk_sokol:
@@ -80,7 +72,6 @@ endif
 
 clean:
 	@${MAKE} --no-print-directory -C BUILD -f mk_log.make clean
-	@${MAKE} --no-print-directory -C BUILD -f mk_ini.make clean
 	@${MAKE} --no-print-directory -C BUILD -f mk_sokol.make clean
 	@${MAKE} --no-print-directory -C BUILD -f mk_hmm.make clean
 	@${MAKE} --no-print-directory -C BUILD -f mk_stb.make clean
@@ -98,7 +89,6 @@ help:
 	@echo "   all (default)"
 	@echo "   clean"
 	@echo "   mk_log"
-	@echo "   mk_ini"
 	@echo "   mk_sokol"
 	@echo "   mk_hmm"
 	@echo "   mk_stb"

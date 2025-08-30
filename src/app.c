@@ -1,32 +1,33 @@
 #define PAK_IMPLEMENTATION
 #define MD1_IMPLEMENTATION
 #define KIND_IMPLEMENTATION
+// #define PAK_TREE_IMPLEMENTATION
 
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "../deps/hmm.h"
-#include "../deps/log.h"
-#include "../deps/nuklear.h"
-#include "../deps/sepi_io.h"
-#include "../deps/sepi_types.h"
-#include "../deps/sokol_app.h"
-#include "../deps/sokol_args.h"
-#include "../deps/sokol_gfx.h"
-#include "../deps/sokol_glue.h"
-#include "../deps/sokol_log.h"
-#include "../deps/sokol_nuklear.h"
-#include "../deps/sokol_time.h"
+#include "../deps/hmm/hmm.h"
+#include "../deps/log/log.h"
+#include "../deps/nuklear/nuklear.h"
+#include "../deps/sepi/io.h"
+#include "../deps/sepi/types.h"
+#include "../deps/sokol/sokol_app.h"
+#include "../deps/sokol/sokol_args.h"
+#include "../deps/sokol/sokol_gfx.h"
+#include "../deps/sokol/sokol_glue.h"
+#include "../deps/sokol/sokol_log.h"
+#include "../deps/sokol/sokol_nuklear.h"
+#include "../deps/sokol/sokol_time.h"
 
 #include "../res/shaders/default.glsl.h"
 #include "./app.h"
-#include "./kind.h"
+// #include "./kind.h"
 #include "./md1.h"
 #include "./pak.h"
 
 #ifdef DEBUG
-#include "../deps/sepi_alloc.h"
-#include "../deps/sokol_memtrack.h"
+#include "../deps/sepi/alloc.h"
+#include "../deps/sokol/sokol_memtrack.h"
 #endif
 
 context3d ctx3d = {0};
@@ -371,10 +372,6 @@ static void cleanup(void) {
   snk_shutdown();
   sg_shutdown();
   sargs_shutdown();
-
-#ifdef DEBUG
-  sepi_alloc_report();
-#endif
 }
 
 static void init(void) {

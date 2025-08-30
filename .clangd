@@ -4,4 +4,7 @@ CompileFlags:
     - "-std=c23"
     - "-Wall"
     - "-DDEBUG"
-  Compiler: clang-20
+    - "-DPAK_IMPLEMENTATION"
+    - "-DKIND_IMPLEMENTATION"
+    - "-DMD1_IMPLEMENTATION"
+    - "-DPAK_TREE_IMPLEMENTATION"

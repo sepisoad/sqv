@@ -2,11 +2,11 @@
 // #include <stdio.h>
 
 // #include "../deps/nuklear.h"
-// #include "../deps/sepi_types.h"
-// #include "../deps/sokol_app.h"
-// #include "../deps/sokol_gfx.h"
-// #include "../deps/sokol_glue.h"
-// #include "../deps/sokol_nuklear.h"
+// #include "../deps/sepi/types.h"
+// #include "../deps/sokol/app.h"
+// #include "../deps/sokol/gfx.h"
+// #include "../deps/sokol/glue.h"
+// #include "../deps/sokol/nuklear.h"
 
 // #include "app.h"
 // #include "md1.h"

@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include "sepi_types.h"
+#include "types.h"
 
 /* ****************** API ****************** */
 i16 endian_i16(i16 num);

@@ -1,23 +1,23 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "../deps/hmm.h"
-#include "../deps/nuklear.h"
-#include "../deps/sepi_io.h"
-#include "../deps/sepi_types.h"
-#include "../deps/sokol_app.h"
-#include "../deps/sokol_args.h"
-#include "../deps/sokol_gfx.h"
-#include "../deps/sokol_glue.h"
-#include "../deps/sokol_log.h"
-#include "../deps/sokol_nuklear.h"
+#include "../deps/hmm/hmm.h"
+#include "../deps/nuklear/nuklear.h"
+#include "../deps/sepi/io.h"
+#include "../deps/sepi/types.h"
+#include "../deps/sokol/sokol_app.h"
+#include "../deps/sokol/sokol_args.h"
+#include "../deps/sokol/sokol_gfx.h"
+#include "../deps/sokol/sokol_glue.h"
+#include "../deps/sokol/sokol_log.h"
+#include "../deps/sokol/sokol_nuklear.h"
 
 #include "../res/shaders/default.glsl.h"
 #include "app.h"
 #include "md1.h"
 
 #ifdef DEBUG
-#include "../deps/sepi_alloc.h" // IWYU pragma: keep
+#include "../deps/sepi/alloc.h" // IWYU pragma: keep
 #endif
 
 extern context3d ctx3d;

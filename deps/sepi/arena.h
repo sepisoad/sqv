@@ -7,8 +7,8 @@
 #include <stddef.h>
 #include <assert.h>
 
-#include "sepi_types.h"
-#include "sepi_macros.h"  // IWYU pragma: keep
+#include "types.h"
+#include "macros.h"  // IWYU pragma: keep
 
 #define ARENA_DEFAULT_SIZE (1024 * 1024)  // 1MB default size
 #define ALIGNMENT 16                      // Default alignment
@@ -26,7 +26,7 @@ void arena_destroy(arena* a);
 void* arena_alloc(arena* a, sz size, sz alignment);
 void arena_reset(arena* a);
 void arena_begin_estimate(arena* a);
-void arena_estimate_add(arena* a, sz size, sz alignment);
+void arena_add_estimate(arena* a, sz size, sz alignment);
 sz arena_end_estimate(arena* a);
 void arena_print(arena* a);
 /* ****************** API ****************** */
@@ -71,8 +71,6 @@ void arena_destroy(arena* a) {
   a->estimate = 0;
 }
 
-/* ****************** Arena Allocation API ****************** */
-
 void* arena_alloc(arena* a, sz size, sz alignment) {
   sz aligned_offset = align_up((sz)(a->base + a->offset), alignment);
   sz padding = aligned_offset - (sz)(a->base + a->offset);
@@ -90,15 +88,13 @@ void arena_reset(arena* a) {
   a->offset = 0;
 }
 
-/* ****************** Memory Estimation API ****************** */
-
 void arena_begin_estimate(arena* a) {
   a->offset = 0;
   a->estimate = 0;
   a->base = NULL;
 }
 
-void arena_estimate_add(arena* a, sz size, sz alignment) {
+void arena_add_estimate(arena* a, sz size, sz alignment) {
   sz aligned_offset = align_up(a->estimate, alignment);
   a->estimate = aligned_offset + size;
 }
@@ -112,8 +108,6 @@ sz arena_end_estimate(arena* a) {
   a->size = final_size;
   return final_size;
 }
-
-/* ****************** Debug API ****************** */
 
 void arena_print(arena* a) {
   printf("==========================\n");

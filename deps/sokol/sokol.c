@@ -13,7 +13,7 @@
 #include "sokol_glue.h"
 #include "sokol_time.h"
 #include "sokol_log.h"
-#include "nuklear.h"
+#include "../nuklear/nuklear.h"
 #include "sokol_nuklear.h"
 
 #ifdef DEBUG
