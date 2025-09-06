@@ -85,7 +85,7 @@ project "mk_sepi"
   targetname "sepi"
   buildoptions { "-Wno-deprecated-declarations" }
   files {"deps/sepi.c"}
-  
+
 -- Main Application
 project "mk_sqv"
   kind "ConsoleApp"
@@ -95,13 +95,14 @@ project "mk_sqv"
   objdir "BUILD/obj"
   targetname "sqv"
   includedirs {"src", "deps"}
+  libdirs { "BUILD" }
   links {
-    "mk_log:static",
-    "mk_ini:static",
-    "mk_stb:static",
-    "mk_hmm:static",
-    "mk_sepi:static",
-    "mk_sokol:static",    
+    "log:static",
+    "ini:static",
+    "stb:static",
+    "hmm:static",
+    "sepi:static",
+    "sokol:static",
   }
   files {
     "src/app.c",
@@ -160,4 +161,3 @@ newaction {
     os.execute("BUILD/sqv -i=" .. args_str)
   end
 }
-
