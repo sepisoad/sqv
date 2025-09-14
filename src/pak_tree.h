@@ -1,10 +1,10 @@
 #ifndef PAK_TREE_HEADER_
 #define PAK_TREE_HEADER_
 
-#include "../deps/stb/stb_ds.h"
-#include "../deps/sepi/types.h"
-#include "../deps/sepi/arena.h"
-#include "../deps/sepi/alloc.h"
+#include "deps/stb/stb_ds.h"
+#include "deps/sepi/types.h"
+#include "deps/sepi/arena.h"
+#include "deps/sepi/alloc.h"
 #include "pak.h"
 
 typedef struct pak_tree_node {
@@ -21,22 +21,17 @@ typedef struct {
   arena mem;
 } pak_tree;
 
-/* ****************** API ****************** */
+/* ===================================================== */
+/*                          API                          */
+/* ===================================================== */
+
 void pak_tree_make(pak_tree* tree, pak* pak);
-/* ****************** API ****************** */
+
+/* ===================================================== */
+/*                    IMPLEMENTATION                     */
+/* ===================================================== */
 
 #ifdef PAK_TREE_IMPLEMENTATION
-
-// .--------------------------------------------------------------------------.
-// | _                 _                           _        _   _             |
-// |(_)               | |                         | |      | | (_)            |
-// | _ _ __ ___  _ __ | | ___ _ __ ___   ___ _ __ | |_ __ _| |_ _  ___  _ __  |
-// || | '_ ` _ \| '_ \| |/ _ \ '_ ` _ \ / _ \ '_ \| __/ _` | __| |/ _ \| '_ \ |
-// || | | | | | | |_) | |  __/ | | | | |  __/ | | | || (_| | |_| | (_) | | | ||
-// ||_|_| |_| |_| .__/|_|\___|_| |_| |_|\___|_| |_|\__\__,_|\__|_|\___/|_| |_||
-// |            | |                                                           |
-// |            |_|                                                           |
-// '--------------------------------------------------------------------------'
 
 #include <string.h>
 #include <stdlib.h>
@@ -129,11 +124,11 @@ static void pak_tree_estimate_memory(pak_tree* tree,
 
   // Setup arena
   arena* mem = &tree->mem;
-  arena_begin_estimate(mem);
-  arena_add_estimate(mem, *out_node_count * sizeof(pak_tree_node), ALIGNMENT);
-  arena_add_estimate(mem, *out_string_len, ALIGNMENT);
-  arena_add_estimate(mem, pak->entries_count * PAK_ENTRY_NAME_LEN, ALIGNMENT);
-  arena_end_estimate(mem);
+  arena_estimate_begin(mem);
+  arena_estimate_add(mem, *out_node_count * sizeof(pak_tree_node), ALIGNMENT);
+  arena_estimate_add(mem, *out_string_len, ALIGNMENT);
+  arena_estimate_add(mem, pak->entries_count * PAK_ENTRY_NAME_LEN, ALIGNMENT);
+  arena_estimate_end(mem);
 }
 
 void pak_tree_make(pak_tree* tree, pak* pak) {
@@ -263,6 +258,10 @@ void pak_tree_make(pak_tree* tree, pak* pak) {
   }
 #endif
 }
+
+/* ===================================================== */
+/*                          END                          */
+/* ===================================================== */
 
 #endif  // PAK_TREE_IMPLEMENTATION
 #endif  // PAK_TREE_HEADER_

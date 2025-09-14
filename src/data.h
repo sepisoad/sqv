@@ -1,7 +1,7 @@
 #ifndef QK_DATA_HEADER_
 #define QK_DATA_HEADER_
 
-#include "../deps/sepi/types.h"
+#include "deps/sepi/base.h"
 
 const u8 quake1_palette[256][3] = {
     {0, 0, 0},       /* */

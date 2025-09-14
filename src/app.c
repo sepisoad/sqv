@@ -1,34 +1,26 @@
 #define PAK_IMPLEMENTATION
 #define MD1_IMPLEMENTATION
 #define KIND_IMPLEMENTATION
-// #define PAK_TREE_IMPLEMENTATION
 
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "../deps/hmm/hmm.h"
-#include "../deps/log/log.h"
-#include "../deps/nuklear/nuklear.h"
-#include "../deps/sepi/io.h"
-#include "../deps/sepi/types.h"
-#include "../deps/sokol/sokol_app.h"
-#include "../deps/sokol/sokol_args.h"
-#include "../deps/sokol/sokol_gfx.h"
-#include "../deps/sokol/sokol_glue.h"
-#include "../deps/sokol/sokol_log.h"
-#include "../deps/sokol/sokol_nuklear.h"
-#include "../deps/sokol/sokol_time.h"
+#include "deps/hmm/hmm.h"
+#include "deps/log/log.h"
+#include "deps/nuklear/nuklear.h"
+#include "deps/sepi/io.h"
+#include "deps/sokol/sokol_app.h"
+#include "deps/sokol/sokol_args.h"
+#include "deps/sokol/sokol_gfx.h"
+#include "deps/sokol/sokol_glue.h"
+#include "deps/sokol/sokol_log.h"
+#include "deps/sokol/sokol_nuklear.h"
+#include "deps/sokol/sokol_time.h"
 
-#include "../res/shaders/default.glsl.h"
-#include "./app.h"
-// #include "./kind.h"
-#include "./md1.h"
-#include "./pak.h"
-
-#ifdef DEBUG
-#include "../deps/sepi/alloc.h"
-#include "../deps/sokol/sokol_memtrack.h"
-#endif
+#include "shaders/default.glsl.h"
+#include "app.h"
+#include "md1.h"
+#include "pak.h"
 
 context3d ctx3d = {0};
 static state s;
@@ -42,7 +34,7 @@ void render_wad(state*);
 void render_lmp(state*);
 
 void set_skin(u32 idx) {
-  makesure(idx <= s.mdl.header.skins_length, "invalid skin index");
+  MAKESURE(idx <= s.mdl.header.skins_length, "invalid skin index");
   s.bind.images[IMG_tex] = s.mdl.skins[idx].image;
   s.bind.samplers[SMP_smp] = s.mdl.skins[idx].sampler;
 }
@@ -60,8 +52,6 @@ void reset_state() {
   s.frame_rate = 60;
   clean_commandline();
 }
-
-// PRIVATE FUNCTIONS
 
 static void next_pose() {
   s.mdl_pos++;
@@ -321,20 +311,6 @@ static void input(const sapp_event* e) {
   }
 }
 
-// static void update(void) {
-//   if (s.rotating) {
-//     s.mdl_roty += ROT_FACTOR;
-//   }
-
-//   if (s.animating && (stm_ms(stm_since(last_frame_tick)) > s.frame_rate)) {
-//     last_frame_tick = stm_now();
-//     s.mdl_frm++;
-//     if (s.mdl_frm >= s.mdl.poses[s.mdl_pos].frames_length) {
-//       s.mdl_frm = 0;
-//     }
-//   }
-// }
-
 static void frame(void) {
   switch (s.mjm) {
     case MAJOR_MODE_INIT:
@@ -380,9 +356,6 @@ static void init(void) {
   sg_setup(&(sg_desc){
       .environment = sglue_environment(),
       .logger.func = slog_func,
-#ifdef DEBUG
-      .allocator = {.alloc_fn = smemtrack_alloc, .free_fn = smemtrack_free}
-#endif
   });
 
   stm_setup();

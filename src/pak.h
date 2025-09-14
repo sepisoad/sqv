@@ -4,11 +4,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "../deps/sepi/types.h"
-#include "../deps/sepi/endian.h"  // IWYU pragma: keep
-#include "../deps/sepi/arena.h"
+#include "deps/sepi/endian.h"
+#include "deps/sepi/arena.h"
 
-#include "./kind.h"
+#include "?kind.h"
 
 #define PAK_HEADER_LEN 4
 #define PAK_ENTRY_NAME_LEN 56
@@ -46,40 +45,35 @@ typedef struct {
   arena mem;
 } pak;
 
-/* ****************** API ****************** */
+/* ===================================================== */
+/*                          API                          */
+/* ===================================================== */
+
 pak_err pak_load(cbuf, sz, pak*);
 void pak_unload(pak*);
-/* ****************** API ****************** */
 
-// .--------------------------------------------------------------------------.
-// | _                 _                           _        _   _             |
-// |(_)               | |                         | |      | | (_)            |
-// | _ _ __ ___  _ __ | | ___ _ __ ___   ___ _ __ | |_ __ _| |_ _  ___  _ __  |
-// || | '_ ` _ \| '_ \| |/ _ \ '_ ` _ \ / _ \ '_ \| __/ _` | __| |/ _ \| '_ \ |
-// || | | | | | | |_) | |  __/ | | | | |  __/ | | | || (_| | |_| | (_) | | | ||
-// ||_|_| |_| |_| .__/|_|\___|_| |_| |_|\___|_| |_|\__\__,_|\__|_|\___/|_| |_||
-// |            | |                                                           |
-// |            |_|                                                           |
-// '--------------------------------------------------------------------------'
+/* ===================================================== */
+/*                    IMPLEMENTATION                     */
+/* ===================================================== */
 
 #ifdef PAK_IMPLEMENTATION
 
 static pak_err pak_estimate_memory(cbuf buf, pak* pak, i32 offset) {
   DBG("trying to estimate required memory");
 
-  arena_begin_estimate(&pak->mem);
+  arena_estimate_begin(&pak->mem);
   pak_raw_entry* rent = (pak_raw_entry*)(buf + offset);
 
   sz entsz = sizeof(pak_entry);
   for (i32 i = 0; i < pak->entries_count; i++) {
     i32 size = endian_i32(rent->size);
-    arena_add_estimate(&pak->mem, size, alignof(u8));
-    arena_add_estimate(&pak->mem, entsz, alignof(pak_entry));
+    arena_estimate_add(&pak->mem, size, alignof(u8));
+    arena_estimate_add(&pak->mem, entsz, alignof(pak_entry));
     rent++;
   }
 
-  arena_end_estimate(&pak->mem);
-  DBG("memory size needed: %d bytes", pak->mem.estimate);
+  arena_estimate_end(&pak->mem);
+  DBG("memory size needed: %d bytes", pak->mem.estimation);
 
   return PAK_ERR_SUCCESS;
 }
@@ -93,12 +87,12 @@ static pak_err pak_read_header(cbuf buf, sz bufsz, pak* pak, i32* tbloff) {
   i32 size = endian_i32(rhdr->size);
   i32 idlen = (sizeof(PAK_HEADER_ID) / sizeof(char)) - 1;
 
-  errorout(!strncmp(rhdr->id, PAK_HEADER_ID, idlen), PAK_ERR_MALFORMED);
-  errorout(offset > 0, PAK_ERR_MALFORMED);
-  errorout(size > 0, PAK_ERR_MALFORMED);
+  ERROROUT(!strncmp(rhdr->id, PAK_HEADER_ID, idlen), PAK_ERR_MALFORMED);
+  ERROROUT(offset > 0, PAK_ERR_MALFORMED);
+  ERROROUT(size > 0, PAK_ERR_MALFORMED);
 
   pak->entries_count = size / sizeof(pak_raw_entry);
-  errorout(pak->entries_count > 0, PAK_ERR_MALFORMED);
+  ERROROUT(pak->entries_count > 0, PAK_ERR_MALFORMED);
 
   *tbloff = offset;
   return PAK_ERR_SUCCESS;
@@ -150,6 +144,10 @@ pak_err pak_load(cbuf buf, sz bufsz, pak* pak) {
 void pak_unload(pak* pak) {
   arena_destroy(&pak->mem);
 }
+
+/* ===================================================== */
+/*                          END                          */
+/* ===================================================== */
 
 #endif  // PAK_IMPLEMENTATION
 #endif  // PAK_HEADER_

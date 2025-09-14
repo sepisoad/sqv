@@ -1,32 +1,27 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "../deps/hmm/hmm.h"
-#include "../deps/nuklear/nuklear.h"
-#include "../deps/sepi/io.h"
-#include "../deps/sepi/types.h"
-#include "../deps/sokol/sokol_app.h"
-#include "../deps/sokol/sokol_args.h"
-#include "../deps/sokol/sokol_gfx.h"
-#include "../deps/sokol/sokol_glue.h"
-#include "../deps/sokol/sokol_log.h"
-#include "../deps/sokol/sokol_nuklear.h"
+#include "deps/hmm/hmm.h"
+#include "deps/nuklear/nuklear.h"
+#include "deps/sepi/io.h"
+#include "deps/sokol/sokol_app.h"
+#include "deps/sokol/sokol_args.h"
+#include "deps/sokol/sokol_gfx.h"
+#include "deps/sokol/sokol_glue.h"
+#include "deps/sokol/sokol_log.h"
+#include "deps/sokol/sokol_nuklear.h"
 
-#include "../res/shaders/default.glsl.h"
+#include "shaders/default.glsl.h"
 #include "app.h"
 #include "md1.h"
-
-#ifdef DEBUG
-#include "../deps/sepi/alloc.h" // IWYU pragma: keep
-#endif
 
 extern context3d ctx3d;
 
 void reset_state();
-void load_3d_model(cstr path, md1 *m);
-void unload_3d_model(md1 *m);
+void load_3d_model(cstr path, md1* m);
+void unload_3d_model(md1* m);
 
-void update_offscreen_target(state *s, int width, int height) {
+void update_offscreen_target(state* s, int width, int height) {
   snk_destroy_image(s->ctx3d->nk_img);
   sg_destroy_attachments(s->ctx3d->atts);
   sg_destroy_image(s->ctx3d->depth_img);
@@ -66,7 +61,7 @@ void update_offscreen_target(state *s, int width, int height) {
   };
 }
 
-void create_offscreen_target(state *s, cstr path) {
+void create_offscreen_target(state* s, cstr path) {
   if (s->ctx3d != NULL) {
     unload_3d_model(&s->mdl);
     sg_destroy_pipeline(s->pip);
@@ -76,9 +71,9 @@ void create_offscreen_target(state *s, cstr path) {
   }
 
   load_3d_model(path, &s->mdl);
-  s->ctx3d = &ctx3d; // resetting
+  s->ctx3d = &ctx3d;  // resetting
 
-  const f32 *vb = NULL;
+  const f32* vb = NULL;
   u32 vb_len = 0;
   md1_get_vertices(&s->mdl, s->mdl_pos, s->mdl_frm, &vb, &vb_len);
 
@@ -125,27 +120,27 @@ void create_offscreen_target(state *s, cstr path) {
   };
 }
 
-void load_3d_model(cstr path, md1 *m) {
-  notnull(path);
-  notnull(m);
+void load_3d_model(cstr path, md1* m) {
+  NOTNULL(path);
+  NOTNULL(m);
 
-  u8 *bf = NULL;
-  sz bfsz = notzero(sepi_io_load_file(path, &bf));
+  u8* bf = NULL;
+  sz bfsz = NOTZERO(sepi_io_load_file(path, &bf));
 
   md1_err err = md1_load(bf, bfsz, m);
-  makesure(err == MD1_ERR_SUCCESS, "qk_load_mdl failed");
+  MAKESURE(err == MD1_ERR_SUCCESS, "qk_load_mdl failed");
   free(bf);
 }
 
-void unload_3d_model(md1 *m) {
-  notnull(m);
+void unload_3d_model(md1* m) {
+  NOTNULL(m);
   md1_unload(m);
 }
 
-void render_md1(state *s) {
-  md1 *m = &s->mdl;
-  hmm_v3 *bbmin = &m->header.bbox_min;
-  hmm_v3 *bbmax = &m->header.bbox_max;
+void render_md1(state* s) {
+  md1* m = &s->mdl;
+  hmm_v3* bbmin = &m->header.bbox_min;
+  hmm_v3* bbmax = &m->header.bbox_max;
   hmm_vec3 center = HMM_MultiplyVec3f(HMM_AddVec3(*bbmin, *bbmax), 0.5f);
   f32 dx = bbmax->X - bbmin->X;
   f32 dy = bbmax->Y - bbmin->Y;
@@ -176,7 +171,7 @@ void render_md1(state *s) {
       .mvp = HMM_MultiplyMat4(view_proj, model),
   };
 
-  const f32 *vb = NULL;
+  const f32* vb = NULL;
   u32 vb_len = 0;
 
   md1_get_vertices(m, s->mdl_pos, s->mdl_frm, &vb, &vb_len);

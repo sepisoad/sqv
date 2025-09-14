@@ -1,9 +1,9 @@
-#include "../deps/nuklear/nuklear.h"
-#include "../deps/sokol/sokol_app.h"
-#include "../deps/sokol/sokol_gfx.h"
-#include "../deps/sokol/sokol_glue.h"
-#include "../deps/sokol/sokol_nuklear.h"
-#include "../deps/sepi/types.h"
+#include "deps/sepi/base.h"
+#include "deps/nuklear/nuklear.h"
+#include "deps/sokol/sokol_app.h"
+#include "deps/sokol/sokol_gfx.h"
+#include "deps/sokol/sokol_glue.h"
+#include "deps/sokol/sokol_nuklear.h"
 
 #include "app.h"
 

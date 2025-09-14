@@ -10,14 +10,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../deps/hmm/hmm.h"
-#include "../deps/nuklear/nuklear.h"
-#include "../deps/sepi/arena.h"
-#include "../deps/sepi/endian.h"  // IWYU pragma: keep
-#include "../deps/sepi/types.h"
-#include "../deps/sokol/sokol_app.h"
-#include "../deps/sokol/sokol_gfx.h"
-#include "../deps/sokol/sokol_nuklear.h"
+#include "deps/hmm/hmm.h"
+#include "deps/nuklear/nuklear.h"
+#include "deps/sepi/arena.h"
+#include "deps/sepi/endian.h"
+#include "deps/sokol/sokol_app.h"
+#include "deps/sokol/sokol_gfx.h"
+#include "deps/sokol/sokol_nuklear.h"
 
 #define MAX_STATIC_MEM 8192
 #define MAX_FRAME_NAME_LEN 16
@@ -148,22 +147,17 @@ typedef enum {
   MD1_ERR_INVALID,
 } md1_err;
 
-/* ****************** API ****************** */
+/* ===================================================== */
+/*                          API                          */
+/* ===================================================== */
+
 md1_err md1_load(const u8*, sz, md1*);
 void md1_unload(md1*);
 void md1_get_vertices(const md1*, u32, u32, const f32**, u32*);
-/* ****************** API ****************** */
 
-// .--------------------------------------------------------------------------.
-// | _                 _                           _        _   _             |
-// |(_)               | |                         | |      | | (_)            |
-// | _ _ __ ___  _ __ | | ___ _ __ ___   ___ _ __ | |_ __ _| |_ _  ___  _ __  |
-// || | '_ ` _ \| '_ \| |/ _ \ '_ ` _ \ / _ \ '_ \| __/ _` | __| |/ _ \| '_ \ |
-// || | | | | | | |_) | |  __/ | | | | |  __/ | | | || (_| | |_| | (_) | | | ||
-// ||_|_| |_| |_| .__/|_|\___|_| |_| |_|\___|_| |_|\__\__,_|\__|_|\___/|_| |_||
-// |            | |                                                           |
-// |            |_|                                                           |
-// '--------------------------------------------------------------------------'
+/* ===================================================== */
+/*                    IMPLEMENTATION                     */
+/* ===================================================== */
 
 #ifdef MD1_IMPLEMENTATION
 
@@ -202,7 +196,7 @@ static void md1_estimate_memory(arena* mem,
                                 sz bufsz,
                                 md1_header* hdr) {
   DBG("trying to estimate required memory");
-  arena_begin_estimate(mem);
+  arena_estimate_begin(mem);
 
   const u32 frm_len = hdr->frames_length;
   const u32 tri_len = hdr->triangles_length;
@@ -213,19 +207,19 @@ static void md1_estimate_memory(arena* mem,
 
   // Estimate memory for skins texture
   sz skin_sz = sizeof(md1_skin) * skn_len;
-  arena_add_estimate(mem, skin_sz, alignof(md1_skin));
+  arena_estimate_add(mem, skin_sz, alignof(md1_skin));
 
   // Estimate memory for skins pixels
   sz pixel_sz = skn_len * skn_wdt * skn_hgt * sizeof(u8) * 4;
-  arena_add_estimate(mem, pixel_sz, alignof(u8));
+  arena_estimate_add(mem, pixel_sz, alignof(u8));
 
   // Estimate memory for texture UVs
   sz texcoord_sz = sizeof(md1_st) * vrt_len;
-  arena_add_estimate(mem, texcoord_sz, alignof(md1_st));
+  arena_estimate_add(mem, texcoord_sz, alignof(md1_st));
 
   // Estimate memory for triangle indices
   sz trisix_sz = sizeof(md1_faced_triangle) * tri_len;
-  arena_add_estimate(mem, trisix_sz, alignof(md1_faced_triangle));
+  arena_estimate_add(mem, trisix_sz, alignof(md1_faced_triangle));
 
   const u8* p = (const u8*)rhdr + sizeof(md1_raw_header);
   const u8* pend = (const u8*)rhdr + bufsz;
@@ -237,7 +231,7 @@ static void md1_estimate_memory(arena* mem,
     if (*skin_type == MD1_SKIN_SINGLE) {
       p += skn_wdt * skn_hgt;
     } else {
-      mustdie("sqv does not support multi skin YET!");
+      MUSTDIE("sqv does not support multi skin YET!");
     }
   }
 
@@ -252,7 +246,7 @@ static void md1_estimate_memory(arena* mem,
 
   for (u32 i = 0; i < frm_len; i++) {
     if (p + sizeof(md1_frame_type) > pend) {
-      mustdie("failed to parse frames data");
+      MUSTDIE("failed to parse frames data");
     }
 
     md1_frame_type ft = *(const md1_frame_type*)p;
@@ -261,7 +255,7 @@ static void md1_estimate_memory(arena* mem,
     if (ft == MD1_FT_SINGLE) {
       if (p + sizeof(md1_frame_single) + (vrt_len * sizeof(md1_normal_vertex)) >
           pend) {
-        mustdie("failed to parse frames data");
+        MUSTDIE("failed to parse frames data");
       }
 
       const char* pname = ((md1_frame_single*)p)->name;
@@ -280,7 +274,7 @@ static void md1_estimate_memory(arena* mem,
 
       p += sizeof(md1_frame_single) + (vrt_len * sizeof(md1_normal_vertex));
     } else {
-      mustdie("sqv does not support group frames YET!");
+      MUSTDIE("sqv does not support group frames YET!");
     }
   }
 
@@ -288,24 +282,24 @@ static void md1_estimate_memory(arena* mem,
 
   // Add raw vertices memory
   sz raw_verts_sz = sizeof(md1_vertex) * vrt_len * frm_len;
-  arena_add_estimate(mem, raw_verts_sz, alignof(md1_vertex));
+  arena_estimate_add(mem, raw_verts_sz, alignof(md1_vertex));
 
   // Add pose memory estimation
   sz poses_sz = sizeof(md1_pose) * pos_len;
-  arena_add_estimate(mem, poses_sz, alignof(md1_pose));
+  arena_estimate_add(mem, poses_sz, alignof(md1_pose));
 
   // Add processed vertices memory estimation
   u32 elm_len = 3 * (3 + 2);  // a->b->c * x,y,z, u,v
   sz verts_sz = sizeof(f32) * frm_len * tri_len * elm_len;
-  arena_add_estimate(mem, verts_sz, alignof(f32));
+  arena_estimate_add(mem, verts_sz, alignof(f32));
 
   // Add indices memory estimation
   sz inds_sz = sizeof(u32) * tri_len * 3;
-  arena_add_estimate(mem, inds_sz, alignof(u32));
+  arena_estimate_add(mem, inds_sz, alignof(u32));
 
   // Finalize estimation
-  arena_end_estimate(mem);
-  DBG("memory size needed: %d bytes", mem->estimate);
+  arena_estimate_end(mem);
+  DBG("memory size needed: %d bytes", mem->estimation);
 }
 
 static void md1_load_image(const u8* p, u8* pixels, sz size) {
@@ -329,7 +323,7 @@ static const u8* md1_load_skins(md1* mdl, const u8* p) {
 
   sz memsz = sizeof(md1_skin) * hdr->skins_length;
   md1_skin* skins = (md1_skin*)arena_alloc(mem, memsz, alignof(md1_skin));
-  notnull(skins);
+  NOTNULL(skins);
 
   for (sz i = 0; i < hdr->skins_length; i++) {
     DBG("loading skins #%d", i);
@@ -339,7 +333,7 @@ static const u8* md1_load_skins(md1* mdl, const u8* p) {
 
       sz pixel_sz = sizeof(u8) * skin_size * 4;
       u8* pixels = (u8*)arena_alloc(mem, pixel_sz, alignof(u8));
-      notnull(pixels);
+      NOTNULL(pixels);
 
       md1_load_image(p, pixels, skin_size);
 
@@ -362,7 +356,7 @@ static const u8* md1_load_skins(md1* mdl, const u8* p) {
                                      }});
       p += skin_size;
     } else {
-      mustdie("load_skin() does not support multi skin YET!");
+      MUSTDIE("load_skin() does not support multi skin YET!");
     }
   }
 
@@ -376,7 +370,7 @@ static const u8* md1_load_st(md1* mdl, const u8* p, md1_st** coords) {
   const md1_header* hdr = &mdl->header;
   sz mem_sz = sizeof(md1_st) * hdr->vertices_length;
   *coords = (md1_st*)arena_alloc(mem, mem_sz, alignof(md1_st));
-  notnull(coords);
+  NOTNULL(coords);
 
   const md1_st* src = (const md1_st*)p;
 
@@ -399,7 +393,7 @@ static const u8* md1_load_triangles(md1* mdl,
   sz mem_sz = sizeof(md1_faced_triangle) * hdr->triangles_length;
   *ftris = (md1_faced_triangle*)arena_alloc(mem, mem_sz,
                                             alignof(md1_faced_triangle));
-  notnull(ftris);
+  NOTNULL(ftris);
 
   const md1_faced_triangle* src =
       (const md1_faced_triangle*)p;  // Use separate pointer
@@ -476,11 +470,11 @@ static const u8* md1_load_frames(md1* mdl, const u8* p) {
 
   sz verts_sz = sizeof(md1_vertex) * verts_length * frames_length;
   mdl->vertices = (md1_vertex*)arena_alloc(mem, verts_sz, alignof(md1_vertex));
-  notnull(mdl->vertices);
+  NOTNULL(mdl->vertices);
 
   sz poses_sz = sizeof(md1_pose) * mdl->header.poses_length;
   mdl->poses = (md1_pose*)arena_alloc(mem, poses_sz, alignof(md1_pose));
-  notnull(mdl->poses);
+  NOTNULL(mdl->poses);
 
   u32 pos_idx = 0;
   u32 pos_len = 0;
@@ -495,7 +489,7 @@ static const u8* md1_load_frames(md1* mdl, const u8* p) {
     if (ft == MD1_FT_SINGLE) {
       p = md1_load_single_frame(mdl, i, &pos_len, &pos_idx, oldname, p);
     } else {
-      mustdie("md1_load_frames() does not support multi frames YET!");
+      MUSTDIE("md1_load_frames() does not support multi frames YET!");
     }
   }
 
@@ -521,7 +515,7 @@ static void md1_make_display_list(md1* mdl,
   u32 elm_len = 3 * (3 + 2);  // a->b->c * x,y,z, u,v
   sz vbuf_sz = sizeof(f32) * frm_len * tri_len * elm_len;
   f32* vbuf = (f32*)arena_alloc(mem, vbuf_sz, alignof(f32));
-  notnull(vbuf);
+  NOTNULL(vbuf);
 
   u32 idx = 0;
   for (u32 frm_idx = 0; frm_idx < frm_len; frm_idx++) {
@@ -581,8 +575,8 @@ void md1_get_vertices(const md1* mdl,
                       u32 frm_idx,
                       const f32** vbuf,
                       u32* vbuf_len) {
-  makesure(pos_idx < mdl->header.poses_length, "invalid pose index");
-  makesure(frm_idx < mdl->poses[pos_idx].frames_length,
+  MAKESURE(pos_idx < mdl->header.poses_length, "invalid pose index");
+  MAKESURE(frm_idx < mdl->poses[pos_idx].frames_length,
            "invalid frame index in pose");
 
   md1_pose* pos = &mdl->poses[pos_idx];
@@ -648,6 +642,10 @@ void md1_unload(md1* mdl) {
   }
   arena_destroy(&mdl->mem);
 }
+
+/* ===================================================== */
+/*                          END                          */
+/* ===================================================== */
 
 #endif  // MD1_IMPLEMENTATION
 #endif  // MD1_HEADER_

@@ -3,8 +3,8 @@
 .keep
 .vscode
 .zed
-.DS_Store
+.build
+.keep
+
 notes.md
-BUILD
-KEEP
 src/debug.c

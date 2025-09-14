@@ -5,8 +5,7 @@
 #include <ctype.h>
 #include <string.h>
 
-#include "../deps/sepi/types.h"
-#include "../deps/sepi/macros.h"
+#include "deps/sepi/base.h"
 
 typedef enum {
   KIND_UNKNOWN = -1,
@@ -56,24 +55,19 @@ typedef enum {
 
 } kind;
 
-/* ****************** API ****************** */
+/* ===================================================== */
+/*                          API                          */
+/* ===================================================== */
+
 kind kind_guess_file(cstr);
 kind kind_guess_buffer(cstr);
 kind kind_guess_entry(cstr, u32);
-/* ****************** API ****************** */
+
+/* ===================================================== */
+/*                    IMPLEMENTATION                     */
+/* ===================================================== */
 
 #ifdef KIND_IMPLEMENTATION
-
-// .--------------------------------------------------------------------------.
-// | _                 _                           _        _   _             |
-// |(_)               | |                         | |      | | (_)            |
-// | _ _ __ ___  _ __ | | ___ _ __ ___   ___ _ __ | |_ __ _| |_ _  ___  _ __  |
-// || | '_ ` _ \| '_ \| |/ _ \ '_ ` _ \ / _ \ '_ \| __/ _` | __| |/ _ \| '_ \ |
-// || | | | | | | |_) | |  __/ | | | | |  __/ | | | || (_| | |_| | (_) | | | ||
-// ||_|_| |_| |_| .__/|_|\___|_| |_| |_|\___|_| |_|\__\__,_|\__|_|\___/|_| |_||
-// |            | |                                                           |
-// |            |_|                                                           |
-// '--------------------------------------------------------------------------'
 
 #define MAXBUFSIZE 8
 
@@ -261,11 +255,12 @@ kind kind_guess_file(cstr path) {
   char buf[MAXBUFSIZE + 1] = {0};
 
   FILE* f = fopen(path, "rb");
-  notnull(f);
-  notzero(!fseek(f, 0, SEEK_END));
-  isvalid(notzero(ftell(f)) >= MAXBUFSIZE);
+  NOTNULL(f);
+  NOTZERO(!fseek(f, 0, SEEK_END));
+  ISVALID(NOTZERO(ftell(f)) >= MAXBUFSIZE);
+
   rewind(f);
-  isvalid(fread(buf, sizeof(char), MAXBUFSIZE, f) == MAXBUFSIZE);
+  ISVALID(fread(buf, sizeof(char), MAXBUFSIZE, f) == MAXBUFSIZE);
 
   fclose(f);
 
@@ -275,10 +270,14 @@ kind kind_guess_file(cstr path) {
 kind kind_guess_buffer(cstr data) {
   char buf[9] = {0};
 
-  notzero(!memcpy(buf, data, 8));
+  NOTZERO(!memcpy(buf, data, 8));
 
   return guess_file_type(buf);
 }
+
+/* ===================================================== */
+/*                          END                          */
+/* ===================================================== */
 
 #endif  // KIND_IMPLEMENTATION
 #endif  // KIND_HEADER_
