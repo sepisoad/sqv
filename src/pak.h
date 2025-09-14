@@ -7,7 +7,7 @@
 #include "deps/sepi/endian.h"
 #include "deps/sepi/arena.h"
 
-#include "?kind.h"
+#include "kind.h"
 
 #define PAK_HEADER_LEN 4
 #define PAK_ENTRY_NAME_LEN 56
