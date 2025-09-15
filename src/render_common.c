@@ -5,7 +5,7 @@
 #include "deps/sokol/sokol_glue.h"
 #include "deps/sokol/sokol_nuklear.h"
 
-#include "app.h"
+#include "state.h"
 
 // static struct nk_color BKG = {0, 0, 0, 180};
 static struct nk_color TXT = {255, 255, 255, 255};

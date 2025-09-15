@@ -18,7 +18,7 @@
 #include "deps/sokol/sokol_time.h"
 
 #include "shaders/default.glsl.h"
-#include "app.h"
+#include "state.h"
 #include "md1.h"
 #include "pak.h"
 
@@ -389,6 +389,10 @@ static void init(void) {
 
 sapp_desc sokol_main(i32 argc, char* argv[]) {
   log_info("starting");
+
+#ifdef DEBUG_MODE
+  DBG("DEBUG MODE IS ON!");
+#endif /* DEBUG_MODE */
 
   sargs_setup(&(sargs_desc){
       .argc = argc,

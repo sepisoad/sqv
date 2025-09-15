@@ -12,7 +12,7 @@
 #include "deps/sokol/sokol_nuklear.h"
 
 #include "shaders/default.glsl.h"
-#include "app.h"
+#include "state.h"
 #include "md1.h"
 
 extern context3d ctx3d;

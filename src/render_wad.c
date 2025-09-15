@@ -1,3 +1,3 @@
-#include "app.h"
+#include "state.h"
 
-void render_wad(state *s) {}
+void render_wad(state* s) {}

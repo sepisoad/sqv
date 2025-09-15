@@ -9,7 +9,7 @@
 #include "deps/sokol/sokol_glue.h"
 #include "deps/sokol/sokol_nuklear.h"
 
-#include "app.h"
+#include "state.h"
 
 struct nk_rect win_max();
 void draw_help(state* s);
