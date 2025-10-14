@@ -3,7 +3,7 @@
 workspace "ProjectWorkspace"
   configurations { "Debug", "Release" }
     location "."
-    toolset "clang"
+    toolset "gcc"
 
   filter "configurations:Debug"
     defines { "DEBUG" }
@@ -156,6 +156,7 @@ newaction {
   trigger = "d",
   description = "debug build",
   execute = function()
-    os.execute("clang-20 -g -O0 -Wall -std=c99 src/deps/sepi.c src/deps/log.c src/debug.c -o .build/debug -DDEBUG")
+    os.execute("gcc -g -O0 -Wall -std=c99 src/deps/sepi.c src/deps/log.c src/debug.c -o .build/debug -DDEBUG")
   end
 }
+

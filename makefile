@@ -15,17 +15,14 @@ ifeq ($(config),debug)
   mk_stb_config = debug
   mk_sepi_config = debug
   mk_sqv_config = debug
-
-else ifeq ($(config),release)
+endif
+ifeq ($(config),release)
   mk_log_config = release
   mk_sokol_config = release
   mk_hmm_config = release
   mk_stb_config = release
   mk_sepi_config = release
   mk_sqv_config = release
-
-else
-  $(error "invalid configuration $(config)")
 endif
 
 PROJECTS := mk_log mk_sokol mk_hmm mk_stb mk_sepi mk_sqv
