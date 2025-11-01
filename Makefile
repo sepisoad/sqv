@@ -30,7 +30,7 @@ endif
 
 PROJECTS := mk_log mk_sokol mk_hmm mk_stb mk_sepi mk_sqv
 
-.PHONY: all clean help $(PROJECTS) 
+.PHONY: all clean help $(PROJECTS)
 
 all: $(PROJECTS)
 

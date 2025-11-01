@@ -7,24 +7,24 @@
 
 #include "state.h"
 
-// static struct nk_color BKG = {0, 0, 0, 180};
-static struct nk_color TXT = {255, 255, 255, 255};
-// static struct nk_color BRD = {255, 255, 255, 255};
+// internal struct nk_color BKG = {0, 0, 0, 180};
+internal struct nk_color TXT = {255, 255, 255, 255};
+// internal struct nk_color BRD = {255, 255, 255, 255};
 
 struct nk_rect win_max() {
-  f32 w = (f32)sapp_width();
-  f32 h = (f32)sapp_height();
+  F32 w = (F32)sapp_width();
+  F32 h = (F32)sapp_height();
   return nk_rect(0, 0, w, h);
 }
 
 struct nk_rect view_max() {
-  f32 w = (f32)sapp_width();
-  f32 h = (f32)sapp_height();
+  F32 w = (F32)sapp_width();
+  F32 h = (F32)sapp_height();
   return nk_rect(5, 5, w - 10, h - 10);
 }
 
-void draw_help(state* s) {
-  contextui* ctx = s->ctxui;
+void draw_help(State* s) {
+  ContextUI* ctx = s->ctxui;
 
   nk_layout_row_dynamic(ctx, 15, 3);
   nk_label_colored(ctx, "INPUT", NK_TEXT_LEFT, TXT);
@@ -84,10 +84,10 @@ void draw_help(state* s) {
   nk_label_colored(ctx, "quits application", NK_TEXT_LEFT, TXT);
 }
 
-void draw_commandline(state* s) {
-  contextui* ctx = s->ctxui;
-  f32 w = (f32)sapp_width();
-  f32 h = (f32)sapp_height();
+void draw_commandline(State* s) {
+  ContextUI* ctx = s->ctxui;
+  F32 w = (F32)sapp_width();
+  F32 h = (F32)sapp_height();
 
   struct nk_rect rect = {0, h - 35, w, h};
   float width_two[] = {27, w - 40};

@@ -22,29 +22,29 @@
 #include "md1.h"
 #include "pak.h"
 
-context3d ctx3d = {0};
-static state s;
-static u64 init_tm = 0;
-static u64 last_frame_tick = 0;
+Context3D ctx3d = {0};
+static State s;
+static U64 init_tm = 0;
+static U64 last_frame_tick = 0;
 
-void render_init(state*);
-void render_pak(state*);
-void render_md1(state*);
-void render_wad(state*);
-void render_lmp(state*);
+Nothing render_init(State*);
+Nothing render_pak(State*);
+Nothing render_md1(State*);
+Nothing render_wad(State*);
+Nothing render_lmp(State*);
 
-void set_skin(u32 idx) {
-  MAKESURE(idx <= s.mdl.header.skins_length, "invalid skin index");
+Nothing set_skin(U32 idx) {
+  MakeSure(idx <= s.mdl.header.skins_length, "invalid skin index");
   s.bind.images[IMG_tex] = s.mdl.skins[idx].image;
   s.bind.samplers[SMP_smp] = s.mdl.skins[idx].sampler;
 }
 
-static void clean_commandline() {
+static Nothing clean_commandline() {
   memset(s.cmd, 0, sizeof(s.cmd) - 1);
   s.show_cmd = 0;
 }
 
-void reset_state() {
+Nothing reset_state() {
   s.mdl_skn = 0;
   s.mdl_pos = 0;
   s.mdl_frm = 0;
@@ -53,7 +53,7 @@ void reset_state() {
   clean_commandline();
 }
 
-static void next_pose() {
+static Nothing next_pose() {
   s.mdl_pos++;
   if (s.mdl_pos >= s.mdl.header.poses_length) {
     s.mdl_pos = 0;
@@ -61,7 +61,7 @@ static void next_pose() {
   s.mdl_frm = 0;
 }
 
-static void prev_pose() {
+static Nothing prev_pose() {
   if (s.mdl_pos == 0) {
     s.mdl_pos = s.mdl.header.poses_length - 1;
   } else {
@@ -70,22 +70,22 @@ static void prev_pose() {
   s.mdl_frm = 0;
 }
 
-static void next_frame() {
+static Nothing next_frame() {
   s.mdl_frm++;
   if (s.mdl_frm >= s.mdl.poses[s.mdl_pos].frames_length) {
     s.mdl_frm = 0;
   }
 }
 
-static void prev_frame() {
-  if (((i32)s.mdl_frm - 1) < 0) {
+static Nothing prev_frame() {
+  if (((I32)s.mdl_frm - 1) < 0) {
     s.mdl_frm = s.mdl.poses[s.mdl_pos].frames_length - 1;
   } else {
     s.mdl_frm--;
   }
 }
 
-static void set_zoom(f32 val) {
+static Nothing set_zoom(F32 val) {
   if (val < 0) {
     s.zoom -= 0.1;
   } else if (val > 0) {
@@ -99,7 +99,7 @@ static void set_zoom(f32 val) {
   }
 }
 
-static void set_frame_rate(f32 val) {
+static Nothing set_frame_rate(F32 val) {
   if (val < 0) {
     s.frame_rate -= 10;
   } else if (val > 0) {
@@ -113,7 +113,7 @@ static void set_frame_rate(f32 val) {
   }
 }
 
-static cstr major_mode_str(major_mode m) {
+static CStr MajorModeStr(MajorMode m) {
   switch (m) {
     case MAJOR_MODE_INIT:
       return "INIT";
@@ -130,7 +130,7 @@ static cstr major_mode_str(major_mode m) {
   }
 }
 
-static cstr minor_mode_str(minor_mode m) {
+static CStr MinorModeStr(MinorMode m) {
   switch (m) {
     case MINOR_MODE_INIT:
       return "INIT";
@@ -151,42 +151,42 @@ static cstr minor_mode_str(minor_mode m) {
   }
 }
 
-static void set_major_mode(major_mode m) {
+static Nothing set_MajorMode(MajorMode m) {
   if (s.mjm != m) {
-    DBG("changing major mode from '%s' to '%s'", major_mode_str(s.mjm),
-        major_mode_str(m));
+    Dbg("changing major mode from '%s' to '%s'", MajorModeStr(s.mjm),
+        MajorModeStr(m));
     s.mjm = m;
   }
 }
 
-static void reset_minor_mode(minor_mode m) {
-  DBG("reseting minor mode to '%s'", minor_mode_str(m));
+static Nothing reset_MinorMode(MinorMode m) {
+  Dbg("reseting minor mode to '%s'", MinorModeStr(m));
   s.mnm = m;
 }
 
-static void enable_minor_mode(minor_mode m) {
-  DBG("enabling minor mode '%s'", minor_mode_str(m));
+static Nothing enable_MinorMode(MinorMode m) {
+  Dbg("enabling minor mode '%s'", MinorModeStr(m));
   s.mnm |= m;
 }
 
-static void clear_minor_mode(minor_mode m) {
-  DBG("clearing minor mode '%s'", minor_mode_str(m));
+static Nothing clear_MinorMode(MinorMode m) {
+  Dbg("clearing minor mode '%s'", MinorModeStr(m));
   s.mnm &= ~m;
 }
 
-static void toggle_minor_mode(minor_mode m) {
-  DBG("toggleing minor mode '%s' '%s'", minor_mode_str(m),
+static Nothing toggle_MinorMode(MinorMode m) {
+  Dbg("toggleing minor mode '%s' '%s'", MinorModeStr(m),
       m & s.mnm ? "off" : "on");
 
   s.mnm ^= m;
 }
 
-static void mode_init_input(const sapp_event* e) {
+static Nothing mode_init_input(const sapp_event* e) {
   if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
     switch (e->key_code) {
       case SAPP_KEYCODE_SLASH:
         if (e->modifiers & SAPP_MODIFIER_SHIFT)
-          enable_minor_mode(MINOR_MODE_HELP);
+          enable_MinorMode(MINOR_MODE_HELP);
         break;
       case SAPP_KEYCODE_SEMICOLON:
         if (e->modifiers & SAPP_MODIFIER_SHIFT)
@@ -199,26 +199,26 @@ static void mode_init_input(const sapp_event* e) {
   }
 }
 
-static void mode_pak_input(const sapp_event* e) {}
+static Nothing mode_pak_input(const sapp_event* e) {}
 
-static void mode_md1_input(const sapp_event* e) {
+static Nothing mode_md1_input(const sapp_event* e) {
   if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
     switch (e->key_code) {
       case SAPP_KEYCODE_SLASH:
         if (e->modifiers & SAPP_MODIFIER_SHIFT)
-          toggle_minor_mode(MINOR_MODE_HELP);
+          toggle_MinorMode(MINOR_MODE_HELP);
         break;
       case SAPP_KEYCODE_I:
-        toggle_minor_mode(MINOR_MODE_INFO);
+        toggle_MinorMode(MINOR_MODE_INFO);
         break;
       case SAPP_KEYCODE_R:
         s.rotating = !s.rotating;
         break;
       case SAPP_KEYCODE_S:
-        toggle_minor_mode(MINOR_MODE_SKINS);
+        toggle_MinorMode(MINOR_MODE_SKINS);
         break;
       case SAPP_KEYCODE_P:
-        toggle_minor_mode(MINOR_MODE_POSES);
+        toggle_MinorMode(MINOR_MODE_POSES);
         break;
       case SAPP_KEYCODE_A:
         s.animating = !s.animating;
@@ -248,26 +248,26 @@ static void mode_md1_input(const sapp_event* e) {
   }
 }
 
-static void mode_wad_input(const sapp_event* e) {}
+static Nothing mode_wad_input(const sapp_event* e) {}
 
-static void mode_lmp_input(const sapp_event* e) {}
+static Nothing mode_lmp_input(const sapp_event* e) {}
 
-static void handle_file(cstr path) {
+static Nothing handle_file(CStr path) {
   s.knd = kind_guess_file(path);
 
   if (s.knd == KIND_PAK) {
-    u8* buf = NULL;  // IWYU pragma: always_keep
-    sz bufsz = sepi_io_load_file(path, &buf);
+    U8* buf = NULL;  // IWYU pragma: always_keep
+    Sz bufsz = io_load_file(path, &buf);
     // TODO: handle errors
     pak_load(buf, bufsz, &s.pak);
     // TODO: handle errors
-    set_major_mode(MAJOR_MODE_PAK);
+    set_MajorMode(MAJOR_MODE_PAK);
   } else if (s.knd == KIND_MDL) {
     // create_offscreen_target(&s, path);
   }
 }
 
-static void input(const sapp_event* e) {
+static Nothing input(const sapp_event* e) {
   snk_handle_event(e);
 
   if (e->type == SAPP_EVENTTYPE_RESIZED) {
@@ -281,7 +281,7 @@ static void input(const sapp_event* e) {
   if ((e->type == SAPP_EVENTTYPE_KEY_DOWN) && !e->key_repeat) {
     switch (e->key_code) {
       case SAPP_KEYCODE_ESCAPE:
-        reset_minor_mode(MINOR_MODE_INIT);
+        reset_MinorMode(MINOR_MODE_INIT);
         clean_commandline();
         break;
       default:
@@ -311,7 +311,7 @@ static void input(const sapp_event* e) {
   }
 }
 
-static void frame(void) {
+static Nothing frame(void) {
   switch (s.mjm) {
     case MAJOR_MODE_INIT:
       render_init(&s);
@@ -333,7 +333,7 @@ static void frame(void) {
   }
 }
 
-static void cleanup(void) {
+static Nothing cleanup(void) {
   log_info("shutting down");
 
   pak_unload(&s.pak);
@@ -350,7 +350,7 @@ static void cleanup(void) {
   sargs_shutdown();
 }
 
-static void init(void) {
+static Nothing init(void) {
   log_info("initializing gpu ...");
 
   sg_setup(&(sg_desc){
@@ -380,18 +380,18 @@ static void init(void) {
   clean_commandline();
   last_frame_tick = stm_now();
 
-  cstr path = (cstr)sapp_userdata();
+  CStr path = (CStr)sapp_userdata();
   if (path != NULL) {
     log_info("loading '%s' model", path);
     handle_file(path);
   }
 }
 
-sapp_desc sokol_main(i32 argc, char* argv[]) {
+sapp_desc sokol_main(I32 argc, char* argv[]) {
   log_info("starting");
 
 #ifdef DEBUG_MODE
-  DBG("DEBUG MODE IS ON!");
+  Dbg("DEBUG MODE IS ON!");
 #endif /* DEBUG_MODE */
 
   sargs_setup(&(sargs_desc){
@@ -399,7 +399,7 @@ sapp_desc sokol_main(i32 argc, char* argv[]) {
       .argv = argv,
   });
 
-  cstr mdlpath = NULL;
+  CStr mdlpath = NULL;
   if (sargs_exists("-i"))
     mdlpath = sargs_value("-i");
   else if (sargs_exists("--input"))
@@ -410,7 +410,7 @@ sapp_desc sokol_main(i32 argc, char* argv[]) {
       .cleanup_cb = cleanup,
       .event_cb = input,
       .frame_cb = frame,
-      .user_data = (rptr)mdlpath,
+      .user_data = (RawPtr)mdlpath,
       .width = 800,
       .height = 600,
       .sample_count = 1,

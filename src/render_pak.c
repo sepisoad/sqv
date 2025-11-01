@@ -12,13 +12,13 @@
 #include "state.h"
 
 struct nk_rect win_max();
-void draw_help(state* s);
-void draw_commandline(state* s);
+void draw_help(State* s);
+void draw_commandline(State* s);
 
-static void draw_default(state* s) {
-  contextui* ctx = s->ctxui;
+internal void draw_default(State* s) {
+  ContextUI* ctx = s->ctxui;
 
-  static float ratio_two[] = {0.2f, 0.6f, 0.2f};
+  internal float ratio_two[] = {0.2f, 0.6f, 0.2f};
   nk_layout_row(ctx, NK_STATIC, 1, 3, ratio_two);
   if (nk_tree_push(ctx, NK_TREE_NODE, "Notebook", NK_MINIMIZED)) {
     nk_layout_row_dynamic(ctx, 0, 1);
@@ -31,9 +31,9 @@ static void draw_default(state* s) {
   nk_button_label(ctx, "button");
 }
 
-void render_pak(state* s) {
+void render_pak(State* s) {
   s->ctxui = snk_new_frame();
-  contextui* ctx = s->ctxui;
+  ContextUI* ctx = s->ctxui;
 
   nk_style_hide_cursor(ctx);
   if (nk_begin(ctx, "", win_max(), NK_WINDOW_NO_SCROLLBAR)) {

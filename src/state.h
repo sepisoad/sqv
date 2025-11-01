@@ -10,14 +10,14 @@
 #include "md1.h"
 #include "pak.h"
 
-typedef struct nk_context contextui;
+typedef struct nk_context ContextUI;
 
 #define BIN_FLAG(x) (1 << (x))
 
 typedef enum {
   SQV_ERR_UNKNOWN = -1,
   SQV_ERR_SUCCESS = 0,
-} sqv_err;
+} SQVError;
 
 typedef enum {
   MAJOR_MODE_UNKNOWN = -1,
@@ -26,7 +26,7 @@ typedef enum {
   MAJOR_MODE_MD1,
   MAJOR_MODE_WAD,
   MAJOR_MODE_LMP,
-} major_mode;
+} MajorMode;
 
 typedef enum {
   MINOR_MODE_UNKNOWN = BIN_FLAG(0),
@@ -37,7 +37,7 @@ typedef enum {
   MINOR_MODE_SKINS = BIN_FLAG(5),
   MINOR_MODE_POSES = BIN_FLAG(6),
   MINOR_MODE_FRAMES = BIN_FLAG(7),
-} minor_mode;
+} MinorMode;
 
 typedef struct {
   sg_image color_img;
@@ -48,7 +48,7 @@ typedef struct {
   sg_sampler sampler;
   int width;
   int height;
-} context3d;
+} Context3D;
 
 typedef struct {
   // rendering states
@@ -56,27 +56,27 @@ typedef struct {
   sg_pipeline pip;
   sg_bindings bind;
   sg_pass_action pass_action;
-  contextui* ctxui;
-  context3d* ctx3d;
+  ContextUI* ctxui;
+  Context3D* ctx3d;
 
   // mdl model states
-  pak pak;
-  md1 mdl;
-  u32 mdl_pos;
-  u32 mdl_frm;
-  u32 mdl_skn;
-  i32 frame_rate;
-  f32 mdl_roty;
-  f32 zoom;
-  bool rotating;
-  bool animating;
-  bool show_cmd;
-  kind knd;
-  major_mode mjm;
-  minor_mode mnm;
+  Pak pak;
+  MD1 mdl;
+  U32 mdl_pos;
+  U32 mdl_frm;
+  U32 mdl_skn;
+  I32 frame_rate;
+  F32 mdl_roty;
+  F32 zoom;
+  Bool rotating;
+  Bool animating;
+  Bool show_cmd;
+  Kind knd;
+  MajorMode mjm;
+  MinorMode mnm;
 
   char cmd[2048];
-} state;
+} State;
 
 #define MAX_INIT_DELAY 10
 #define ROT_FACTOR 0.5;

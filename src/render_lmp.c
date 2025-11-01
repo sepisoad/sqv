@@ -1,3 +1,3 @@
 #include "state.h"
 
-void render_lmp(state* s) {}
+void render_lmp(State* s) {}

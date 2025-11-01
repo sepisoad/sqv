@@ -9,8 +9,8 @@ workspace "ProjectWorkspace"
     defines { "DEBUG" }
     symbols "On"
     optimize "Off"
-    buildoptions { "-fsanitize=address" }
-    linkoptions { "-fsanitize=address" }
+    buildoptions { "-fsanitize=address,undefined,leak", "-fno-omit-frame-pointer", "-static-libasan" }
+    linkoptions { "-fsanitize=address,undefined,leak", "-fno-omit-frame-pointer", "-static-libasan" }
 
   filter "configurations:Release"
     defines { "NDEBUG" }
@@ -75,7 +75,7 @@ project "mk_sepi"
   objdir ".build/obj"
   targetname "sepi"
   buildoptions { "-Wno-deprecated-declarations" }
-  buildoptions { "-std=c99" }
+  buildoptions { "-std=gnu11" }
   defines { "USE_MEM_DEBUGGER" }
   files { "src/deps/sepi/sepi.c" }
 
@@ -91,10 +91,10 @@ project "mk_sqv"
   links { "mk_log:static", "mk_stb:static", "mk_hmm:static", "mk_sepi:static", "mk_sokol:static", }
   files { "src/app.c", "src/render_common.c", "src/render_init.c", "src/render_lmp.c", "src/render_md1.c", "src/render_pak.c", "src/render_ui.c", "src/render_wad.c", }
 
-  buildoptions { "-std=c99" }
+  buildoptions { "-std=gnu11" }
   defines { "SOKOL_GLCORE" }
   defines { "_POSIX_C_SOURCE=199309L" } -- Needed for some C23 features
-    
+
   filter "system:macosx"
     links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
 
@@ -127,7 +127,7 @@ newaction {
   trigger = "p",
   description = "execute",
   execute = function()
-    os.execute(".build/sqv")
+    os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/sqv")
   end
 }
 
@@ -135,28 +135,6 @@ newaction {
   trigger = "r",
   description = "quick execute",
   execute = function()
-    os.execute(".build/sqv -i=.keep/dog.mdl")
+    os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/sqv -i=.keep/dog.mdl")
   end
 }
-
-newaction {
-  trigger = "rr",
-  description = "execute with args",
-  execute = function()
-    -- Capture additional command-line arguments
-    local args = _ARGS
-    local args_str = table.concat(args, " ")
-
-    -- Execute the program with arguments
-    os.execute(".build/sqv -i=" .. args_str)
-  end
-}
-
-newaction {
-  trigger = "d",
-  description = "debug build",
-  execute = function()
-    os.execute("gcc -g -O0 -Wall -std=c99 src/deps/sepi.c src/deps/log.c src/debug.c -o .build/debug -DDEBUG")
-  end
-}
-

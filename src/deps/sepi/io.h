@@ -1,17 +1,26 @@
 #ifndef SEPI_IO_H
 #define SEPI_IO_H
 
+/* ===================================================== */
+/*                     DEPENDENCIES                      */
+/* ===================================================== */
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-
 #include "base.h"
+
+/* ===================================================== */
+/*                       CONSTANTS                       */
+/* ===================================================== */
+
+//
 
 /* ===================================================== */
 /*                          API                          */
 /* ===================================================== */
 
-size_t sepi_io_load_file(cstr, u8**);
+Sz io_load_file(CStr, Buf*);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -19,22 +28,23 @@ size_t sepi_io_load_file(cstr, u8**);
 
 #ifdef SEPI_IO_IMPLEMENTATION
 
-size_t sepi_io_load_file(cstr path, u8** buf) {
+Sz
+io_load_file(CStr path, Buf* buf) {
   FILE* f = fopen(path, "rb");
-  NOTNULL(f);
+  NotNull(f);
 
   fseek(f, 0, SEEK_END);
-  sz fsize = ftell(f);
+  Sz fsize = ftell(f);
   rewind(f);
 
-  *buf = (u8*)malloc(sizeof(u8) * fsize);
-  NOTNULL(*buf);
+  *buf = (Buf)malloc(sizeof(U8) * fsize);
+  NotNull(*buf);
 
-  sz rsize = fread(*buf, 1, fsize, f);
-  MAKESURE(rsize == fsize, "read size '%zu' did not match the file size '%zu'",
+  Sz rsize = fread(*buf, 1, fsize, f);
+  MakeSure(rsize == fsize, "read size '%zu' did not match the file size '%zu'",
            rsize, fsize);
 
-  if (f) {
+  if(f) {
     fclose(f);
   }
 

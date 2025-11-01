@@ -7,11 +7,11 @@
 #include "state.h"
 
 struct nk_rect win_max();
-void draw_help(state* s);
-void draw_commandline(state* s);
+void draw_help(State* s);
+void draw_commandline(State* s);
 
-static void draw_default(state* s) {
-  contextui* ctx = s->ctxui;
+static void draw_default(State* s) {
+  ContextUI* ctx = s->ctxui;
 
   nk_layout_row_dynamic(ctx, 15 /*auto*/, 1);
   nk_label(ctx, "Press '?' to see help instructions", NK_TEXT_LEFT);
@@ -20,9 +20,9 @@ static void draw_default(state* s) {
            NK_TEXT_LEFT);
 }
 
-void render_init(state* s) {
+void render_init(State* s) {
   s->ctxui = snk_new_frame();
-  contextui* ctx = s->ctxui;
+  ContextUI* ctx = s->ctxui;
 
   nk_style_hide_cursor(ctx);
   if (nk_begin(ctx, "", win_max(), NK_WINDOW_NO_SCROLLBAR)) {

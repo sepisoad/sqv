@@ -15,13 +15,13 @@
 #include "state.h"
 #include "md1.h"
 
-extern context3d ctx3d;
+extern Context3D ctx3d;
 
 void reset_state();
-void load_3d_model(cstr path, md1* m);
-void unload_3d_model(md1* m);
+void load_3d_model(CStr path, MD1* m);
+void unload_3d_model(MD1* m);
 
-void update_offscreen_target(state* s, int width, int height) {
+void update_offscreen_target(State* s, I32 width, I32 height) {
   snk_destroy_image(s->ctx3d->nk_img);
   sg_destroy_attachments(s->ctx3d->atts);
   sg_destroy_image(s->ctx3d->depth_img);
@@ -61,7 +61,7 @@ void update_offscreen_target(state* s, int width, int height) {
   };
 }
 
-void create_offscreen_target(state* s, cstr path) {
+void create_offscreen_target(State* s, CStr path) {
   if (s->ctx3d != NULL) {
     unload_3d_model(&s->mdl);
     sg_destroy_pipeline(s->pip);
@@ -73,8 +73,8 @@ void create_offscreen_target(state* s, cstr path) {
   load_3d_model(path, &s->mdl);
   s->ctx3d = &ctx3d;  // resetting
 
-  const f32* vb = NULL;
-  u32 vb_len = 0;
+  const F32* vb = NULL;
+  U32 vb_len = 0;
   md1_get_vertices(&s->mdl, s->mdl_pos, s->mdl_frm, &vb, &vb_len);
 
   s->shd = sg_make_shader(cube_shader_desc(sg_query_backend()));
@@ -97,7 +97,7 @@ void create_offscreen_target(state* s, cstr path) {
       }});
 
   s->bind.vertex_buffers[0] = sg_make_buffer(&(sg_buffer_desc){
-      .size = (size_t)vb_len * sizeof(f32),
+      .size = (size_t)vb_len * sizeof(F32),
       .usage = (sg_buffer_usage){.stream_update = true},
   });
   s->bind.images[IMG_tex] = s->mdl.skins[s->mdl_skn].image;
@@ -120,35 +120,35 @@ void create_offscreen_target(state* s, cstr path) {
   };
 }
 
-void load_3d_model(cstr path, md1* m) {
-  NOTNULL(path);
-  NOTNULL(m);
+void load_3d_model(CStr path, MD1* m) {
+  NotNull(path);
+  NotNull(m);
 
-  u8* bf = NULL;
-  sz bfsz = NOTZERO(sepi_io_load_file(path, &bf));
+  U8* bf = NULL;
+  Sz bfsz = NotZero(io_load_file(path, &bf));
 
-  md1_err err = md1_load(bf, bfsz, m);
-  MAKESURE(err == MD1_ERR_SUCCESS, "qk_load_mdl failed");
+  MD1Error err = md1_load(bf, bfsz, m);
+  MakeSure(err == MD1_ERR_SUCCESS, "qk_load_mdl failed");
   free(bf);
 }
 
-void unload_3d_model(md1* m) {
-  NOTNULL(m);
+void unload_3d_model(MD1* m) {
+  NotNull(m);
   md1_unload(m);
 }
 
-void render_md1(state* s) {
-  md1* m = &s->mdl;
+void render_md1(State* s) {
+  MD1* m = &s->mdl;
   hmm_v3* bbmin = &m->header.bbox_min;
   hmm_v3* bbmax = &m->header.bbox_max;
   hmm_vec3 center = HMM_MultiplyVec3f(HMM_AddVec3(*bbmin, *bbmax), 0.5f);
-  f32 dx = bbmax->X - bbmin->X;
-  f32 dy = bbmax->Y - bbmin->Y;
-  f32 dz = bbmax->Z - bbmin->Z;
-  f32 rad = 0.5f * sqrtf(dx * (dx * s->zoom) + dy * dy + dz * dz);
+  F32 dx = bbmax->X - bbmin->X;
+  F32 dy = bbmax->Y - bbmin->Y;
+  F32 dz = bbmax->Z - bbmin->Z;
+  F32 rad = 0.5f * sqrtf(dx * (dx * s->zoom) + dy * dy + dz * dz);
 
-  f32 aspect = sapp_widthf() / sapp_heightf();
-  f32 dist = (rad / sinf(HMM_ToRadians(FOV) * 0.5f)) * 1.5f;
+  F32 aspect = sapp_widthf() / sapp_heightf();
+  F32 dist = (rad / sinf(HMM_ToRadians(FOV) * 0.5f)) * 1.5f;
 
   hmm_vec3 eye = HMM_AddVec3(center, HMM_Vec3(0.0f, 0.0f, dist));
   hmm_vec3 up = HMM_Vec3(0.0f, 1.0f, 0.0f);
@@ -171,14 +171,14 @@ void render_md1(state* s) {
       .mvp = HMM_MultiplyMat4(view_proj, model),
   };
 
-  const f32* vb = NULL;
-  u32 vb_len = 0;
+  const F32* vb = NULL;
+  U32 vb_len = 0;
 
   md1_get_vertices(m, s->mdl_pos, s->mdl_frm, &vb, &vb_len);
 
   sg_update_buffer(
       s->bind.vertex_buffers[0],
-      &(sg_range){.ptr = vb, .size = (size_t)vb_len * sizeof(f32)});
+      &(sg_range){.ptr = vb, .size = (size_t)vb_len * sizeof(F32)});
 
   sg_begin_pass(&(sg_pass){.action = s->ctx3d->pass_action,
                            .attachments = s->ctx3d->atts});

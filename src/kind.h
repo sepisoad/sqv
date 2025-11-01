@@ -53,15 +53,15 @@ typedef enum {
   KIND_TXT,
   KIND_JSON,
 
-} kind;
+} Kind;
 
 /* ===================================================== */
 /*                          API                          */
 /* ===================================================== */
 
-kind kind_guess_file(cstr);
-kind kind_guess_buffer(cstr);
-kind kind_guess_entry(cstr, u32);
+Kind kind_guess_file(CStr);
+Kind kind_guess_buffer(CStr);
+Kind kind_guess_entry(CStr, U32);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -71,7 +71,7 @@ kind kind_guess_entry(cstr, u32);
 
 #define MAXBUFSIZE 8
 
-static kind guess_file_type(cstr buf) {
+static Kind guess_file_type(CStr buf) {
   if (strncmp(buf, "PACK", 4) == 0) {
     return KIND_PAK;
   }
@@ -81,12 +81,12 @@ static kind guess_file_type(cstr buf) {
   return KIND_UNKNOWN;
 }
 
-kind kind_guess_entry(cstr path, u32 len) {
+Kind kind_guess_entry(CStr path, U32 len) {
   char ext[32] = {0};
-  i32 ridx = len;
-  i32 end = 0;
-  i32 start = 0;
-  i32 extlen = 0;
+  I32 ridx = len;
+  I32 end = 0;
+  I32 start = 0;
+  I32 extlen = 0;
 
   for (; ridx >= 0; ridx--)
     if (path[ridx] != 0)
@@ -101,7 +101,7 @@ kind kind_guess_entry(cstr path, u32 len) {
   extlen = end - start;
   strncpy(ext, path + start, extlen);
 
-  for (i32 i = 0; i < extlen; i++)
+  for (I32 i = 0; i < extlen; i++)
     ext[i] = toupper(ext[i]);
 
   if (!strncmp(ext, "PAK", 3)) {
@@ -251,26 +251,26 @@ kind kind_guess_entry(cstr path, u32 len) {
   return KIND_UNKNOWN;
 }
 
-kind kind_guess_file(cstr path) {
+Kind kind_guess_file(CStr path) {
   char buf[MAXBUFSIZE + 1] = {0};
 
   FILE* f = fopen(path, "rb");
-  NOTNULL(f);
-  NOTZERO(!fseek(f, 0, SEEK_END));
-  ISVALID(NOTZERO(ftell(f)) >= MAXBUFSIZE);
+  NotNull(f);
+  NotZero(!fseek(f, 0, SEEK_END));
+  IsValid(NotZero(ftell(f)) >= MAXBUFSIZE);
 
   rewind(f);
-  ISVALID(fread(buf, sizeof(char), MAXBUFSIZE, f) == MAXBUFSIZE);
+  IsValid(fread(buf, sizeof(char), MAXBUFSIZE, f) == MAXBUFSIZE);
 
   fclose(f);
 
   return guess_file_type(buf);
 }
 
-kind kind_guess_buffer(cstr data) {
+Kind kind_guess_buffer(CStr data) {
   char buf[9] = {0};
 
-  NOTZERO(!memcpy(buf, data, 8));
+  NotZero(!memcpy(buf, data, 8));
 
   return guess_file_type(buf);
 }

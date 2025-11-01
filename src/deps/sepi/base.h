@@ -2,6 +2,91 @@
 #define SEPI_BASE_H
 
 /* ===================================================== */
+/*                         TYPES                         */
+/* ===================================================== */
+
+#include <stdint.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef int8_t I8;
+typedef uint8_t U8;
+typedef int16_t I16;
+typedef uint16_t U16;
+typedef int32_t I32;
+typedef uint32_t U32;
+typedef int64_t I64;
+typedef uint64_t U64;
+typedef size_t Sz;
+
+typedef float F32;
+typedef double F64;
+
+typedef I8 Bool;
+#define TRUE 1
+#define FALSE 0
+
+typedef void Nothing;
+typedef void* RawPtr;
+typedef intptr_t IPtr;
+typedef uintptr_t UPtr;
+typedef ptrdiff_t DPtr;
+
+typedef char* Str;
+typedef const char* CStr;
+typedef unsigned char* Buf;
+typedef const unsigned char* CBuf;
+
+/* ===================================================== */
+/*                       KEYWORDS                        */
+/* ===================================================== */
+
+#define internal static
+
+/* ===================================================== */
+/*                       PLATFOTM                        */
+/* ===================================================== */
+
+/* COMPILER */
+#if defined(__clang__)
+#define CC_CLANG 1
+#elif defined(__GNUC__) || defined(__GNUG__)
+#define CC_GCC 1
+#elif defined(_MSC_VER)
+#define CC_MSVC 1
+#elif defined(__TINYC__)
+#define CC_TCC 1
+#else
+#error unsuppored c compiler!
+#endif
+
+/* OPERATING SYSTEM */
+#if defined(_WIN32)
+#define OS_WINDOWS 1
+#elif defined(__gnu_linux__) || defined(__linux__)
+#define OS_LINUX 1
+#define _GNU_SOURCE
+#elif defined(__APPLE__) && defined(__MACH__)
+#define OS_MAC 1
+#else
+#error unsupported operating system!
+#endif
+
+/* CPU ARCHITECTURE */
+#if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64)
+#define CPU_X64 1
+#elif defined(i386) || defined(__i386) || defined(__i386__)
+#define CPU_X86 1
+#elif defined(__aarch64__)
+#define CPU_ARM64 1
+#elif defined(__arm__)
+#define CPU_ARM32 1
+#else
+#error unsupported cpu architecture!
+#endif
+
+/* ===================================================== */
 /*                         DEBUG                         */
 /* ===================================================== */
 
@@ -9,72 +94,109 @@
 #define DEBUG_MODE
 #else
 #undef DEBUG_MODE
+#endif /* DEBUG_MODE */
+
+/* ===================================================== */
+/*                        MEMORY                         */
+/* ===================================================== */
+
+#if CC_MSVC
+#if defined(__SANITIZE_ADDRESS__)
+#define ASAN_ENABLED 1
+#define NO_ASAN __declspec(no_sanitize_address)
+#else
+#define NO_ASAN
 #endif
 
+#elif CC_CLANG
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
+#define ASAN_ENABLED 1
+#endif
+#endif
+#define NO_ASAN __attribute__((no_sanitize("address")))
+
+#elif CC_GCC
+#if defined(__SANITIZE_ADDRESS__)
+#define ASAN_ENABLED 1
+#endif
+#define NO_ASAN __attribute__((no_sanitize_address))
+
+#else
+#define NO_ASAN
+#endif
+
+#ifdef ASAN_ENABLED
+void __asan_poison_memory_region(void const volatile* addr, size_t size);
+void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
+# define AsanPoisonMemoryRegion(addr, size)   __asan_poison_memory_region((addr), (size))
+# define AsanUnpoisonMemoryRegion(addr, size) __asan_unpoison_memory_region((addr), (size))
+#else
+# define AsanPoisonMemoryRegion(addr, size)   ((void)(addr), (void)(size))
+# define AsanUnpoisonMemoryRegion(addr, size) ((void)(addr), (void)(size))
+#endif /* DEBUG_MODE */
+
+#define MemZero(s,z) memset((s),0,(z))
+#define MemZeroStruct(s) MemZero((s),sizeof(*(s)))
+#define MemZeroArray(a) MemZero((a),sizeof(a))
+#define MemZeroTyped(m,c) MemZero((m),sizeof(*(m))*(c))
+
+#define MemoryCompare(a, b, size) memcmp((a), (b), (size))
+#define IsMemoryEq(a,b,z) (MemoryCompare((a),(b),(z)) == 0)
+#define IsStructEq(a,b) IsMemoryEq((a),(b),sizeof(*(a)))
+#define IsArrayEq(a,b) IsMemoryEq((a),(b),sizeof(a))
+
 /* ===================================================== */
-/*                         TYPES                         */
+/*                         UNITS                         */
 /* ===================================================== */
 
-#include <stdint.h>
-#include <stddef.h>
-
-typedef int8_t i8;
-typedef uint8_t u8;
-typedef int16_t i16;
-typedef uint16_t u16;
-typedef int32_t i32;
-typedef uint32_t u32;
-typedef int64_t i64;
-typedef uint64_t u64;
-typedef size_t sz;
-
-typedef float f32;
-typedef double f64;
-
-typedef void* rptr;
-typedef intptr_t iptr;
-typedef uintptr_t uptr;
-typedef ptrdiff_t xptr;
-
-typedef char* str;
-typedef const char* cstr;
-typedef unsigned char* buf;
-typedef const unsigned char* cbuf;
+#define KB(n) (((U64)(n)) << 10)
+#define MB(n) (((U64)(n)) << 20)
+#define GB(n) (((U64)(n)) << 30)
+#define TB(n) (((U64)(n)) << 40)
+#define Thousand(n) ((n)*1000)
+#define Million(n) ((n)*1000000)
+#define Billion(n) ((n)*1000000000)
 
 /* ===================================================== */
 /*                         UTILS                         */
 /* ===================================================== */
 
 /* GENERAL */
-#define NOOP ((void)0)
-#define IGNORE(_V) ((void)(_V))
+#define noop ((void)0)
+#define Ignore(_V) ((void)(_V))
 
 /* MATH MACROS */
-#define IS_POW2(_X) ((_X) && (((_X) & ((_X) - 1)) == 0))
-#define MAX(_A, _B) ((_A) > (_B) ? (_A) : (_B))
-#define MIN(_A, _B) ((_A) < (_B) ? (_A) : (_B))
+#define IsPow2(X) ((X) != 0 && ((X) & ((X) -1 )) ==0 )
+#define IsPow2OrZero(X) ((((X) - 1) & (X)) == 0)
+#define Max(A, B) ((A) > (B) ? (A) : (B))
+#define Min(A, B) ((A) < (B) ? (A) : (B))
 
-/* ALIGNMENT MACROS */
-#ifdef _MSC_VER
-#define ALIGNOF(T) __alignof(T) /* MSVC */
-#else
-#define ALIGNOF(T) __alignof__(T) /* GCC/Clang/TCC */
+#if CC_MSVC
+#define AlignOf(T) __alignof(T)
+#elif CC_CLANG
+#define AlignOf(T) __alignof(T)
+#elif CC_GCC
+#define AlignOf(T) __alignof__(T)
+#elif CC_TCC
+/* DO NOTHING, TCC SUPPORTS AlignOf OUT OF THE BOX*/
 #endif
 
+
 #define NATIVE_ALIGNMENT \
-  MAX(ALIGNOF(int),      \
-      MAX(ALIGNOF(long), \
-          MAX(ALIGNOF(long long), MAX(ALIGNOF(double), ALIGNOF(void*)))))
+  Max(AlignOf(int),      \
+      Max(AlignOf(long), \
+          Max(AlignOf(long long), Max(AlignOf(double), AlignOf(void*)))))
 
-#define ALIGN_UP(V, A) ((sz)((((sz)(V) + (sz)(A) - 1) / (sz)(A)) * (sz)(A)))
-#define ALIGN_DN(V, A) ((sz)(V) - ((sz)(V) % (sz)(A)))
+#define AlignUp(V, B) (((V) + (B) - 1) & (~((B) - 1)))
+#define AlignDown(V, B) ((V) & (~((B) - 1)))
+#define AlignUpPad(X, B)  ((0 - (X)) & ((B) - 1))
 
-/* ===================================================== */
-/*                        STRINGS                        */
-/* ===================================================== */
+#define ToString_(X) #X
+#define ToString(X) ToString_(X)
 
-#define STR_(x) #x
-#define STR(x) STR_(x)
+#define Glue_(A,B) A##B
+#define Glue(A,B) Glue_(A,B)
 
 /* ===================================================== */
 /*                      ASSERTIONS                       */
@@ -82,48 +204,73 @@ typedef const unsigned char* cbuf;
 
 #ifdef DEBUG_MODE
 
-#define MAKESURE(expr, msg, ...) \
-  ((expr) ? (expr) : (log_fatal(msg, ##__VA_ARGS__), abort(), (expr)))
+#define MakeSure(expr, msg, ...) \
+  ((expr) ? (expr) : (printf(msg, ##__VA_ARGS__), abort(), (expr)))
 
-#define NOTNULL(val) MAKESURE((val), "<<NULL>>")
-#define NOTZERO(val) MAKESURE((val), "<<ZERO>>")
-#define ISVALID(val) MAKESURE((val), "<<INVALID>>")
-#define MUSTDIE(msg, ...) MAKESURE(false, msg, ##__VA_ARGS__)
+#define NotNull(val) MakeSure((val), "<<NULL>>")
+#define NotZero(val) MakeSure((val), "<<ZERO>>")
+#define IsValid(val) MakeSure((val), "<<INVALID>>")
+#define MustDie(msg, ...) MakeSure(FALSE, msg, ##__VA_ARGS__)
 
 #else /* not debug mode */
 
-#define MAKESURE(expr, msg, ...) NOOP
-#define NOTNULL(val) NOOP
-#define NOTZERO(val) NOOP
-#define ISVALID(val) NOOP
-#define MUSTDIE(msg, ...) NOOP
+#define MakeSure(expr, msg, ...) noop
+#define NotNull(val) noop
+#define NotZero(val) noop
+#define IsValid(val) noop
+#define MustDie(msg, ...) noop
 
 #endif /* DEBUG_MODE */
 
-#define ERROROUT(expr, err) \
+#define Abort(msg)							\
+  do {									\
+    fprintf(stderr, "aborting:\n  message: %s\n", (msg));		\
+    abort();								\
+  } while(0)
+
+#define ErrorOut(expr, err) \
   do {                      \
     if (!(expr)) {          \
       return (err);         \
     }                       \
   } while (0)
 
-#define SUCCEED(expr)      \
-  do {                     \
-    i64 _ms_tmp_ = (expr); \
-    if (_ms_tmp_ != 0) {   \
-      return _ms_tmp_;     \
-    }                      \
+#define Succeed(expr)           \
+  do {                          \
+    I64 _ms_tmp_ = (I64)(expr);	\
+    if (_ms_tmp_ != 0) {        \
+      return _ms_tmp_;          \
+    }                           \
   } while (0)
+
+#if CC_MSVC
+#define Trap() __debugbreak()
+#elif CC_CLANG || CC_GCC
+#define Trap() __builtin_trap()
+#elif CC_TCC
+#define Trap() (*(volatile int*)0 = 0)
+#else
+#error unsupported compiler
+#endif
+
+#define StaticAssert(COND, ID) typedef char Glue(ID, __LINE__)[(COND)?1:-1]
+
+#define AssertAlways(x) do{if(!(x)) {Trap();}}while(0)
+
+#ifdef DEBUG_MODE
+# define Assert(x) AssertAlways(x)
+#else /* DEBUG_MODE */
+# define Assert(x) (void)(x)
+#endif
+
 
 /* ===================================================== */
 /*                     DEBUG LOGGER                      */
 /* ===================================================== */
 
 #ifdef DEBUG_MODE
-#include "../log/log.h"
-#define DBG(msg, ...) log_debug(msg, ##__VA_ARGS__)
-#else
-#define DBG(msg, ...)
+#include <stdio.h>
+#define Dbg(msg, ...) do { printf(msg, ##__VA_ARGS__); printf("\n"); } while(0);
 #endif /* DEBUG_MODE */
 
 /* ===================================================== */

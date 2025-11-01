@@ -1,53 +1,72 @@
 #ifndef SEPI_ARENA_H
 #define SEPI_ARENA_H
 
-#include <stddef.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdalign.h>
+/* ===================================================== */
+/*                     DEPENDENCIES                      */
+/* ===================================================== */
 
 #include "base.h"
-#include "walloc.h"
+#include "platform.h"
 
-typedef struct arena {
-  void* memory;
-  sz size;
-  sz offset;
-  sz estimation;
-  sz max_align;
-  bool estimating;
+/* ===================================================== */
+/*                       CONSTANTS                       */
+/* ===================================================== */
 
-#ifdef DEBUG_MODE
-  sz user_requested_size;
-#endif /* DEBUG_MODE */
+#define ARENA_DEFAULT_RESERVE_SIZE MB(64)
+#define ARENA_DEFAULT_COMMIT_SIZE MB(64)
 
-} arena;
+/* ===================================================== */
+/*                         TYPES                         */
+/* ===================================================== */
+
+typedef struct ArenaParams ArenaParams;
+struct ArenaParams {
+  U64 requested_reserve_size;
+  U64 requested_commit_size;
+  CStr caller_file_name;
+  U32 caller_file_line;
+};
+
+typedef struct Arena Arena;
+struct Arena {
+  Arena* previous_block;
+  Arena* current_block;
+  Arena* free_last;
+  U64 requested_commit_size;
+  U64 committed_size;
+  U64 requested_reserve_size;
+  U64 reserved_size;
+  U64 base_position;
+  U64 offset;
+  CStr caller_file_name;
+  U32 caller_file_line;
+};
+
+typedef struct ArenaScratch ArenaScratch;
+struct ArenaScratch {
+  Arena* arena;
+  U64 offset;
+};
 
 /* ===================================================== */
 /*                          API                          */
 /* ===================================================== */
 
-#define ARENA_DEFAULT_ALIGNMENT NATIVE_ALIGNMENT
-#define ARENA_MIN_ALIGNMENT 8
-#define ARENA_MAX_ALIGNMENT 128
+Arena* arena_alloc_(ArenaParams* ap);
+Nothing arena_release(Arena* a);
+RawPtr arena_push(Arena*, U64 size, U64 align, Bool with_zero);
+Nothing arena_pop(Arena*, U64 amount);
+Nothing arena_pop_to(Arena* a, U64 position);
+Nothing arena_clear(Arena*);
+U64 arena_get_position(Arena* a);
+ArenaScratch arena_scratch_begin(Arena* a);
+Nothing arena_scratch_end(ArenaScratch s);
 
-void arena_create(arena* a, sz size);
-void arena_destroy(arena* a);
-void* arena_alloc(arena* a, sz size, sz alignment);
-void arena_reset(arena* a);
-void arena_estimate_begin(arena* a);
-void arena_estimate_add(arena* a, sz size, sz alignment);
-void arena_estimate_end(arena* a);
-
-#define arena_push_struct(A, T) \
-  (T*)arena_alloc((A), (sz)sizeof(T), (sz)ALIGNOF(T))
-
-#define arena_push_array(A, T, N) \
-  (T*)arena_alloc((A), (sz)(sizeof(T) * (N)), (sz)ALIGNOF(T))
-
-#define arena_talloc(A, T) arena_alloc((A), (sz)sizeof(T), (sz)ALIGNOF(T))
-#define arena_testimate_add(A, T) \
-  arena_estimate_add((A), (sz)sizeof(T), (sz)ALIGNOF(T))
+#define arena_alloc(...) arena_alloc_(&(ArenaParams){.requested_reserve_size = ARENA_DEFAULT_RESERVE_SIZE, .requested_commit_size = ARENA_DEFAULT_COMMIT_SIZE, .caller_file_name = __FILE__, .caller_file_line = __LINE__, __VA_ARGS__})
+#define arena_push_array_no_zero_aligned(arena, type, count, alignment) (type *)arena_push((arena), sizeof(type) * (count), (alignment), (TRUE))
+#define arena_push_array_aligned(arena, type, count, alignment) (type *)arena_push((arena), sizeof(type) * (count), (alignment), (FALSE))
+#define arena_push_array_no_zero(arena, type, count) arena_push_array_no_zero_aligned(arena, type, count, Max(8, AlignOf(type)))
+#define arena_push_array(arena, type, count) arena_push_array_aligned(arena, type, count, Max(8, AlignOf(type)))
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -55,132 +74,193 @@ void arena_estimate_end(arena* a);
 
 #ifdef SEPI_ARENA_IMPLEMENTATION
 
-void arena_create(arena* a, sz size) {
-  NOTNULL(a);
-  NOTZERO(size);
-  MAKESURE(a->memory == NULL, "arena is already allocated");
+Arena*
+arena_alloc_(ArenaParams* ap) {
+  U64 const large_page_size = platform_get_large_page_size();
 
-  void* memory = wcalloc(1, size);
-  NOTNULL(memory);
+  // TODO: this uses large pages size by default
+  U64 requested_reserve_size = AlignUp(ap->requested_reserve_size,
+                                       large_page_size);
+  U64 requested_commit_size = AlignUp(ap->requested_commit_size, large_page_size);
 
-  a->memory = memory;
-  a->size = size;
-  a->offset = 0;
-  a->estimating = false;
-  a->estimation = 0;
-  a->max_align = ARENA_DEFAULT_ALIGNMENT;
+  RawPtr base = platform_reserve_large_pages(requested_reserve_size);
+  platform_commit_large_pages(base, requested_commit_size);
 
-#ifdef DEBUG_MODE
-  a->user_requested_size = size;
-#endif /* DEBUG_MODE */
-}
-
-void arena_destroy(arena* a) {
-  NOTNULL(a);
-
-  if (a->memory)
-    wfree(a->memory);
-
-  a->memory = NULL;
-  a->size = 0;
-  a->offset = 0;
-  a->estimating = false;
-  a->estimation = 0;
-  a->max_align = 0;
-
-#ifdef DEBUG_MODE
-  a->user_requested_size = 0;
-#endif /* DEBUG_MODE */
-}
-
-void* arena_alloc(arena* a, sz size, sz alignment) {
-  NOTNULL(a);
-  NOTNULL(a->memory);
-  NOTZERO(size);
-  NOTZERO(alignment);
-  ISVALID(IS_POW2(alignment));
-
-  uintptr_t base = (uintptr_t)a->memory;
-  uintptr_t cur = base + a->offset;
-  uintptr_t aptr = ALIGN_UP(cur, alignment); /* ALIGN_UP takes integers */
-  ISVALID(aptr >= base);
-
-  sz used = (sz)(aptr - base);
-  ISVALID(used <= a->size);
-  ISVALID(size <= a->size - used);
-
-  a->offset = used + size;
-  if (a->max_align < alignment)
-    a->max_align = alignment;
-
-  return (void*)aptr;
-}
-
-void arena_reset(arena* a) {
-  NOTNULL(a);
-  NOTNULL(a->memory);
-
-  a->offset = 0;
-  a->estimating = false;
-
-#ifdef DEBUG_MODE
-  memset(a->memory, 0, a->size);
-  a->user_requested_size = 0;
-#endif /* DEBUG_MODE */
-}
-
-void arena_estimate_begin(arena* a) {
-  NOTNULL(a);
-  ISVALID(a->memory == NULL);
-
-  a->memory = NULL;
-  a->size = 0;
-  a->offset = 0;
-  a->estimating = true;
-  a->estimation = 0;
-
-#ifdef DEBUG_MODE
-  a->user_requested_size = 0;
-#endif /* DEBUG_MODE */
-}
-
-void arena_estimate_add(arena* a, sz size, sz alignment) {
-  NOTNULL(a);
-  NOTZERO(size);
-  NOTZERO(alignment);
-  ISVALID(IS_POW2(alignment));
-
-  a->estimation += size;
-  if (a->max_align < alignment) {
-    a->max_align = alignment;
+  if(!base) {
+    Abort("failed to allocate memory to arena allocator");
   }
 
-#ifdef DEBUG_MODE
-  a->user_requested_size += size;
-#endif /* DEBUG_MODE */
+  Sz header_size = sizeof(Arena);
+  Arena* a = (Arena*)base;
+
+  a->current_block = a;
+  a->free_last = 0;
+
+  a->requested_reserve_size = ap->requested_reserve_size;
+  a->reserved_size = requested_reserve_size;
+
+  a->requested_commit_size = ap->requested_commit_size;
+  a->committed_size = requested_commit_size;
+
+  a->base_position = 0;
+  a->offset = header_size;
+
+  a->caller_file_name = ap->caller_file_name;
+  a->caller_file_line = ap->caller_file_line;
+
+  AsanPoisonMemoryRegion(base, requested_commit_size);
+  AsanUnpoisonMemoryRegion(base, header_size);
+  return a;
 }
 
-void arena_estimate_end(arena* a) {
-  NOTNULL(a);
-  NOTZERO(a->estimating);
-  NOTZERO(a->max_align);
+Nothing
+arena_release(Arena* a) {
+  for(Arena* it = a->current_block, *previous_block = 0; it != 0;
+      it = previous_block) {
+    previous_block = it->previous_block;
+    platform_release(it, it->reserved_size);
+  }
+}
 
-  sz size = ALIGN_UP(a->estimation, a->max_align);
-  void* memory = wcalloc(1, size);
-  NOTNULL(memory);
+RawPtr
+arena_push(Arena* a, U64 size, U64 align, Bool with_zero) {
+  Arena* current_block = a->current_block;
+  U64 offset_aligned = AlignUp(current_block->offset, align);
+  U64 offset_aligned_sized = offset_aligned + size;
 
-  a->memory = memory;
-  a->size = size;
-  a->offset = 0;
-  a->estimating = false;
-  a->estimation = 0;
+  if(current_block->reserved_size < offset_aligned_sized) {
+    Arena* new_block = 0;
+    Arena* previous_block;
 
-#ifdef DEBUG_MODE
-  printf("============== ARENA.H ==============\n");
-  printf(" user requested size: %zu\n", a->user_requested_size);
-  printf(" real allocated size: %zu\n", a->size);
-  printf("=====================================\n");
-#endif /* DEBUG_MODE */
+    for(new_block = a->free_last, previous_block = 0; new_block != 0;
+        previous_block = new_block, new_block = new_block->previous_block) {
+      if(new_block->reserved_size >= AlignUp(new_block->offset, align) + size) {
+        if(previous_block) {
+          previous_block->previous_block = new_block->previous_block;
+        } else {
+          a->free_last = new_block->previous_block;
+        }
+        break;
+      }
+    }
+
+
+    if(new_block == 0) {
+      Sz header_size = sizeof(Arena);
+      U64 requested_reserve_size = current_block->requested_reserve_size;
+      U64 requested_commit_size = current_block->requested_commit_size;
+      if(size + header_size > requested_reserve_size) {
+        requested_reserve_size = AlignUp(size + header_size, align);
+        requested_commit_size = AlignUp(size + header_size, align);
+      }
+      new_block = arena_alloc(.requested_reserve_size = requested_reserve_size,
+                              .requested_commit_size = requested_commit_size,
+                              .caller_file_name = current_block->caller_file_name,
+                              .caller_file_line = current_block->caller_file_line);
+    }
+
+    new_block->base_position = current_block->base_position +
+                               current_block->reserved_size;
+    new_block->previous_block = a->current_block;
+    a->current_block = new_block;
+    current_block = new_block;
+    offset_aligned = AlignUp(current_block->offset, align);
+    offset_aligned_sized = offset_aligned + size;
+  }
+
+  U64 size_to_zero = 0;
+  if(with_zero) {
+    size_to_zero = Min(current_block->committed_size,
+                       offset_aligned_sized) - offset_aligned;
+  }
+
+  if(current_block->committed_size < offset_aligned_sized) {
+    U64 new_commit_size = offset_aligned_sized +
+                          current_block->requested_commit_size - 1;
+    new_commit_size -= new_commit_size % current_block->requested_commit_size;
+    U64 commit_size_clamped = Max(new_commit_size, current_block->reserved_size);
+    U64 needed_commit_size = commit_size_clamped - current_block->committed_size;
+    U8* committed_size_ptr = (U8*)current_block + current_block->committed_size;
+    platform_commit_large_pages(committed_size_ptr, needed_commit_size);
+    current_block->committed_size = commit_size_clamped;
+  }
+
+  RawPtr result = 0;
+  if(current_block->committed_size >= offset_aligned_sized) {
+    result = (U8*)current_block + offset_aligned;
+    current_block->offset = offset_aligned_sized;
+    AsanUnpoisonMemoryRegion(result, size);
+    if(size_to_zero != 0) {
+      MemZero(result, size_to_zero);
+    }
+  }
+
+  if(result == 0) {
+    Abort("failed to allocate memory from arena allocator");
+  }
+
+  return result;
+}
+
+Nothing
+arena_pop(Arena* a, U64 amount) {
+  U64 old_position = arena_get_position(a);
+  U64 new_position = old_position;
+  if (amount < old_position) {
+    new_position = old_position - amount;
+  }
+  arena_pop_to(a, new_position);
+}
+
+Nothing
+arena_pop_to(Arena* a, U64 position) {
+  Sz header_size = sizeof(Arena);
+  U64 normilized_position = Max(header_size, position);
+  Arena* current_block = a->current_block;
+
+  for(Arena* previous_block = 0;
+      current_block->base_position >= normilized_position;
+      current_block = previous_block
+     ) {
+    previous_block = current_block->previous_block;
+    current_block->offset = header_size;
+    current_block->previous_block = a->free_last;
+    a->free_last = current_block;
+    AsanPoisonMemoryRegion((U8*)current_block + header_size,
+                           current_block->reserved_size - header_size);
+  }
+
+  a->current_block = current_block;
+  U64 new_offset = normilized_position - current_block->base_position;
+  AssertAlways(new_offset <= current_block->offset);
+  AsanPoisonMemoryRegion((U8*)current_block + new_offset,
+                         (current_block->offset - new_offset));
+  current_block->offset = new_offset;
+}
+
+Nothing
+arena_clear(Arena* a) {
+  arena_pop_to(a, 0);
+}
+
+U64
+arena_get_position(Arena* a) {
+  Arena* current_block = a->current_block;
+  U64 position = current_block->base_position + current_block->offset;
+  return position;
+}
+
+ArenaScratch
+arena_scratch_begin(Arena* a) {
+  U64 position = arena_get_position(a);
+  return (ArenaScratch) {
+    a, position
+  };
+}
+
+Nothing
+arena_scratch_end(ArenaScratch s) {
+  arena_pop_to(s.arena, s.offset);
 }
 
 /* ===================================================== */
@@ -189,3 +269,4 @@ void arena_estimate_end(arena* a) {
 
 #endif /* SEPI_ARENA_IMPLEMENTATION */
 #endif /* SEPI_ARENA_H */
+
