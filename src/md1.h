@@ -122,9 +122,9 @@ typedef struct {
 } MD1Pose;
 
 typedef struct {
-  sg_image image;
+  sg_view image;
   sg_sampler sampler;
-  snk_image_t ui_image;
+  // snk_image_t ui_image;
 } MD1Skin;
 
 typedef struct {
@@ -233,16 +233,16 @@ md1_load_skins(MD1* md1, const U8* p) {
         .min_filter = SG_FILTER_LINEAR,
         .mag_filter = SG_FILTER_LINEAR,
       });
-      skins[i].ui_image = snk_make_image(&(snk_image_desc_t) {
-        .image = skins[i].image,
-        .sampler = skins[i].sampler,
-      });
+      // skins[i].ui_image = snk_make_image(&(snk_image_desc_t) {
+      //   .image = skins[i].image,
+      //   .sampler = skins[i].sampler,
+      // });
       sg_init_image(skins[i].image,
       &(sg_image_desc) {
         .width = width,
         .height = height,
         .pixel_format = SG_PIXELFORMAT_RGBA8,
-        .data.subimage[0][0] = {
+        .data.mip_levels[0] = {
           .ptr = pixels,
           .size = (Sz)(width * height * 4),
         }
@@ -547,7 +547,7 @@ md1_unload(MD1* md1) {
   for (U32 i = 0; i < md1->header.skins_length; i++) {
     sg_destroy_image(md1->skins[i].image);
     sg_destroy_sampler(md1->skins[i].sampler);
-    snk_destroy_image(md1->skins[i].ui_image);
+    // snk_destroy_image(md1->skins[i].ui_image);
   }
 
   if(md1->arena) {

@@ -135,6 +135,6 @@ newaction {
   trigger = "r",
   description = "quick execute",
   execute = function()
-    os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/sqv -i=.keep/dog.mdl")
+    os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/sqv -i=.keep/pak0.pak")
   end
 }

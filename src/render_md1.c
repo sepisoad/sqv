@@ -20,7 +20,8 @@ void reset_state();
 void load_3d_model(CStr path, MD1* m);
 void unload_3d_model(MD1* m);
 
-void update_offscreen_target(State* s, I32 width, I32 height) {
+void
+update_offscreen_target(State* s, I32 width, I32 height) {
   snk_destroy_image(s->ctx3d->nk_img);
   sg_destroy_attachments(s->ctx3d->atts);
   sg_destroy_image(s->ctx3d->depth_img);
@@ -29,39 +30,41 @@ void update_offscreen_target(State* s, I32 width, I32 height) {
   s->ctx3d->width = width > 0 ? width : DEFAULT_WIDTH;
   s->ctx3d->height = height > 0 ? height : DEFAULT_HEIGHT;
 
-  s->ctx3d->color_img = sg_make_image(&(sg_image_desc){
-      .usage.render_attachment = true,
-      .width = s->ctx3d->width,
-      .height = s->ctx3d->height,
-      .sample_count = 1,
+  s->ctx3d->color_img = sg_make_image(&(sg_image_desc) {
+    .usage.render_attachment = true,
+    .width = s->ctx3d->width,
+    .height = s->ctx3d->height,
+    .sample_count = 1,
   });
 
-  s->ctx3d->depth_img = sg_make_image(&(sg_image_desc){
-      .usage.render_attachment = true,
-      .width = s->ctx3d->width,
-      .height = s->ctx3d->height,
-      .pixel_format = SG_PIXELFORMAT_DEPTH,
-      .sample_count = 1,
+  s->ctx3d->depth_img = sg_make_image(&(sg_image_desc) {
+    .usage.render_attachment = true,
+    .width = s->ctx3d->width,
+    .height = s->ctx3d->height,
+    .pixel_format = SG_PIXELFORMAT_DEPTH,
+    .sample_count = 1,
   });
 
-  s->ctx3d->atts = sg_make_attachments(&(sg_attachments_desc){
-      .colors[0].image = s->ctx3d->color_img,
-      .depth_stencil.image = s->ctx3d->depth_img,
+  s->ctx3d->atts = sg_make_attachments(&(sg_attachments_desc) {
+    .colors[0].image = s->ctx3d->color_img,
+              .depth_stencil.image = s->ctx3d->depth_img,
   });
 
-  s->ctx3d->nk_img = snk_make_image(&(snk_image_desc_t){
-      .image = s->ctx3d->color_img,
-      .sampler = s->ctx3d->sampler,
+  s->ctx3d->nk_img = snk_make_image(&(snk_image_desc_t) {
+    .image = s->ctx3d->color_img,
+    .sampler = s->ctx3d->sampler,
   });
 
-  s->ctx3d->pass_action = (sg_pass_action){
-      .colors[0] = {.load_action = SG_LOADACTION_CLEAR,
-                    .clear_value = {0.25f, 0.5f, 0.75f, 1.0f}},
+  s->ctx3d->pass_action = (sg_pass_action) {
+    .colors[0] = {.load_action = SG_LOADACTION_CLEAR,
+                  .clear_value = {0.25f, 0.5f, 0.75f, 1.0f}
+                 },
   };
 }
 
-void create_offscreen_target(State* s, CStr path) {
-  if (s->ctx3d != NULL) {
+void
+create_offscreen_target(State* s, CStr path) {
+  if(s->ctx3d != NULL) {
     unload_3d_model(&s->mdl);
     sg_destroy_pipeline(s->pip);
     sg_destroy_shader(s->shd);
@@ -77,49 +80,49 @@ void create_offscreen_target(State* s, CStr path) {
   md1_get_vertices(&s->mdl, s->mdl_pos, s->mdl_frm, &vb, &vb_len);
 
   s->shd = sg_make_shader(cube_shader_desc(sg_query_backend()));
-  s->pip = sg_make_pipeline(&(sg_pipeline_desc){
-      .layout =
-          {
-              .attrs =
-                  {
-                      [ATTR_cube_position].format = SG_VERTEXFORMAT_FLOAT3,
-                      [ATTR_cube_texcoord0].format = SG_VERTEXFORMAT_FLOAT2,
-                  },
-          },
-      .shader = s->shd,
-      .primitive_type = SG_PRIMITIVETYPE_TRIANGLES,
-      .cull_mode = SG_CULLMODE_BACK,
-      .depth = {
-          .write_enabled = true,
-          .compare = SG_COMPAREFUNC_LESS_EQUAL,
-          .pixel_format = SG_PIXELFORMAT_DEPTH,
-      }});
+  s->pip = sg_make_pipeline(&(sg_pipeline_desc) {
+    .layout = {
+      .attrs =
+      {
+        [ATTR_cube_position].format = SG_VERTEXFORMAT_FLOAT3,
+        [ATTR_cube_texcoord0].format = SG_VERTEXFORMAT_FLOAT2,
+      },
+    },
+    .shader = s->shd,
+    .primitive_type = SG_PRIMITIVETYPE_TRIANGLES,
+    .cull_mode = SG_CULLMODE_BACK,
+    .depth = {
+      .write_enabled = true,
+      .compare = SG_COMPAREFUNC_LESS_EQUAL,
+      .pixel_format = SG_PIXELFORMAT_DEPTH,
+    }
+  });
 
-  s->bind.vertex_buffers[0] = sg_make_buffer(&(sg_buffer_desc){
-      .size = (size_t)vb_len * sizeof(F32),
-      .usage = (sg_buffer_usage){.stream_update = true},
+  s->bind.vertex_buffers[0] = sg_make_buffer(&(sg_buffer_desc) {
+    .size = (size_t)vb_len * sizeof(F32),
+    .usage = (sg_buffer_usage) {.stream_update = true},
   });
   s->bind.images[IMG_tex] = s->mdl.skins[s->mdl_skn].image;
   s->bind.samplers[SMP_smp] = s->mdl.skins[s->mdl_skn].sampler;
 
-  s->ctx3d->sampler = sg_make_sampler(&(sg_sampler_desc){
-      .min_filter = SG_FILTER_LINEAR,
-      .mag_filter = SG_FILTER_LINEAR,
-      .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
-      .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
+  s->ctx3d->sampler = sg_make_sampler(&(sg_sampler_desc) {
+    .min_filter = SG_FILTER_LINEAR,
+    .mag_filter = SG_FILTER_LINEAR,
+    .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
+    .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
   });
 
   update_offscreen_target(s, sapp_width(), sapp_height());
-  s->pass_action = (sg_pass_action){
-      .colors[0] =
-          {
-              .load_action = SG_LOADACTION_CLEAR,
-              .clear_value = {0.1f, 0.1f, 0.1f, 1.0f},
-          },
+  s->pass_action = (sg_pass_action) {
+    .colors[0] = {
+      .load_action = SG_LOADACTION_CLEAR,
+      .clear_value = {0.1f, 0.1f, 0.1f, 1.0f},
+    },
   };
 }
 
-void load_3d_model(CStr path, MD1* m) {
+void
+load_3d_model(CStr path, MD1* m) {
   NotNull(path);
   NotNull(m);
 
@@ -131,12 +134,14 @@ void load_3d_model(CStr path, MD1* m) {
   free(bf);
 }
 
-void unload_3d_model(MD1* m) {
+void
+unload_3d_model(MD1* m) {
   NotNull(m);
   md1_unload(m);
 }
 
-void render_md1(State* s) {
+void
+render_md1(State* s) {
   MD1* m = &s->mdl;
   hmm_v3* bbmin = &m->header.bbox_min;
   hmm_v3* bbmax = &m->header.bbox_max;
@@ -162,12 +167,12 @@ void render_md1(State* s) {
   hmm_mat4 rotation = HMM_MultiplyMat4(HMM_MultiplyMat4(rxm, rym), rzm);
 
   hmm_mat4 model = HMM_MultiplyMat4(
-      HMM_Translate(center),
-      HMM_MultiplyMat4(rotation,
-                       HMM_Translate(HMM_MultiplyVec3f(center, -1.0f))));
+                     HMM_Translate(center),
+                     HMM_MultiplyMat4(rotation,
+                                      HMM_Translate(HMM_MultiplyVec3f(center, -1.0f))));
 
   vs_params_t vs_params = {
-      .mvp = HMM_MultiplyMat4(view_proj, model),
+    .mvp = HMM_MultiplyMat4(view_proj, model),
   };
 
   const F32* vb = NULL;
@@ -176,11 +181,15 @@ void render_md1(State* s) {
   md1_get_vertices(m, s->mdl_pos, s->mdl_frm, &vb, &vb_len);
 
   sg_update_buffer(
-      s->bind.vertex_buffers[0],
-      &(sg_range){.ptr = vb, .size = (size_t)vb_len * sizeof(F32)});
+    s->bind.vertex_buffers[0],
+  &(sg_range) {
+    .ptr = vb, .size = (size_t)vb_len * sizeof(F32)
+  });
 
-  sg_begin_pass(&(sg_pass){.action = s->ctx3d->pass_action,
-                           .attachments = s->ctx3d->atts});
+  sg_begin_pass(&(sg_pass) {
+    .action = s->ctx3d->pass_action,
+    .attachments = s->ctx3d->atts
+  });
   sg_apply_pipeline(s->pip);
   sg_apply_bindings(&s->bind);
   sg_apply_uniforms(UB_vs_params, &SG_RANGE(vs_params));

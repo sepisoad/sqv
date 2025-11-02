@@ -35,7 +35,7 @@ Nothing render_lmp(State*);
 Nothing
 set_skin(U32 idx) {
   MakeSure(idx <= s.mdl.header.skins_length, "invalid skin index");
-  s.bind.images[IMG_tex] = s.mdl.skins[idx].image;
+  s.bind.views[VIEW_tex] = s.mdl.skins[idx].image;
   s.bind.samplers[SMP_smp] = s.mdl.skins[idx].sampler;
 }
 
@@ -431,11 +431,11 @@ sokol_main(I32 argc, char* argv[]) {
     .argv = argv,
   });
 
-  CStr mdlpath = NULL;
+  CStr inpath = NULL;
   if(sargs_exists("-i")) {
-    mdlpath = sargs_value("-i");
+    inpath = sargs_value("-i");
   } else if(sargs_exists("--input")) {
-    mdlpath = sargs_value("--input");
+    inpath = sargs_value("--input");
   }
 
   return (sapp_desc) {
@@ -443,7 +443,7 @@ sokol_main(I32 argc, char* argv[]) {
     .cleanup_cb = cleanup,
     .event_cb = input,
     .frame_cb = frame,
-    .user_data = (RawPtr)mdlpath,
+    .user_data = (RawPtr)inpath,
     .width = 800,
     .height = 600,
     .sample_count = 1,

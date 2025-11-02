@@ -20,11 +20,11 @@
         Uniform block 'vs_params':
             C struct: vs_params_t
             Bind slot: UB_vs_params => 0
-        Image 'tex':
+        Texture 'tex':
             Image type: SG_IMAGETYPE_2D
             Sample type: SG_IMAGESAMPLETYPE_FLOAT
             Multisampled: false
-            Bind slot: IMG_tex => 0
+            Bind slot: VIEW_tex => 0
         Sampler 'smp':
             Type: SG_SAMPLERTYPE_FILTERING
             Bind slot: SMP_smp => 0
@@ -42,7 +42,7 @@
 #define ATTR_cube_position (0)
 #define ATTR_cube_texcoord0 (1)
 #define UB_vs_params (0)
-#define IMG_tex (0)
+#define VIEW_tex (0)
 #define SMP_smp (0)
 #pragma pack(push,1)
 SOKOL_SHDC_ALIGN(16) typedef struct vs_params_t {
@@ -121,7 +121,9 @@ static inline const sg_shader_desc* cube_shader_desc(sg_backend backend) {
             desc.vertex_func.entry = "main";
             desc.fragment_func.source = (const char*)fs_source_glsl410;
             desc.fragment_func.entry = "main";
+            desc.attrs[0].base_type = SG_SHADERATTRBASETYPE_FLOAT;
             desc.attrs[0].glsl_name = "position";
+            desc.attrs[1].base_type = SG_SHADERATTRBASETYPE_FLOAT;
             desc.attrs[1].glsl_name = "texcoord0";
             desc.uniform_blocks[0].stage = SG_SHADERSTAGE_VERTEX;
             desc.uniform_blocks[0].layout = SG_UNIFORMLAYOUT_STD140;
@@ -129,16 +131,16 @@ static inline const sg_shader_desc* cube_shader_desc(sg_backend backend) {
             desc.uniform_blocks[0].glsl_uniforms[0].type = SG_UNIFORMTYPE_FLOAT4;
             desc.uniform_blocks[0].glsl_uniforms[0].array_count = 4;
             desc.uniform_blocks[0].glsl_uniforms[0].glsl_name = "vs_params";
-            desc.images[0].stage = SG_SHADERSTAGE_FRAGMENT;
-            desc.images[0].image_type = SG_IMAGETYPE_2D;
-            desc.images[0].sample_type = SG_IMAGESAMPLETYPE_FLOAT;
-            desc.images[0].multisampled = false;
+            desc.views[0].texture.stage = SG_SHADERSTAGE_FRAGMENT;
+            desc.views[0].texture.image_type = SG_IMAGETYPE_2D;
+            desc.views[0].texture.sample_type = SG_IMAGESAMPLETYPE_FLOAT;
+            desc.views[0].texture.multisampled = false;
             desc.samplers[0].stage = SG_SHADERSTAGE_FRAGMENT;
             desc.samplers[0].sampler_type = SG_SAMPLERTYPE_FILTERING;
-            desc.image_sampler_pairs[0].stage = SG_SHADERSTAGE_FRAGMENT;
-            desc.image_sampler_pairs[0].image_slot = 0;
-            desc.image_sampler_pairs[0].sampler_slot = 0;
-            desc.image_sampler_pairs[0].glsl_name = "tex_smp";
+            desc.texture_sampler_pairs[0].stage = SG_SHADERSTAGE_FRAGMENT;
+            desc.texture_sampler_pairs[0].view_slot = 0;
+            desc.texture_sampler_pairs[0].sampler_slot = 0;
+            desc.texture_sampler_pairs[0].glsl_name = "tex_smp";
             desc.label = "cube_shader";
         }
         return &desc;

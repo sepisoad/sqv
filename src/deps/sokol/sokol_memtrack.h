@@ -10,9 +10,9 @@
 
     Optionally provide the following defines with your own implementations:
 
-    SOKOL_MEMTRACK_API_DECL - public function declaration prefix (default:
-   extern) SOKOL_API_DECL      - same as SOKOL_MEMTRACK_API_DECL SOKOL_API_IMPL
-   - public function implementation prefix (default: -)
+    SOKOL_MEMTRACK_API_DECL - public function declaration prefix (default: extern)
+    SOKOL_API_DECL      - same as SOKOL_MEMTRACK_API_DECL
+    SOKOL_API_IMPL      - public function implementation prefix (default: -)
 
     If sokol_memtrack.h is compiled as a DLL, define the following before
     including the declaration or implementation:
@@ -59,8 +59,8 @@
     freely, subject to the following restrictions:
 
         1. The origin of this software must not be misrepresented; you must not
-        claim that you wrote the original software. If you use this software in
-   a product, an acknowledgment in the product documentation would be
+        claim that you wrote the original software. If you use this software in a
+        product, an acknowledgment in the product documentation would be
         appreciated but is not required.
 
         2. Altered source versions must be plainly marked as such, and must not
@@ -71,7 +71,7 @@
 */
 #define SOKOL_MEMTRACK_INCLUDED (1)
 #include <stdint.h>
-#include <stddef.h>  // size_t
+#include <stddef.h> // size_t
 
 #if defined(SOKOL_API_DECL) && !defined(SOKOL_MEMTRACK_API_DECL)
 #define SOKOL_MEMTRACK_API_DECL SOKOL_API_DECL
@@ -91,8 +91,8 @@ extern "C" {
 #endif
 
 typedef struct smemtrack_info_t {
-  int num_allocs;
-  int num_bytes;
+    int num_allocs;
+    int num_bytes;
 } smemtrack_info_t;
 
 SOKOL_MEMTRACK_API_DECL smemtrack_info_t smemtrack_info(void);
@@ -107,60 +107,61 @@ SOKOL_MEMTRACK_API_DECL void smemtrack_free(void* ptr, void* user_data);
 /*=== IMPLEMENTATION =========================================================*/
 #ifdef SOKOL_MEMTRACK_IMPL
 #define SOKOL_MEMTRACK_IMPL_INCLUDED (1)
-#include <stdlib.h>  // malloc, free
-#include <string.h>  // memset
+#include <stdlib.h> // malloc, free
+#include <string.h> // memset
 
 #ifndef SOKOL_API_IMPL
-#define SOKOL_API_IMPL
+    #define SOKOL_API_IMPL
 #endif
 #ifndef SOKOL_DEBUG
-#ifndef NDEBUG
-#define SOKOL_DEBUG
-#endif
+    #ifndef NDEBUG
+        #define SOKOL_DEBUG
+    #endif
 #endif
 #ifndef _SOKOL_PRIVATE
-#if defined(__GNUC__) || defined(__clang__)
-#define _SOKOL_PRIVATE __attribute__((unused)) static
-#else
-#define _SOKOL_PRIVATE static
-#endif
+    #if defined(__GNUC__) || defined(__clang__)
+        #define _SOKOL_PRIVATE __attribute__((unused)) static
+    #else
+        #define _SOKOL_PRIVATE static
+    #endif
 #endif
 
 // per-allocation header used to keep track of the allocation size
 #define _SMEMTRACK_HEADER_SIZE (16)
 
 static struct {
-  smemtrack_info_t state;
+    smemtrack_info_t state;
 } _smemtrack;
 
 SOKOL_API_IMPL void* smemtrack_alloc(size_t size, void* user_data) {
-  (void)user_data;
-  uint8_t* ptr = (uint8_t*)malloc(size + _SMEMTRACK_HEADER_SIZE);
-  if (ptr) {
-    // store allocation size (for allocation size tracking)
-    *(size_t*)ptr = size;
-    _smemtrack.state.num_allocs++;
-    _smemtrack.state.num_bytes += (int)size;
-    return ptr + _SMEMTRACK_HEADER_SIZE;
-  } else {
-    // allocation failed, return null pointer
-    return ptr;
-  }
+    (void)user_data;
+    uint8_t* ptr = (uint8_t*) malloc(size + _SMEMTRACK_HEADER_SIZE);
+    if (ptr) {
+        // store allocation size (for allocation size tracking)
+        *(size_t*)ptr = size;
+        _smemtrack.state.num_allocs++;
+        _smemtrack.state.num_bytes += (int) size;
+        return ptr + _SMEMTRACK_HEADER_SIZE;
+    }
+    else {
+        // allocation failed, return null pointer
+        return ptr;
+    }
 }
 
 SOKOL_API_IMPL void smemtrack_free(void* ptr, void* user_data) {
-  (void)user_data;
-  if (ptr) {
-    uint8_t* alloc_ptr = ((uint8_t*)ptr) - _SMEMTRACK_HEADER_SIZE;
-    size_t size = *(size_t*)alloc_ptr;
-    _smemtrack.state.num_allocs--;
-    _smemtrack.state.num_bytes -= (int)size;
-    free(alloc_ptr);
-  }
+    (void)user_data;
+    if (ptr) {
+        uint8_t* alloc_ptr = ((uint8_t*)ptr) - _SMEMTRACK_HEADER_SIZE;
+        size_t size = *(size_t*)alloc_ptr;
+        _smemtrack.state.num_allocs--;
+        _smemtrack.state.num_bytes -= (int) size;
+        free(alloc_ptr);
+    }
 }
 
 SOKOL_API_IMPL smemtrack_info_t smemtrack_info(void) {
-  return _smemtrack.state;
+    return _smemtrack.state;
 }
 
 #endif /* SOKOL_MEMTRACK_IMPL */
