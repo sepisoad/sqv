@@ -102,7 +102,7 @@ void draw_commandline(State* s) {
   if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, "",
                      NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BORDER, rect)) {
     nk_layout_row(ctx, NK_STATIC, 30, 2, width_two);
-    nk_label(ctx, "CMD:", NK_TEXT_LEFT);
+    nk_label(ctx, "CMD: ", NK_TEXT_LEFT);
     nk_edit_focus(ctx, NK_EDIT_ACTIVE);
     nk_edit_string_zero_terminated(ctx, NK_EDIT_FIELD, s->cmd,
                                    sizeof(s->cmd) - 1, nk_filter_default);
@@ -113,3 +113,4 @@ void draw_commandline(State* s) {
   ctx->style.window = win;
   ctx->style.edit = edit;
 }
+

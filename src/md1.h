@@ -3,7 +3,6 @@
 
 #include <ctype.h>
 #include <stdalign.h>
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -173,7 +172,7 @@ const int MAXSKINS = 32;
 extern const U8 quake1_palette[256][3];
 extern const F32 quake1_normals[162][3];
 
-static bool
+static Bool
 MD1Pose_changed(char* new, char* old) {
   for (I32 i = 0; i < MAX_FRAME_NAME_LEN - 1; i++) {
     if (isdigit(new[i])) {
@@ -182,14 +181,14 @@ MD1Pose_changed(char* new, char* old) {
   }
 
   if (strlen(old) <= 0) {
-    return false;
+    return FALSE;
   }
 
   if (strcmp(new, old) == 0) {
-    return false;
+    return FALSE;
   }
 
-  return true;
+  return TRUE;
 }
 
 static void

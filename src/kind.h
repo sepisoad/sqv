@@ -16,7 +16,7 @@ typedef enum {
   KIND_DAT,
   KIND_TPAK,
 
-  KIND_MDL,
+  KIND_MD1,
   KIND_MD2,
   KIND_MD3,
   KIND_MS2,
@@ -76,7 +76,7 @@ static Kind guess_file_type(CStr buf) {
     return KIND_PAK;
   }
   if (strncmp(buf, "IDPO", 4) == 0) {
-    return KIND_MDL;
+    return KIND_MD1;
   }
   return KIND_UNKNOWN;
 }
@@ -121,7 +121,7 @@ Kind kind_guess_entry(CStr path, U32 len) {
   }
 
   if (!strncmp(ext, "MDL", 3)) {
-    return KIND_MDL;
+    return KIND_MD1;
   }
 
   if (!strncmp(ext, "MD2", 3)) {
@@ -256,11 +256,14 @@ Kind kind_guess_file(CStr path) {
 
   FILE* f = fopen(path, "rb");
   NotNull(f);
-  NotZero(!fseek(f, 0, SEEK_END));
+
+  IsValid(fseek(f, 0, SEEK_END) == 0);
   IsValid(NotZero(ftell(f)) >= MAXBUFSIZE);
 
   rewind(f);
-  IsValid(fread(buf, sizeof(char), MAXBUFSIZE, f) == MAXBUFSIZE);
+
+  Sz sz = fread(buf, sizeof(buf[0]), MAXBUFSIZE, f);
+  IsValid(sz == MAXBUFSIZE);
 
   fclose(f);
 

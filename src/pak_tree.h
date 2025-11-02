@@ -11,7 +11,7 @@ typedef struct pak_tree_node {
   char* name;
   int depth;
   int subtree_size;
-  bool is_dir;
+  Bool is_dir;
 } pak_tree_node;
 
 typedef struct {
@@ -218,7 +218,7 @@ void pak_tree_make(pak_tree* tree, pak* pak) {
         node->name[seg_len] = '\0';
         node->depth = current_depth;
         node->subtree_size = 0;  // Set later
-        node->is_dir = true;
+        node->is_dir = TRUE;
         stack[stack_top++] = current_index;
         current_index++;
         current_depth++;
@@ -238,7 +238,7 @@ void pak_tree_make(pak_tree* tree, pak* pak) {
       strcpy(node->name, seg_start);
       node->depth = current_depth;
       node->subtree_size = 0;
-      node->is_dir = false;
+      node->is_dir = FALSE;
       current_index++;
     }
 
