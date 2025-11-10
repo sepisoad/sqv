@@ -80,16 +80,38 @@ project "mk_sepi"
   files { "src/deps/sepi/sepi.c" }
 
 -- Main Application
-project "mk_sqv"
+-- project "mk_sqv"
+--   kind "ConsoleApp"
+--   language "C"
+--   location ".build"
+--   targetdir ".build/"
+--   objdir ".build/obj"
+--   targetname "sqv"
+--   includedirs { "src", "src/deps" }
+--   links { "mk_log:static", "mk_stb:static", "mk_hmm:static", "mk_sepi:static", "mk_sokol:static", }
+--   files { "src/app.c", "src/render_common.c", "src/render_init.c", "src/render_lmp.c", "src/render_md1.c", "src/render_pak.c", "src/render_ui.c", "src/render_wad.c", }
+
+--   buildoptions { "-std=gnu11" }
+--   defines { "SOKOL_GLCORE" }
+--   defines { "_POSIX_C_SOURCE=199309L" } -- Needed for some C23 features
+
+--   filter "system:macosx"
+--     links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
+
+--   filter "system:linux"
+--     links { "X11", "Xi", "Xcursor", "GL", "m" }
+
+-- Playground Application
+project "mk_dapp"
   kind "ConsoleApp"
   language "C"
   location ".build"
   targetdir ".build/"
   objdir ".build/obj"
-  targetname "sqv"
+  targetname "dapp"
   includedirs { "src", "src/deps" }
   links { "mk_log:static", "mk_stb:static", "mk_hmm:static", "mk_sepi:static", "mk_sokol:static", }
-  files { "src/app.c", "src/render_common.c", "src/render_init.c", "src/render_lmp.c", "src/render_md1.c", "src/render_pak.c", "src/render_ui.c", "src/render_wad.c", }
+  files { "src/dapp.c" }
 
   buildoptions { "-std=gnu11" }
   defines { "SOKOL_GLCORE" }
@@ -101,12 +123,14 @@ project "mk_sqv"
   filter "system:linux"
     links { "X11", "Xi", "Xcursor", "GL", "m" }
 
+
 -- GLSL Shader Compilation Action
 newaction {
   trigger = "glsl",
   description = "Compile shaders into C headers",
   execute = function()
     os.execute("sokol-shdc -i src/shaders/default.glsl -l glsl410 -f sokol -o src/shaders/default.glsl.h")
+    os.execute("sokol-shdc -i src/shaders/debug.glsl -l glsl410 -f sokol -o src/shaders/debug.glsl.h")
   end
 }
 
@@ -127,7 +151,7 @@ newaction {
   trigger = "p",
   description = "execute",
   execute = function()
-    os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/sqv")
+    os.execute("LSAN_OPTIONS=suppressions=~/Documents/lsan.supp .build/sqv")
   end
 }
 
@@ -135,6 +159,15 @@ newaction {
   trigger = "r",
   description = "quick execute",
   execute = function()
-    os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/sqv -i=.keep/pak0.pak")
+    os.execute("LSAN_OPTIONS=suppressions=~/Documents/lsan.supp .build/sqv -i=.keep/pak0.pak")
+  end
+}
+
+
+newaction {
+  trigger = "d",
+  description = "play ground",
+  execute = function()
+    os.execute("LSAN_OPTIONS=suppressions=~/Documents/lsan.supp .build/dapp")
   end
 }

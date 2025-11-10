@@ -52,8 +52,8 @@ struct ArenaScratch {
 /*                          API                          */
 /* ===================================================== */
 
-Arena* arena_alloc_(ArenaParams* ap);
-Nothing arena_release(Arena* a);
+Arena* arena_create_(ArenaParams* ap);
+Nothing arena_destroy(Arena* a);
 RawPtr arena_push(Arena*, U64 size, U64 align, Bool with_zero);
 Nothing arena_pop(Arena*, U64 amount);
 Nothing arena_pop_to(Arena* a, U64 position);
@@ -62,7 +62,7 @@ U64 arena_get_position(Arena* a);
 ArenaScratch arena_scratch_begin(Arena* a);
 Nothing arena_scratch_end(ArenaScratch s);
 
-#define arena_alloc(...) arena_alloc_(&(ArenaParams){.requested_reserve_size = ARENA_DEFAULT_RESERVE_SIZE, .requested_commit_size = ARENA_DEFAULT_COMMIT_SIZE, .caller_file_name = __FILE__, .caller_file_line = __LINE__, __VA_ARGS__})
+#define arena_create(...) arena_create_(&(ArenaParams){.requested_reserve_size = ARENA_DEFAULT_RESERVE_SIZE, .requested_commit_size = ARENA_DEFAULT_COMMIT_SIZE, .caller_file_name = __FILE__, .caller_file_line = __LINE__, __VA_ARGS__})
 #define arena_push_array_no_zero_aligned(arena, type, count, alignment) (type *)arena_push((arena), sizeof(type) * (count), (alignment), (TRUE))
 #define arena_push_array_aligned(arena, type, count, alignment) (type *)arena_push((arena), sizeof(type) * (count), (alignment), (FALSE))
 #define arena_push_array_no_zero(arena, type, count) arena_push_array_no_zero_aligned(arena, type, count, Max(8, AlignOf(type)))
@@ -75,10 +75,10 @@ Nothing arena_scratch_end(ArenaScratch s);
 #ifdef SEPI_ARENA_IMPLEMENTATION
 
 Arena*
-arena_alloc_(ArenaParams* ap) {
+arena_create_(ArenaParams* ap) {
   U64 const large_page_size = platform_get_large_page_size();
 
-  // TODO: this uses large pages size by default
+  /* TODO: this uses large pages size by default */
   U64 requested_reserve_size = AlignUp(ap->requested_reserve_size,
                                        large_page_size);
   U64 requested_commit_size = AlignUp(ap->requested_commit_size, large_page_size);
@@ -114,7 +114,7 @@ arena_alloc_(ArenaParams* ap) {
 }
 
 Nothing
-arena_release(Arena* a) {
+arena_destroy(Arena* a) {
   for(Arena* it = a->current_block, *previous_block = 0; it != 0;
       it = previous_block) {
     previous_block = it->previous_block;
@@ -153,7 +153,7 @@ arena_push(Arena* a, U64 size, U64 align, Bool with_zero) {
         requested_reserve_size = AlignUp(size + header_size, align);
         requested_commit_size = AlignUp(size + header_size, align);
       }
-      new_block = arena_alloc(.requested_reserve_size = requested_reserve_size,
+      new_block = arena_create(.requested_reserve_size = requested_reserve_size,
                               .requested_commit_size = requested_commit_size,
                               .caller_file_name = current_block->caller_file_name,
                               .caller_file_line = current_block->caller_file_line);

@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "base.h"
+#include "arena.h"
 
 /* ===================================================== */
 /*                       CONSTANTS                       */
@@ -20,7 +21,7 @@
 /*                          API                          */
 /* ===================================================== */
 
-Sz io_load_file(CStr, Buf*);
+Sz io_load_file(Arena*, CStr, Buf*);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -29,20 +30,24 @@ Sz io_load_file(CStr, Buf*);
 #ifdef SEPI_IO_IMPLEMENTATION
 
 Sz
-io_load_file(CStr path, Buf* buf) {
+io_load_file(Arena* arena, CStr path, Buf* buf) {
+  Assert(arena != 0);
+  Assert(path != 0);
+  Assert(buf != 0);
+
   FILE* f = fopen(path, "rb");
-  NotNull(f);
+  AssertAlways(f != 0);
 
   fseek(f, 0, SEEK_END);
   Sz fsize = ftell(f);
   rewind(f);
 
-  *buf = (Buf)malloc(sizeof(U8) * fsize);
-  NotNull(*buf);
+  Sz size = sizeof(U8) * fsize;
+  *buf = (Buf)arena_push(arena, size, AlignOf(U8), FALSE);
+  AssertAlways(buf != 0);
 
   Sz rsize = fread(*buf, 1, fsize, f);
-  MakeSure(rsize == fsize, "read size '%zu' did not match the file size '%zu'",
-           rsize, fsize);
+  AssertAlways(rsize == fsize);
 
   if(f) {
     fclose(f);

@@ -18,10 +18,56 @@
 /*                          API                          */
 /* ===================================================== */
 
-I16 nd_i16(I16 num);
-I32 nd_i32(I32 num);
-I64 nd_i64(I64 num);
+I16 nd_i16(I16 num); /* works on unsigned intergers as well */
+I32 nd_i32(I32 num); /* works on unsigned intergers as well */
+I64 nd_i64(I64 num); /* works on unsigned intergers as well */
 F32 nd_f32(F32 num);
+F64 nd_f64(F64 num);
+
+#define ND_I16(num, buf, ofs)             \
+  {                                       \
+    I16 tmp;                              \
+    memcpy(&tmp, buf + ofs, sizeof(I16)); \
+    tmp = nd_i16(tmp);                    \
+    *(num) = tmp;                           \
+    ofs += sizeof(I16);                   \
+  }
+
+#define ND_I32(num, buf, ofs)             \
+  {                                       \
+    I32 tmp;                              \
+    memcpy(&tmp, buf + ofs, sizeof(I32)); \
+    tmp = nd_i32(tmp);                    \
+    *(num) = tmp;                           \
+    ofs += sizeof(I32);                   \
+  }
+
+#define ND_I64(num, buf, ofs)             \
+  {                                       \
+    I64 tmp;                              \
+    memcpy(&tmp, buf + ofs, sizeof(I64)); \
+    tmp = nd_i64(tmp);                    \
+    *(num) = tmp;                           \
+    ofs += sizeof(I64);                   \
+  }
+
+#define ND_F32(num, buf, ofs)             \
+  {                                       \
+    F32 tmp;                              \
+    memcpy(&tmp, buf + ofs, sizeof(F32)); \
+    tmp = nd_f32(tmp);                    \
+    *(num) = tmp;                           \
+    ofs += sizeof(F32);                   \
+  }
+
+#define ND_F64(num, buf, ofs)             \
+  {                                       \
+    F64 tmp;                              \
+    memcpy(&tmp, buf + ofs, sizeof(F64)); \
+    tmp = nd_f64(tmp);                    \
+    *(num) = tmp;                           \
+    ofs += sizeof(F64);                   \
+  }
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -43,24 +89,24 @@ nd_i16(I16 num) {
 I32
 nd_i32(I32 num) {
   return isle() ? num
-         : (I32)((num >> 24) | ((num >> 8) & 0x0000FF00) |
-                 ((num << 8) & 0x00FF0000) | (num << 24));
+                : (I32)((num >> 24) | ((num >> 8) & 0x0000FF00) |
+                        ((num << 8) & 0x00FF0000) | (num << 24));
 }
 
 I64
 nd_i64(I64 num) {
   return isle() ? num
-         : (I64)((num >> 56) | ((num >> 40) & 0x000000000000FF00LL) |
-                 ((num >> 24) & 0x0000000000FF0000LL) |
-                 ((num >> 8) & 0x00000000FF000000LL) |
-                 ((num << 8) & 0x000000FF00000000LL) |
-                 ((num << 24) & 0x0000FF0000000000LL) |
-                 ((num << 40) & 0x00FF000000000000LL) | (num << 56));
+                : (I64)((num >> 56) | ((num >> 40) & 0x000000000000FF00LL) |
+                        ((num >> 24) & 0x0000000000FF0000LL) |
+                        ((num >> 8) & 0x00000000FF000000LL) |
+                        ((num << 8) & 0x000000FF00000000LL) |
+                        ((num << 24) & 0x0000FF0000000000LL) |
+                        ((num << 40) & 0x00FF000000000000LL) | (num << 56));
 }
 
 F32
 nd_f32(F32 num) {
-  if(isle()) {
+  if (isle()) {
     return num;
   }
 
@@ -71,6 +117,25 @@ nd_f32(F32 num) {
   dst[1] = src[2];
   dst[2] = src[1];
   dst[3] = src[0];
+  return result;
+}
+
+F64
+nd_f64(F64 num) {
+  if (isle()) {
+    return num;
+  }
+  F64 result;
+  Str src = (Str)&num;
+  Str dst = (Str)&result;
+  dst[0] = src[7];
+  dst[1] = src[6];
+  dst[2] = src[5];
+  dst[3] = src[4];
+  dst[4] = src[3];
+  dst[5] = src[2];
+  dst[6] = src[1];
+  dst[7] = src[0];
   return result;
 }
 

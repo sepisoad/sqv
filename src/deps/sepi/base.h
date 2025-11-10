@@ -30,8 +30,10 @@ typedef I8 Bool;
 typedef void Nothing;
 typedef void* RawPtr;
 typedef intptr_t IPtr;
-typedef uintptr_t UPtr;
-typedef ptrdiff_t DPtr;
+typedef uintptr_t Ptr;
+typedef const intptr_t CIPtr;
+typedef const uintptr_t CPtr;
+typedef ptrdiff_t PtrDiff;
 
 typedef char* Str;
 typedef const char* CStr;
@@ -55,8 +57,6 @@ typedef const unsigned char* CBuf;
 #define CC_GCC 1
 #elif defined(_MSC_VER)
 #define CC_MSVC 1
-#elif defined(__TINYC__)
-#define CC_TCC 1
 #else
 #error unsuppored c compiler!
 #endif
@@ -178,8 +178,6 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 #define AlignOf(T) __alignof(T)
 #elif CC_GCC
 #define AlignOf(T) __alignof__(T)
-#elif CC_TCC
-/* DO NOTHING, TCC SUPPORTS AlignOf OUT OF THE BOX*/
 #endif
 
 
@@ -202,59 +200,15 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 /*                      ASSERTIONS                       */
 /* ===================================================== */
 
-#ifdef DEBUG_MODE
-
-#define MakeSure(expr, msg, ...) \
-  ((expr) ? (expr) : (printf(msg, ##__VA_ARGS__), abort(), (expr)))
-
-#define NotNull(val) MakeSure((val), "<<NULL>>")
-#define NotZero(val) MakeSure((val), "<<ZERO>>")
-#define IsValid(val) MakeSure((val), "<<INVALID>>")
-#define MustDie(msg, ...) MakeSure(FALSE, msg, ##__VA_ARGS__)
-
-#else /* not debug mode */
-
-#define MakeSure(expr, msg, ...) noop
-#define NotNull(val) noop
-#define NotZero(val) noop
-#define IsValid(val) noop
-#define MustDie(msg, ...) noop
-
-#endif /* DEBUG_MODE */
-
-#define Abort(msg)							\
-  do {									\
-    fprintf(stderr, "aborting:\n  message: %s\n", (msg));		\
-    abort();								\
-  } while(0)
-
-#define ErrorOut(expr, err) \
-  do {                      \
-    if (!(expr)) {          \
-      return (err);         \
-    }                       \
-  } while (0)
-
-#define Succeed(expr)           \
-  do {                          \
-    I64 _ms_tmp_ = (I64)(expr);	\
-    if (_ms_tmp_ != 0) {        \
-      return _ms_tmp_;          \
-    }                           \
-  } while (0)
-
 #if CC_MSVC
 #define Trap() __debugbreak()
 #elif CC_CLANG || CC_GCC
 #define Trap() __builtin_trap()
-#elif CC_TCC
-#define Trap() (*(volatile int*)0 = 0)
 #else
 #error unsupported compiler
 #endif
 
 #define StaticAssert(COND, ID) typedef char Glue(ID, __LINE__)[(COND)?1:-1]
-
 #define AssertAlways(x) do{if(!(x)) {Trap();}}while(0)
 
 #ifdef DEBUG_MODE
@@ -263,6 +217,7 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 # define Assert(x) (void)(x)
 #endif
 
+#define Abort(msg) AssertAlways(!#msg)
 
 /* ===================================================== */
 /*                     DEBUG LOGGER                      */

@@ -1,5 +1,8 @@
 BasedOnStyle: Chromium
-TabWidth: 2
-IndentWidth: 2
+
 ColumnLimit: 80
+IndentWidth: 2
+TabWidth: 2
 SortIncludes: false
+AlignConsecutiveDeclarations: AcrossEmptyLinesAndComments
+AlwaysBreakAfterDefinitionReturnType: TopLevel

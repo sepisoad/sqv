@@ -14,7 +14,7 @@ ifeq ($(config),debug)
   mk_hmm_config = debug
   mk_stb_config = debug
   mk_sepi_config = debug
-  mk_sqv_config = debug
+  mk_dapp_config = debug
 
 else ifeq ($(config),release)
   mk_log_config = release
@@ -22,13 +22,13 @@ else ifeq ($(config),release)
   mk_hmm_config = release
   mk_stb_config = release
   mk_sepi_config = release
-  mk_sqv_config = release
+  mk_dapp_config = release
 
 else
   $(error "invalid configuration $(config)")
 endif
 
-PROJECTS := mk_log mk_sokol mk_hmm mk_stb mk_sepi mk_sqv
+PROJECTS := mk_log mk_sokol mk_hmm mk_stb mk_sepi mk_dapp
 
 .PHONY: all clean help $(PROJECTS)
 
@@ -64,10 +64,10 @@ ifneq (,$(mk_sepi_config))
 	@${MAKE} --no-print-directory -C .build -f mk_sepi.make config=$(mk_sepi_config)
 endif
 
-mk_sqv:
-ifneq (,$(mk_sqv_config))
-	@echo "==== Building mk_sqv ($(mk_sqv_config)) ===="
-	@${MAKE} --no-print-directory -C .build -f mk_sqv.make config=$(mk_sqv_config)
+mk_dapp:
+ifneq (,$(mk_dapp_config))
+	@echo "==== Building mk_dapp ($(mk_dapp_config)) ===="
+	@${MAKE} --no-print-directory -C .build -f mk_dapp.make config=$(mk_dapp_config)
 endif
 
 clean:
@@ -76,7 +76,7 @@ clean:
 	@${MAKE} --no-print-directory -C .build -f mk_hmm.make clean
 	@${MAKE} --no-print-directory -C .build -f mk_stb.make clean
 	@${MAKE} --no-print-directory -C .build -f mk_sepi.make clean
-	@${MAKE} --no-print-directory -C .build -f mk_sqv.make clean
+	@${MAKE} --no-print-directory -C .build -f mk_dapp.make clean
 
 help:
 	@echo "Usage: make [config=name] [target]"
@@ -93,6 +93,6 @@ help:
 	@echo "   mk_hmm"
 	@echo "   mk_stb"
 	@echo "   mk_sepi"
-	@echo "   mk_sqv"
+	@echo "   mk_dapp"
 	@echo ""
 	@echo "For more information, see https://github.com/premake/premake-core/wiki"

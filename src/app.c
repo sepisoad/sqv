@@ -35,7 +35,7 @@ Nothing render_lmp(State*);
 Nothing
 set_skin(U32 idx) {
   MakeSure(idx <= s.mdl.header.skins_length, "invalid skin index");
-  s.bind.views[VIEW_tex] = s.mdl.skins[idx].image;
+  s.bind.views[View_tex] = s.mdl.skins[idx].image;
   s.bind.samplers[SMP_smp] = s.mdl.skins[idx].sampler;
 }
 
