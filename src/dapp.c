@@ -33,7 +33,7 @@ internal Arena* arena = {0};
 internal MD1    md1 = {0};
 
 internal Nothing
-init_v1(void) {
+init(void) {
   log_info("initializing gpu ...");
 
   // init sokol
@@ -197,7 +197,7 @@ input(const sapp_event* e) {
 }
 
 static Nothing
-frame_v1(void) {
+frame(void) {
   MD1*     m = &S.md1;
 
   float    aspect = sapp_widthf() / sapp_heightf();
@@ -269,13 +269,13 @@ sokol_main(I32 argc, char* argv[]) {
       .argv = argv,
   });
 
-  CStr inpath = "/home/sepi/Projects/sepi/sqv/.keep/pak0/progs/ogre.mdl";
+  CStr inpath = "/home/sepi/Projects/sepi/sqv/.keep/pak0/progs/spike.mdl";
 
   return (sapp_desc){
-      .init_cb = init_v2,
+      .init_cb = init,
       .cleanup_cb = cleanup,
       .event_cb = input,
-      .frame_cb = frame_v2,
+      .frame_cb = frame,
       .user_data = (RawPtr)inpath,
       .width = 800,
       .height = 600,

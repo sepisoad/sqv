@@ -737,13 +737,13 @@ md1_load(CBuf buf, Sz buf_sz, MD1* md1) {
   if (err != MD1_ERR_SUCCESS)
     return err;
 
-  // err = md1_make_display_list(md1, uvs, faced_triangles);
-  // if (err != MD1_ERR_SUCCESS)
-  //   return err;
-
-  err = md1_make_display_list_v2(md1, uvs, faced_triangles);
+  err = md1_make_display_list(md1, uvs, faced_triangles);
   if (err != MD1_ERR_SUCCESS)
     return err;
+
+  // err = md1_make_display_list_v2(md1, uvs, faced_triangles);
+  // if (err != MD1_ERR_SUCCESS)
+  //   return err;
 
   Dbg("header.vertices: %d", h->vertices_count);
   Dbg("header.triangles: %d", h->triangles_count);
