@@ -12,7 +12,16 @@
 /*                       CONSTANTS                       */
 /* ===================================================== */
 
-//
+// N/A
+
+/* ===================================================== */
+/*                         TYPES                         */
+/* ===================================================== */
+
+typedef struct {
+  CBuf base;
+  U32  offset;
+} NDBuffer;
 
 /* ===================================================== */
 /*                          API                          */
@@ -24,49 +33,97 @@ I64 nd_i64(I64 num); /* works on unsigned intergers as well */
 F32 nd_f32(F32 num);
 F64 nd_f64(F64 num);
 
-#define ND_I16(num, buf, ofs)             \
-  {                                       \
-    I16 tmp;                              \
-    memcpy(&tmp, buf + ofs, sizeof(I16)); \
-    tmp = nd_i16(tmp);                    \
-    *(num) = tmp;                           \
-    ofs += sizeof(I16);                   \
+#define ND_ADDR(ndb) ((ndb)->base + (ndb)->offset)
+#define ND_MOVE(ndb, sz) ((ndb)->offset += (sz))
+
+#define ND_I16(num /* I16* */, ndb /* NDBuffer* */) \
+  {                                                 \
+    I16 tmp;                                        \
+    memcpy(&tmp, ND_ADDR((ndb)), sizeof(I16));      \
+    tmp = nd_i16(tmp);                              \
+    *(num) = tmp;                                   \
+    ND_MOVE((ndb), sizeof(I16));                    \
   }
 
-#define ND_I32(num, buf, ofs)             \
-  {                                       \
-    I32 tmp;                              \
-    memcpy(&tmp, buf + ofs, sizeof(I32)); \
-    tmp = nd_i32(tmp);                    \
-    *(num) = tmp;                           \
-    ofs += sizeof(I32);                   \
+#define ND_I32(num /* I32* */, ndb /* NDBuffer* */) \
+  {                                                 \
+    I32 tmp;                                        \
+    memcpy(&tmp, ND_ADDR((ndb)), sizeof(I32));      \
+    tmp = nd_i32(tmp);                              \
+    *(num) = tmp;                                   \
+    ND_MOVE((ndb), sizeof(I32));                    \
   }
 
-#define ND_I64(num, buf, ofs)             \
-  {                                       \
-    I64 tmp;                              \
-    memcpy(&tmp, buf + ofs, sizeof(I64)); \
-    tmp = nd_i64(tmp);                    \
-    *(num) = tmp;                           \
-    ofs += sizeof(I64);                   \
+#define ND_I64(num /* I64* */, ndb /* NDBuffer* */) \
+  {                                                 \
+    I64 tmp;                                        \
+    memcpy(&tmp, ND_ADDR((ndb)), sizeof(I64));      \
+    tmp = nd_i64(tmp);                              \
+    *(num) = tmp;                                   \
+    ND_MOVE((ndb), sizeof(I64));                    \
   }
 
-#define ND_F32(num, buf, ofs)             \
-  {                                       \
-    F32 tmp;                              \
-    memcpy(&tmp, buf + ofs, sizeof(F32)); \
-    tmp = nd_f32(tmp);                    \
-    *(num) = tmp;                           \
-    ofs += sizeof(F32);                   \
+#define ND_F32(num /* F32* */, ndb /* NDBuffer* */) \
+  {                                                 \
+    F32 tmp;                                        \
+    memcpy(&tmp, ND_ADDR((ndb)), sizeof(F32));      \
+    tmp = nd_f32(tmp);                              \
+    *(num) = tmp;                                   \
+    ND_MOVE((ndb), sizeof(F32));                    \
   }
 
-#define ND_F64(num, buf, ofs)             \
-  {                                       \
-    F64 tmp;                              \
-    memcpy(&tmp, buf + ofs, sizeof(F64)); \
-    tmp = nd_f64(tmp);                    \
-    *(num) = tmp;                           \
-    ofs += sizeof(F64);                   \
+#define ND_F64(num /* F64* */, ndb /* NDBuffer* */) \
+  {                                                 \
+    F64 tmp;                                        \
+    memcpy(&tmp, ND_ADDR((ndb)), sizeof(F64));      \
+    tmp = nd_f64(tmp);                              \
+    *(num) = tmp;                                   \
+    ND_MOVE((ndb), sizeof(F64));                    \
+  }
+
+#define ND_I16_OLD(num /* I16* */, buf /* CBuf */, ofs /* U32 */) \
+  {                                                               \
+    I16 tmp;                                                      \
+    memcpy(&tmp, buf + ofs, sizeof(I16));                         \
+    tmp = nd_i16(tmp);                                            \
+    *(num) = tmp;                                                 \
+    ofs += sizeof(I16);                                           \
+  }
+
+#define ND_I32_OLD(num /* I32* */, buf /* CBuf */, ofs /* U32 */) \
+  {                                                               \
+    I32 tmp;                                                      \
+    memcpy(&tmp, buf + ofs, sizeof(I32));                         \
+    tmp = nd_i32(tmp);                                            \
+    *(num) = tmp;                                                 \
+    ofs += sizeof(I32);                                           \
+  }
+
+#define ND_I64_OLD(num /* I64* */, buf /* CBuf */, ofs /* U32 */) \
+  {                                                               \
+    I64 tmp;                                                      \
+    memcpy(&tmp, buf + ofs, sizeof(I64));                         \
+    tmp = nd_i64(tmp);                                            \
+    *(num) = tmp;                                                 \
+    ofs += sizeof(I64);                                           \
+  }
+
+#define ND_F32_OLD(num /* F32* */, buf /* CBuf */, ofs /* U32 */) \
+  {                                                               \
+    F32 tmp;                                                      \
+    memcpy(&tmp, buf + ofs, sizeof(F32));                         \
+    tmp = nd_f32(tmp);                                            \
+    *(num) = tmp;                                                 \
+    ofs += sizeof(F32);                                           \
+  }
+
+#define ND_F64_OLD(num /* F64* */, buf /* CBuf */, ofs /* U32 */) \
+  {                                                               \
+    F64 tmp;                                                      \
+    memcpy(&tmp, buf + ofs, sizeof(F64));                         \
+    tmp = nd_f64(tmp);                                            \
+    *(num) = tmp;                                                 \
+    ofs += sizeof(F64);                                           \
   }
 
 /* ===================================================== */

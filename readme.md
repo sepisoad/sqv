@@ -27,3 +27,8 @@ To build SQV, you need [`premake5`](https://premake.github.io/) installed on you
    ```sh
    make
    ```
+
+
+## Cool
+
+- d3d mesh optimization functions: https://github.com/wine-mirror/wine/blob/master/dlls/d3dx9_36/mesh.c
