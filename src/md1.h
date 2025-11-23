@@ -134,7 +134,8 @@ typedef struct {
   U32    triangles_count;
   U32    frames_count;
   U32    poses_count;
-  U32    frame_vbuf_size;
+  Sz     frame_vertex_buffer_size;
+  Sz     index_buffer_size;
   hmm_v3 scale;
   hmm_v3 translate;
   hmm_v3 eye;
@@ -144,6 +145,7 @@ typedef struct {
 
 typedef struct {
   hmm_v3 vertex;
+  // TODO: we do not apply lighing in SQV, so why waste memory for normal data!
   hmm_v3 normal;
 } MD1Vertex;
 
@@ -163,10 +165,11 @@ typedef struct {
 typedef struct {
   MD1Header  header;
   MD1Skin*   skins;
-  U32*       indices;
   MD1Vertex* vertices;
   MD1Pose*   poses;
   F32*       frames_vbuf;
+  F32*       frames_vbuf_v2;
+  U32*       index_buffer;
   Arena*     arena;
 } MD1;
 
@@ -179,7 +182,14 @@ MD1Error md1_get_vertices(const MD1* md1,
                           U32        pose_idx,
                           U32        frame_idx,
                           F32**      frame_vbuf,
-                          Sz*        frame_vbuf_size);
+                          Sz*        frame_vertex_buffer_size);
+MD1Error md1_get_vertices_v2(MD1*  md1,
+                             U32   pose_idx,
+                             U32   frame_idx,
+                             F32** vbuf,
+                             Sz*   vbuf_size,
+                             U32** ibuf,
+                             Sz*   ibuf_size);
 MD1Error md1_unload(MD1* md1);
 
 /* ===================================================== */
@@ -346,7 +356,8 @@ md1_load_triangles(MD1* md1, NDBuffer* ndb, MD1FacedTriangle** fts) {
     // md1->indices[j + 2] = (U32)c;
   }
 
-  h->indices_count = h->triangles_count * 3;
+  // TODO: we no longer need this commented block, delete it
+  // h->indices_count = h->triangles_count * 3;
 
   return err;
 }
@@ -371,10 +382,7 @@ md1_has_pose_name_changed(Str new, Str old) {
 }
 
 internal MD1Error
-md1_load_single_frame(MD1*          md1,
-                      NDBuffer* ndb,
-                      U32           frame_idx,
-                      Str           frame_name) {
+md1_load_single_frame(MD1* md1, NDBuffer* ndb, U32 frame_idx, Str frame_name) {
   Dbg("md1_load_single_frame() ...");
 
   Assert(md1 != 0);
@@ -412,6 +420,8 @@ md1_load_single_frame(MD1*          md1,
     frame_verts[i].vertex.Y = nv.vertex[1];
     frame_verts[i].vertex.Z = nv.vertex[2];
 
+    // TODO: we do not apply lighing in SQV, so why waste memory for normal
+    // data!
     frame_verts[i].normal.X = quake1_normals[nv.normal_idx][0];
     frame_verts[i].normal.Y = quake1_normals[nv.normal_idx][1];
     frame_verts[i].normal.Z = quake1_normals[nv.normal_idx][2];
@@ -423,7 +433,7 @@ md1_load_single_frame(MD1*          md1,
 }
 
 internal MD1Error
-md1_load_frames(MD1* md1, NDBuffer *ndb) {
+md1_load_frames(MD1* md1, NDBuffer* ndb) {
   Dbg("md1_load_frames() ...");
 
   Assert(md1 != 0);
@@ -439,11 +449,11 @@ md1_load_frames(MD1* md1, NDBuffer *ndb) {
   md1->vertices = arena_push(a, vertices_sz, AlignOf(MD1Vertex), TRUE);
   AssertAlways(md1->vertices != 0);
 
-  /* TODO: the pose count is taken from frames count
-     which is way more that what it has to be, it is safe though
-     but a waste of memory!
-  */
-  Sz poses_sz = sizeof(MD1Pose) * h->frames_count; /* TODO: duh! */
+  // TODO: the pose count is taken from frames count
+  //       which is way more that what it has to be, it is safe though
+  //       but a waste of memory!
+
+  Sz poses_sz = sizeof(MD1Pose) * h->frames_count; /* duh! */
   md1->poses = arena_push(a, poses_sz, AlignOf(MD1Pose), TRUE);
   AssertAlways(md1->poses != 0);
 
@@ -478,7 +488,7 @@ md1_make_display_list(MD1* md1, MD1UV* uvs, MD1FacedTriangle* faced_triangles) {
   Sz         elems_count = 3 * (3 + 2);  // a->b->c * x,y,z, u,v
   Sz vbuf_sz = sizeof(F32) * h->frames_count * h->triangles_count * elems_count;
 
-  h->frame_vbuf_size = elems_count * h->triangles_count;
+  h->frame_vertex_buffer_size = elems_count * h->triangles_count;
   md1->frames_vbuf = arena_push(a, vbuf_sz, AlignOf(F32), TRUE);
   AssertAlways(md1->frames_vbuf != 0);
 
@@ -531,9 +541,8 @@ md1_make_display_list_v2(MD1*              md1,
       arena_push(a, h->triangles_count * 3 * sizeof(MD1MeshVertices),
                  AlignOf(MD1MeshVertices), TRUE);
 
-  // TODO: use scratch buffwe for this
-  U32* mesh_indices =
-      arena_push(a, h->triangles_count * 3 * sizeof(U32), AlignOf(U32), TRUE);
+  Sz   index_buffer_size = h->triangles_count * 3 * sizeof(U32);
+  U32* index_buffer = arena_push(a, index_buffer_size, AlignOf(U32), TRUE);
 
   for (U32 triangle_index = 0; triangle_index < h->triangles_count;
        triangle_index++) {
@@ -555,13 +564,13 @@ md1_make_display_list_v2(MD1*              md1,
         if (mesh_vertices[mesh_triangle_index].vertex_index == vertex_index &&
             mesh_vertices[mesh_triangle_index].uv[0] == u &&
             mesh_vertices[mesh_triangle_index].uv[1] == v) {
-          mesh_indices[mesh_indices_count] = mesh_triangle_index;
+          index_buffer[mesh_indices_count] = mesh_triangle_index;
           break;
         }
       }
 
       if (mesh_triangle_index == mesh_triangles_count) {
-        mesh_indices[mesh_triangle_index] = mesh_triangles_count;
+        index_buffer[mesh_triangle_index] = mesh_triangles_count;
         mesh_vertices[mesh_triangle_index].vertex_index = vertex_index;
         mesh_vertices[mesh_triangle_index].uv[0] = u;
         mesh_vertices[mesh_triangle_index].uv[1] = v;
@@ -570,19 +579,52 @@ md1_make_display_list_v2(MD1*              md1,
     }
   }
 
+  U32 vbuf_vert_idx = 0;
+  U32 mesh_vertices_count = mesh_triangles_count * 3;
+  Sz  elems_count = 3 * (3 + 2);
+  Sz  vbuf_sz =
+      sizeof(F32) * h->frames_count * mesh_triangles_count * elems_count;
+
+  h->frame_vertex_buffer_size = elems_count * h->triangles_count;
+  md1->frames_vbuf_v2 = arena_push(a, vbuf_sz, AlignOf(F32), TRUE);
+
   for (U32 frame_index = 0; frame_index < h->frames_count; frame_index++) {
+    for (U32 mesh_vertex_index = 0; mesh_vertex_index < mesh_vertices_count;
+         mesh_vertex_index++) {
+      const MD1Vertex* frame_verts =
+          md1->vertices + (h->vertices_count * frame_index);
+
+      U32 vertex_index = mesh_vertices[mesh_vertex_index].vertex_index;
+      F32 x =
+          (frame_verts[vertex_index].vertex.X * h->scale.X) + h->translate.X;
+      F32 y =
+          (frame_verts[vertex_index].vertex.Y * h->scale.Y) + h->translate.Y;
+      F32 z =
+          (frame_verts[vertex_index].vertex.Z * h->scale.Z) + h->translate.Z;
+      F32 u = mesh_vertices[mesh_vertex_index].uv[0];
+      F32 v = mesh_vertices[mesh_vertex_index].uv[1];
+
+      md1->frames_vbuf_v2[vbuf_vert_idx++] = x;
+      md1->frames_vbuf_v2[vbuf_vert_idx++] = y;
+      md1->frames_vbuf_v2[vbuf_vert_idx++] = z;
+      md1->frames_vbuf_v2[vbuf_vert_idx++] = u;
+      md1->frames_vbuf_v2[vbuf_vert_idx++] = v;
+    }
   }
+
+  h->index_buffer_size = index_buffer_size;
+  md1->index_buffer = index_buffer;
 
   // ***************************************
   // U32              mesh_triangles_count;
   // U32              mesh_indices_count;
   // MD1MeshVertices* mesh_vertices;
-  // U32*             mesh_indices;
+  // U32*             index_buffer;
   // ***************************************
   // h->mesh_indices_count = mesh_indices_count;
   // h->mesh_triangles_count = mesh_triangles_count;
   // h->mesh_vertices = mesh_vertices;
-  // h->mesh_indices = mesh_indices;
+  // h->index_buffer = index_buffer;
 
   return err;
 }
@@ -616,8 +658,8 @@ md1_load(CBuf buf, Sz buf_sz, MD1* md1) {
   MD1Error err = MD1_ERR_SUCCESS;
   MemZero(md1, sizeof(MD1));
   MD1RawHeader rh = {0};
-  NDBuffer nd_buffer = {.base = (CBuf)buf, .offset = 0};
-  NDBuffer *ndb = &nd_buffer;
+  NDBuffer     nd_buffer = {.base = (CBuf)buf, .offset = 0};
+  NDBuffer*    ndb = &nd_buffer;
 
   ND_I32(&rh.magic_code, ndb);
   ND_I32(&rh.version, ndb);
@@ -668,7 +710,8 @@ md1_load(CBuf buf, Sz buf_sz, MD1* md1) {
   AssertAlways(h->triangles_count > 0);
   AssertAlways(h->frames_count > 0);
 
-  md1->arena = arena_create(); /* TODO: set some initial params */
+  // TODO: set some initial params
+  md1->arena = arena_create();
 
   err = md1_load_skins(md1, ndb);
   if (err != MD1_ERR_SUCCESS)
@@ -694,9 +737,9 @@ md1_load(CBuf buf, Sz buf_sz, MD1* md1) {
   if (err != MD1_ERR_SUCCESS)
     return err;
 
-  err = md1_make_display_list(md1, uvs, faced_triangles);
-  if (err != MD1_ERR_SUCCESS)
-    return err;
+  // err = md1_make_display_list(md1, uvs, faced_triangles);
+  // if (err != MD1_ERR_SUCCESS)
+  //   return err;
 
   err = md1_make_display_list_v2(md1, uvs, faced_triangles);
   if (err != MD1_ERR_SUCCESS)
@@ -716,40 +759,47 @@ md1_get_vertices(const MD1* md1,
                  U32        pose_idx,
                  U32        pose_frame_idx,
                  F32**      frame_vbuf,
-                 Sz*        frame_vbuf_size) {
+                 Sz*        frame_vertex_buffer_size) {
   Assert(md1 != 0);
   Assert(frame_vbuf != 0);
-  Assert(frame_vbuf_size != 0);
+  Assert(frame_vertex_buffer_size != 0);
   Assert(pose_idx < md1->header.poses_count);
   Assert(pose_frame_idx < md1->poses[pose_idx].frames_count);
 
   MD1Error err = MD1_ERR_SUCCESS;
   MD1Pose* pose = &md1->poses[pose_idx];
   *frame_vbuf = &md1->frames_vbuf[(pose->first_frame + pose_frame_idx) *
-                                  md1->header.frame_vbuf_size];
-  *frame_vbuf_size = md1->header.frame_vbuf_size;
+                                  md1->header.frame_vertex_buffer_size];
+  *frame_vertex_buffer_size = md1->header.frame_vertex_buffer_size;
   return err;
 }
 
 MD1Error
-md1_get_vertices_2(const MD1* md1,
-                   U32        pose_idx,
-                   U32        pose_frame_idx,
-                   F32**      frame_vbuf,
-                   Sz*        frame_vbuf_size,
-                   U32**      ibuf,
-                   Sz*        ibuf_size) {
+md1_get_vertices_v2(MD1*  md1,
+                    U32   pose_idx,
+                    U32   frame_idx,
+                    F32** vbuf,
+                    Sz*   vbuf_size,
+                    U32** ibuf,
+                    Sz*   ibuf_size) {
   Assert(md1 != 0);
-  Assert(frame_vbuf != 0);
-  Assert(frame_vbuf_size != 0);
+  Assert(vbuf != 0);
+  Assert(vbuf_size != 0);
+  Assert(ibuf != 0);
+  Assert(ibuf_size != 0);
   Assert(pose_idx < md1->header.poses_count);
-  Assert(pose_frame_idx < md1->poses[pose_idx].frames_count);
+  Assert(frame_idx < md1->poses[pose_idx].frames_count);
 
-  MD1Error err = MD1_ERR_SUCCESS;
-  MD1Pose* pose = &md1->poses[pose_idx];
-  *frame_vbuf = &md1->frames_vbuf[(pose->first_frame + pose_frame_idx) *
-                                  md1->header.frame_vbuf_size];
-  *frame_vbuf_size = md1->header.frame_vbuf_size;
+  MD1Error   err = MD1_ERR_SUCCESS;
+  MD1Header* h = &md1->header;
+  MD1Pose*   pose = &md1->poses[pose_idx];
+  U32 vbuf_loc = (pose->first_frame + frame_idx) * h->frame_vertex_buffer_size;
+
+  *vbuf = &md1->frames_vbuf_v2[vbuf_loc];
+  *vbuf_size = h->frame_vertex_buffer_size;
+  *ibuf = md1->index_buffer;
+  *ibuf_size = h->index_buffer_size;
+
   return err;
 }
 
