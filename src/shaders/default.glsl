@@ -27,4 +27,4 @@ void main() {
 }
 @end
 
-@program cube vs fs
+@program md1_model vs fs

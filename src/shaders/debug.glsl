@@ -19,4 +19,4 @@ void main() {
 }
 @end
 
-@program triangle vs fs
+@program md1_model_debug vs fs

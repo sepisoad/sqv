@@ -32,6 +32,7 @@
 #define MD1_MAX_TRIANGLES 4096
 #define MD1_MAX_SKINS 32
 #define MD1_MAX_FRAME_NAME_LEN 16
+#define MD1_BBOX_VERTEX_COUNT 24
 
 /* ===================================================== */
 /*                         TYPES                         */
@@ -120,9 +121,16 @@ typedef struct {
 /* processed */
 
 typedef struct {
-  U32 uv[2];
+  F32 uv[2];
   U32 vertex_index;
 } MD1MeshVertices;
+
+typedef struct {
+  hmm_v3 min;
+  hmm_v3 max;
+  hmm_v3 center;
+  F32    radius;
+} MD1BBox;
 
 typedef struct {
   F32    radius;
@@ -134,18 +142,15 @@ typedef struct {
   U32    triangles_count;
   U32    frames_count;
   U32    poses_count;
-  Sz     frame_vertex_buffer_size;
-  Sz     index_buffer_size;
   hmm_v3 scale;
   hmm_v3 translate;
   hmm_v3 eye;
-  hmm_v3 bbox_min;
-  hmm_v3 bbox_max;
-} MD1Header;
+} MD1Details;
 
 typedef struct {
   hmm_v3 vertex;
-  // TODO: we do not apply lighing in SQV, so why waste memory for normal data!
+  /* TODO: we do not apply lighing in SQV,
+     so why waste memory for normal data! */
   hmm_v3 normal;
 } MD1Vertex;
 
@@ -163,14 +168,23 @@ typedef struct {
 } MD1Skin;
 
 typedef struct {
-  MD1Header  header;
-  MD1Skin*   skins;
-  MD1Vertex* vertices;
-  MD1Pose*   poses;
-  F32*       frames_vbuf;
-  F32*       frames_vbuf_v2;
-  U32*       index_buffer;
-  Arena*     arena;
+  F32* frames_vertex_buffer;
+  F32* frames_vertex_buffer_v2;
+  Sz   frame_vertex_buffer_size;
+  U32* index_buffer;
+  Sz   index_buffer_size;
+  F32  bbox_vertex_buffer[MD1_BBOX_VERTEX_COUNT * 3];
+  Sz   bbox_vertex_buffer_size;
+} MD1GPUBuffers;
+
+typedef struct {
+  MD1Details    details;
+  MD1Skin*      skins;
+  MD1Vertex*    vertices;
+  MD1Pose*      poses;
+  MD1BBox       bbox;
+  MD1GPUBuffers gpu;
+  Arena*        arena;
 } MD1;
 
 /* ===================================================== */
@@ -224,18 +238,18 @@ md1_load_skins(MD1* md1, NDBuffer* ndb) {
   Assert(md1 != 0);
   Assert(ndb != 0);
 
-  const MD1Header* h = &md1->header;
-  const U32        channels = 4;
-  Arena*           a = md1->arena;
-  U32              sw = h->skin_width;
-  U32              sh = h->skin_height;
-  Sz               skin_sz = sw * sh;
-  MD1Skin*         skins = arena_push_array(a, MD1Skin, h->skins_count);
-  MD1Error         err = MD1_ERR_SUCCESS;
+  const MD1Details* details = &md1->details;
+  const U32         channels = 4;
+  Arena*            a = md1->arena;
+  U32               sw = details->skin_width;
+  U32               sh = details->skin_height;
+  Sz                skin_sz = sw * sh;
+  MD1Skin*          skins = arena_push_array(a, MD1Skin, details->skins_count);
+  MD1Error          err = MD1_ERR_SUCCESS;
 
   AssertAlways(skins != 0);
 
-  for (U32 skin_idx = 0; skin_idx < h->skins_count; skin_idx++) {
+  for (U32 skin_idx = 0; skin_idx < details->skins_count; skin_idx++) {
     Dbg("skin #%d .P..", skin_idx);
 
     MD1SkinType* st = (MD1SkinType*)ND_ADDR(ndb);
@@ -299,15 +313,15 @@ md1_load_uvs(const MD1* md1, NDBuffer* ndb, MD1UV** uvs) {
   Assert(ndb != 0);
   Assert(uvs != 0);
 
-  const MD1Header* h = &md1->header;
-  Arena*           a = md1->arena;
-  Sz               uvs_sz = sizeof(MD1UV) * h->vertices_count;
-  MD1Error         err = MD1_ERR_SUCCESS;
+  const MD1Details* details = &md1->details;
+  Arena*            a = md1->arena;
+  Sz                uvs_sz = sizeof(MD1UV) * details->vertices_count;
+  MD1Error          err = MD1_ERR_SUCCESS;
 
   *uvs = arena_push(a, uvs_sz, AlignOf(MD1UV), TRUE);
   AssertAlways(*uvs != 0);
 
-  for (U32 i = 0; i < h->vertices_count; i++) {
+  for (U32 i = 0; i < details->vertices_count; i++) {
     ND_I32(&(*uvs)[i].is_on_seam, ndb);
     ND_I32(&(*uvs)[i].u, ndb);
     ND_I32(&(*uvs)[i].v, ndb);
@@ -324,20 +338,16 @@ md1_load_triangles(MD1* md1, NDBuffer* ndb, MD1FacedTriangle** fts) {
   Assert(ndb != 0);
   Assert(fts != 0);
 
-  MD1Header* h = &md1->header;
-  Arena*     a = md1->arena;
-  Sz         fts_sz = sizeof(MD1FacedTriangle) * h->triangles_count;
-  Sz         idices_sz = sizeof(U32) * h->triangles_count * 3;
-  MD1Error   err = MD1_ERR_SUCCESS;
+  MD1Details* details = &md1->details;
+  Arena*      a = md1->arena;
+  Sz          fts_sz = sizeof(MD1FacedTriangle) * details->triangles_count;
+  Sz          idices_sz = sizeof(U32) * details->triangles_count * 3;
+  MD1Error    err = MD1_ERR_SUCCESS;
 
   *fts = arena_push(a, fts_sz, AlignOf(MD1FacedTriangle), TRUE);
   AssertAlways(*fts != 0);
 
-  // TODO: we no longer need this commented block, delete it
-  // md1->indices = arena_push(a, idices_sz, AlignOf(U32), TRUE);
-  // AssertAlways(md1->indices);
-
-  for (U32 i = 0, j = 0; i < h->triangles_count; i++, j += 3) {
+  for (U32 i = 0, j = 0; i < details->triangles_count; i++, j += 3) {
     I32 a, b, c, f = 0;
 
     ND_I32(&f, ndb);
@@ -349,15 +359,7 @@ md1_load_triangles(MD1* md1, NDBuffer* ndb, MD1FacedTriangle** fts) {
     (*fts)[i].vertices_idx[0] = a;
     (*fts)[i].vertices_idx[1] = b;
     (*fts)[i].vertices_idx[2] = c;
-
-    // TODO: we no longer need this commented block, delete it
-    // md1->indices[j + 0] = (U32)a;
-    // md1->indices[j + 1] = (U32)b;
-    // md1->indices[j + 2] = (U32)c;
   }
-
-  // TODO: we no longer need this commented block, delete it
-  // h->indices_count = h->triangles_count * 3;
 
   return err;
 }
@@ -382,38 +384,141 @@ md1_has_pose_name_changed(Str new, Str old) {
 }
 
 internal MD1Error
-md1_load_single_frame(MD1* md1, NDBuffer* ndb, U32 frame_idx, Str frame_name) {
+md1_load_single_frame(MD1*      md1,
+                      NDBuffer* ndb,
+                      U32       frame_idx,
+                      Str       frame_name,
+                      Bool*     is_bbox_loaded) {
   Dbg("md1_load_single_frame() ...");
 
   Assert(md1 != 0);
   Assert(ndb != 0);
   Assert(frame_name != 0);
+  Assert(is_bbox_loaded != 0);
 
-  MD1Header*     h = &md1->header;
+  MD1Details*    details = &md1->details;
   MD1Error       err = MD1_ERR_SUCCESS;
-  Sz             sf_size = sizeof(MD1FrameSingle);
-  MD1FrameSingle sf = {0};
+  Sz             frame_single_size = sizeof(MD1FrameSingle);
+  MD1FrameSingle frame_single = {0};
 
-  memcpy(&sf, ND_ADDR(ndb), sf_size);
-  ND_MOVE(ndb, sf_size);
+  memcpy(&frame_single, ND_ADDR(ndb), frame_single_size);
+  ND_MOVE(ndb, frame_single_size);
 
-  if (md1_has_pose_name_changed(sf.name, frame_name) && frame_idx > 0) {
-    memcpy(md1->poses[h->poses_count - 1].name, sf.name,
+  if (md1_has_pose_name_changed(frame_single.name, frame_name) &&
+      frame_idx > 0) {
+    memcpy(md1->poses[details->poses_count - 1].name, frame_single.name,
            MD1_MAX_FRAME_NAME_LEN);
-    h->poses_count += 1;
-    md1->poses[h->poses_count - 1].first_frame = frame_idx;
+    details->poses_count += 1;
+    md1->poses[details->poses_count - 1].first_frame = frame_idx;
   }
 
-  md1->poses[h->poses_count - 1].frames_count++;
-  memcpy(frame_name, sf.name, MD1_MAX_FRAME_NAME_LEN);
+  md1->poses[details->poses_count - 1].frames_count++;
+  memcpy(frame_name, frame_single.name, MD1_MAX_FRAME_NAME_LEN);
   frame_name[MD1_MAX_FRAME_NAME_LEN - 1] = 0;
+
+  if (*is_bbox_loaded != TRUE) {
+    *is_bbox_loaded = TRUE;
+
+    // copy bbox min
+    md1->bbox.min.X = (frame_single.bbox_min.vertex[0] * md1->details.scale.X) +
+                      md1->details.translate.X;
+    md1->bbox.min.Y = (frame_single.bbox_min.vertex[1] * md1->details.scale.Y) +
+                      md1->details.translate.Y;
+    md1->bbox.min.Z = (frame_single.bbox_min.vertex[2] * md1->details.scale.Z) +
+                      md1->details.translate.Z;
+
+    // copy bbox max
+    md1->bbox.max.X = (frame_single.bbox_max.vertex[0] * md1->details.scale.X) +
+                      md1->details.translate.X;
+    md1->bbox.max.Y = (frame_single.bbox_max.vertex[1] * md1->details.scale.Y) +
+                      md1->details.translate.Y;
+    md1->bbox.max.Z = (frame_single.bbox_max.vertex[2] * md1->details.scale.Z) +
+                      md1->details.translate.Z;
+
+    // calc mesh center
+    md1->bbox.center.X = (md1->bbox.min.X + md1->bbox.max.X) / 2;
+    md1->bbox.center.Y = (md1->bbox.min.Y + md1->bbox.max.Y) / 2;
+    md1->bbox.center.Z = (md1->bbox.min.Z + md1->bbox.max.Z) / 2;
+
+    // calc mesh dimention
+    F32 x = (md1->bbox.max.X - md1->bbox.min.X);
+    F32 y = (md1->bbox.max.Y - md1->bbox.min.Y);
+    F32 z = (md1->bbox.max.Z - md1->bbox.min.Z);
+
+    // calc bounding sphere radius
+    md1->bbox.radius = sqrt((x * x) + (y * y) + (z * z)) / 2.0;
+
+    // bounding box vertex array
+
+    F32      x0 = Min(md1->bbox.min.X, md1->bbox.max.X);
+    F32      x1 = Max(md1->bbox.min.X, md1->bbox.max.X);
+
+    F32      y0 = Min(md1->bbox.min.Y, md1->bbox.max.Y);
+    F32      y1 = Max(md1->bbox.min.Y, md1->bbox.max.Y);
+
+    F32      z0 = Min(md1->bbox.min.Z, md1->bbox.max.Z);
+    F32      z1 = Max(md1->bbox.min.Z, md1->bbox.max.Z);
+
+    // corners
+
+    hmm_vec3 v0 = HMM_Vec3(x0, y0, z0);  // back-bottom-left
+    hmm_vec3 v1 = HMM_Vec3(x1, y0, z0);  // back-bottom-right
+    hmm_vec3 v2 = HMM_Vec3(x1, y1, z0);  // back-top-right
+    hmm_vec3 v3 = HMM_Vec3(x0, y1, z0);  // back-top-left
+
+    hmm_vec3 v4 = HMM_Vec3(x0, y0, z1);  // front-bottom-left
+    hmm_vec3 v5 = HMM_Vec3(x1, y0, z1);  // front-bottom-right
+    hmm_vec3 v6 = HMM_Vec3(x1, y1, z1);  // front-top-right
+    hmm_vec3 v7 = HMM_Vec3(x0, y1, z1);  // front-top-left
+
+    // 12 edges, each as (from, to)
+    F32      verts[MD1_BBOX_VERTEX_COUNT][3] = {
+        // back face
+        {v0.X, v0.Y, v0.Z},
+        {v1.X, v1.Y, v1.Z},
+        {v1.X, v1.Y, v1.Z},
+        {v2.X, v2.Y, v2.Z},
+        {v2.X, v2.Y, v2.Z},
+        {v3.X, v3.Y, v3.Z},
+        {v3.X, v3.Y, v3.Z},
+        {v0.X, v0.Y, v0.Z},
+
+        // front face
+        {v4.X, v4.Y, v4.Z},
+        {v5.X, v5.Y, v5.Z},
+        {v5.X, v5.Y, v5.Z},
+        {v6.X, v6.Y, v6.Z},
+        {v6.X, v6.Y, v6.Z},
+        {v7.X, v7.Y, v7.Z},
+        {v7.X, v7.Y, v7.Z},
+        {v4.X, v4.Y, v4.Z},
+
+        // side edges
+        {v0.X, v0.Y, v0.Z},
+        {v4.X, v4.Y, v4.Z},
+        {v1.X, v1.Y, v1.Z},
+        {v5.X, v5.Y, v5.Z},
+        {v2.X, v2.Y, v2.Z},
+        {v6.X, v6.Y, v6.Z},
+        {v3.X, v3.Y, v3.Z},
+        {v7.X, v7.Y, v7.Z},
+    };
+
+    Sz size = sizeof(F32) * MD1_BBOX_VERTEX_COUNT * 3;
+    memcpy(md1->gpu.bbox_vertex_buffer, verts, size);
+    md1->gpu.bbox_vertex_buffer_size = size;
+  }
 
   MD1NormalVertex* nv = (MD1NormalVertex*)ND_ADDR(ndb);
   Sz               nv_size = sizeof(MD1NormalVertex);
-  MD1Vertex* frame_verts = md1->vertices + (h->vertices_count * frame_idx);
+  MD1Vertex*       frame_verts =
+      md1->vertices + (details->vertices_count * frame_idx);
 
-  for (U32 i = 0; i < h->vertices_count; i++) {
+  for (U32 i = 0; i < details->vertices_count; i++) {
     MD1NormalVertex nv = {0};
+    // NOTE: basically 'MD1NormalVertex' is composed of 4 one byte elements
+    //       so we do not need to be worried about endianness and we can
+    //       safely copy the memory here!
     memcpy(&nv, ND_ADDR(ndb), nv_size);
 
     frame_verts[i].vertex.X = nv.vertex[0];
@@ -439,13 +544,15 @@ md1_load_frames(MD1* md1, NDBuffer* ndb) {
   Assert(md1 != 0);
   Assert(ndb != 0);
 
-  MD1Header* h = &md1->header;
-  Arena*     a = md1->arena;
-  U32        pose_frames = 0;
-  char       frame_name[MD1_MAX_FRAME_NAME_LEN] = {0};
-  MD1Error   err = MD1_ERR_SUCCESS;
+  MD1Details* details = &md1->details;
+  Arena*      a = md1->arena;
+  U32         pose_frames = 0;
+  char        frame_name[MD1_MAX_FRAME_NAME_LEN] = {0};
+  Bool        is_bbox_loaded = FALSE;
+  MD1Error    err = MD1_ERR_SUCCESS;
 
-  Sz vertices_sz = sizeof(MD1Vertex) * h->vertices_count * h->frames_count;
+  Sz          vertices_sz =
+      sizeof(MD1Vertex) * details->vertices_count * details->frames_count;
   md1->vertices = arena_push(a, vertices_sz, AlignOf(MD1Vertex), TRUE);
   AssertAlways(md1->vertices != 0);
 
@@ -453,19 +560,19 @@ md1_load_frames(MD1* md1, NDBuffer* ndb) {
   //       which is way more that what it has to be, it is safe though
   //       but a waste of memory!
 
-  Sz poses_sz = sizeof(MD1Pose) * h->frames_count; /* duh! */
+  Sz poses_sz = sizeof(MD1Pose) * details->frames_count; /* duh! */
   md1->poses = arena_push(a, poses_sz, AlignOf(MD1Pose), TRUE);
   AssertAlways(md1->poses != 0);
 
-  h->poses_count = 1;
+  details->poses_count = 1;
   md1->poses[0].first_frame = 0;
 
-  for (U32 frame_idx = 0; frame_idx < h->frames_count; frame_idx++) {
+  for (U32 frame_idx = 0; frame_idx < details->frames_count; frame_idx++) {
     MD1FrameType ft = 0;
     ND_I32(&ft, ndb);
 
     if (MD1_FT_SINGLE == ft) {
-      md1_load_single_frame(md1, ndb, frame_idx, frame_name);
+      md1_load_single_frame(md1, ndb, frame_idx, frame_name, &is_bbox_loaded);
     } else {
       AssertAlways("NOT IMPLEMENTED!");
     }
@@ -482,43 +589,47 @@ md1_make_display_list(MD1* md1, MD1UV* uvs, MD1FacedTriangle* faced_triangles) {
   Assert(uvs != 0);
   Assert(faced_triangles != 0);
 
-  MD1Error   err = MD1_ERR_SUCCESS;
-  MD1Header* h = &md1->header;
-  Arena*     a = md1->arena;
-  Sz         elems_count = 3 * (3 + 2);  // a->b->c * x,y,z, u,v
-  Sz vbuf_sz = sizeof(F32) * h->frames_count * h->triangles_count * elems_count;
+  MD1Error    err = MD1_ERR_SUCCESS;
+  MD1Details* details = &md1->details;
+  Arena*      a = md1->arena;
+  Sz          elems_count = 3 * (3 + 2);  // a->b->c * x,y,z, u,v
+  Sz vbuf_sz = sizeof(F32) * details->frames_count * details->triangles_count *
+               elems_count;
 
-  h->frame_vertex_buffer_size = elems_count * h->triangles_count;
-  md1->frames_vbuf = arena_push(a, vbuf_sz, AlignOf(F32), TRUE);
-  AssertAlways(md1->frames_vbuf != 0);
+  md1->gpu.frame_vertex_buffer_size = elems_count * details->triangles_count;
+  md1->gpu.frames_vertex_buffer = arena_push(a, vbuf_sz, AlignOf(F32), TRUE);
+  AssertAlways(md1->gpu.frames_vertex_buffer != 0);
 
   U32 vbuf_vert_idx = 0;
-  for (U32 frm_idx = 0; frm_idx < h->frames_count; frm_idx++) {
-    for (U32 triangle_index = 0; triangle_index < h->triangles_count;
+  for (U32 frm_idx = 0; frm_idx < details->frames_count; frm_idx++) {
+    for (U32 triangle_index = 0; triangle_index < details->triangles_count;
          triangle_index++) {
       for (U32 tri_xyz = 0; tri_xyz < 3; tri_xyz++) {
         const MD1Vertex* frame_verts =
-            md1->vertices + (h->vertices_count * frm_idx);
+            md1->vertices + (details->vertices_count * frm_idx);
         I32 xyz = faced_triangles[triangle_index].vertices_idx[tri_xyz];
-        F32 x = (frame_verts[xyz].vertex.X * h->scale.X) + h->translate.X;
-        F32 y = (frame_verts[xyz].vertex.Y * h->scale.Y) + h->translate.Y;
-        F32 z = (frame_verts[xyz].vertex.Z * h->scale.Z) + h->translate.Z;
+        F32 x = (frame_verts[xyz].vertex.X * details->scale.X) +
+                details->translate.X;
+        F32 y = (frame_verts[xyz].vertex.Y * details->scale.Y) +
+                details->translate.Y;
+        F32 z = (frame_verts[xyz].vertex.Z * details->scale.Z) +
+                details->translate.Z;
         F32 u = uvs[xyz].u;
         F32 v = uvs[xyz].v;
 
         if (!faced_triangles[triangle_index].is_front_face &&
             uvs[xyz].is_on_seam) {
-          u += h->skin_width / 2;
+          u += details->skin_width / 2;
         }
 
-        u = (u + 0.5) / h->skin_width;
-        v = (v + 0.5) / h->skin_height;
+        u = (u + 0.5) / details->skin_width;
+        v = (v + 0.5) / details->skin_height;
 
-        md1->frames_vbuf[vbuf_vert_idx++] = x;
-        md1->frames_vbuf[vbuf_vert_idx++] = y;
-        md1->frames_vbuf[vbuf_vert_idx++] = z;
-        md1->frames_vbuf[vbuf_vert_idx++] = u;
-        md1->frames_vbuf[vbuf_vert_idx++] = v;
+        md1->gpu.frames_vertex_buffer[vbuf_vert_idx++] = x;
+        md1->gpu.frames_vertex_buffer[vbuf_vert_idx++] = y;
+        md1->gpu.frames_vertex_buffer[vbuf_vert_idx++] = z;
+        md1->gpu.frames_vertex_buffer[vbuf_vert_idx++] = u;
+        md1->gpu.frames_vertex_buffer[vbuf_vert_idx++] = v;
       }
     }
   }
@@ -531,117 +642,92 @@ md1_make_display_list_v2(MD1*              md1,
                          MD1UV*            uvs,
                          MD1FacedTriangle* faced_triangles) {
   MD1Error         err = MD1_ERR_SUCCESS;
-  MD1Header*       h = &md1->header;
+  MD1Details*      details = &md1->details;
   Arena*           a = md1->arena;
   U32              mesh_indices_count = 0;
-  U32              mesh_triangles_count = 0;
+  U32              mesh_vertices_count = 0;
 
   // TODO: use scratch buffwe for this
   MD1MeshVertices* mesh_vertices =
-      arena_push(a, h->triangles_count * 3 * sizeof(MD1MeshVertices),
+      arena_push(a, details->triangles_count * 3 * sizeof(MD1MeshVertices),
                  AlignOf(MD1MeshVertices), TRUE);
 
-  Sz   index_buffer_size = h->triangles_count * 3 * sizeof(U32);
+  Sz   index_buffer_size = details->triangles_count * 3 * sizeof(U32);
   U32* index_buffer = arena_push(a, index_buffer_size, AlignOf(U32), TRUE);
 
-  for (U32 triangle_index = 0; triangle_index < h->triangles_count;
+  for (U32 triangle_index = 0; triangle_index < details->triangles_count;
        triangle_index++) {
+    U32 mesh_vertex_index = 0;
     for (U32 triangle_vertex_index = 0; triangle_vertex_index < 3;
          triangle_vertex_index++, mesh_indices_count++) {
       U32 vertex_index =
           faced_triangles[triangle_index].vertices_idx[triangle_vertex_index];
-      U32 u = uvs[vertex_index].u;
-      U32 v = uvs[vertex_index].v;
+      F32 u = uvs[vertex_index].u;
+      F32 v = uvs[vertex_index].v;
 
       if (!faced_triangles[triangle_index].is_front_face &&
           uvs[vertex_index].is_on_seam) {
-        u += h->skin_width / 2;
+        u += details->skin_width / 2;
       }
 
-      U32 mesh_triangle_index = 0;
-      for (; mesh_triangle_index < mesh_triangles_count;
-           mesh_triangle_index++) {
-        if (mesh_vertices[mesh_triangle_index].vertex_index == vertex_index &&
-            mesh_vertices[mesh_triangle_index].uv[0] == u &&
-            mesh_vertices[mesh_triangle_index].uv[1] == v) {
-          index_buffer[mesh_indices_count] = mesh_triangle_index;
+      u = (u + 0.5) / details->skin_width;
+      v = (v + 0.5) / details->skin_height;
+
+      for (mesh_vertex_index = 0; mesh_vertex_index < mesh_vertices_count;
+           mesh_vertex_index++) {
+        if (mesh_vertices[mesh_vertex_index].vertex_index == vertex_index &&
+            mesh_vertices[mesh_vertex_index].uv[0] == u &&
+            mesh_vertices[mesh_vertex_index].uv[1] == v) {
+          index_buffer[mesh_indices_count] = mesh_vertex_index;
           break;
         }
       }
 
-      if (mesh_triangle_index == mesh_triangles_count) {
-        index_buffer[mesh_triangle_index] = mesh_triangles_count;
-        mesh_vertices[mesh_triangle_index].vertex_index = vertex_index;
-        mesh_vertices[mesh_triangle_index].uv[0] = u;
-        mesh_vertices[mesh_triangle_index].uv[1] = v;
-        mesh_triangles_count++;
+      if (mesh_vertex_index == mesh_vertices_count) {
+        index_buffer[mesh_indices_count] = mesh_vertices_count;
+        mesh_vertices[mesh_vertices_count].vertex_index = vertex_index;
+        mesh_vertices[mesh_vertices_count].uv[0] = u;
+        mesh_vertices[mesh_vertices_count].uv[1] = v;
+        mesh_vertices_count++;
       }
     }
   }
 
   U32 vbuf_vert_idx = 0;
-  U32 mesh_vertices_count = mesh_triangles_count * 3;
-  Sz  elems_count = 3 * (3 + 2);
+  Sz  elems_count = (3 + 2);
   Sz  vbuf_sz =
-      sizeof(F32) * h->frames_count * mesh_triangles_count * elems_count;
+      details->frames_count * mesh_vertices_count * elems_count * sizeof(F32);
 
-  h->frame_vertex_buffer_size = elems_count * h->triangles_count;
-  md1->frames_vbuf_v2 = arena_push(a, vbuf_sz, AlignOf(F32), TRUE);
+  md1->gpu.frames_vertex_buffer_v2 = arena_push(a, vbuf_sz, AlignOf(F32), TRUE);
 
-  for (U32 frame_index = 0; frame_index < h->frames_count; frame_index++) {
+  for (U32 frame_index = 0; frame_index < details->frames_count;
+       frame_index++) {
+    const MD1Vertex* frame_verts =
+        md1->vertices + (details->vertices_count * frame_index);
     for (U32 mesh_vertex_index = 0; mesh_vertex_index < mesh_vertices_count;
          mesh_vertex_index++) {
-      const MD1Vertex* frame_verts =
-          md1->vertices + (h->vertices_count * frame_index);
-
       U32 vertex_index = mesh_vertices[mesh_vertex_index].vertex_index;
-      F32 x =
-          (frame_verts[vertex_index].vertex.X * h->scale.X) + h->translate.X;
-      F32 y =
-          (frame_verts[vertex_index].vertex.Y * h->scale.Y) + h->translate.Y;
-      F32 z =
-          (frame_verts[vertex_index].vertex.Z * h->scale.Z) + h->translate.Z;
+      F32 x = (frame_verts[vertex_index].vertex.X * details->scale.X) +
+              details->translate.X;
+      F32 y = (frame_verts[vertex_index].vertex.Y * details->scale.Y) +
+              details->translate.Y;
+      F32 z = (frame_verts[vertex_index].vertex.Z * details->scale.Z) +
+              details->translate.Z;
       F32 u = mesh_vertices[mesh_vertex_index].uv[0];
       F32 v = mesh_vertices[mesh_vertex_index].uv[1];
 
-      md1->frames_vbuf_v2[vbuf_vert_idx++] = x;
-      md1->frames_vbuf_v2[vbuf_vert_idx++] = y;
-      md1->frames_vbuf_v2[vbuf_vert_idx++] = z;
-      md1->frames_vbuf_v2[vbuf_vert_idx++] = u;
-      md1->frames_vbuf_v2[vbuf_vert_idx++] = v;
+      md1->gpu.frames_vertex_buffer_v2[vbuf_vert_idx++] = x;
+      md1->gpu.frames_vertex_buffer_v2[vbuf_vert_idx++] = y;
+      md1->gpu.frames_vertex_buffer_v2[vbuf_vert_idx++] = z;
+      md1->gpu.frames_vertex_buffer_v2[vbuf_vert_idx++] = u;
+      md1->gpu.frames_vertex_buffer_v2[vbuf_vert_idx++] = v;
     }
   }
 
-  h->index_buffer_size = index_buffer_size;
-  md1->index_buffer = index_buffer;
-
-  // ***************************************
-  // U32              mesh_triangles_count;
-  // U32              mesh_indices_count;
-  // MD1MeshVertices* mesh_vertices;
-  // U32*             index_buffer;
-  // ***************************************
-  // h->mesh_indices_count = mesh_indices_count;
-  // h->mesh_triangles_count = mesh_triangles_count;
-  // h->mesh_vertices = mesh_vertices;
-  // h->index_buffer = index_buffer;
-
-  return err;
-}
-
-internal MD1Error
-md1_scale_and_translate_bbox(MD1* mdl) {
-  Dbg("md1_scale_and_translate_bbox() ...");
-
-  MD1Error   err = MD1_ERR_SUCCESS;
-  MD1Header* h = &mdl->header;
-
-  h->bbox_min.X = (h->bbox_min.X * h->scale.X) + h->translate.X;
-  h->bbox_min.Y = (h->bbox_min.Y * h->scale.Y) + h->translate.Y;
-  h->bbox_min.Z = (h->bbox_min.Z * h->scale.Z) + h->translate.Z;
-  h->bbox_max.X = (h->bbox_max.X * h->scale.X) + h->translate.X;
-  h->bbox_max.Y = (h->bbox_max.Y * h->scale.Y) + h->translate.Y;
-  h->bbox_max.Z = (h->bbox_max.Z * h->scale.Z) + h->translate.Z;
+  md1->gpu.frame_vertex_buffer_size =
+      elems_count * mesh_vertices_count * sizeof(F32);
+  md1->gpu.index_buffer_size = index_buffer_size;
+  md1->gpu.index_buffer = index_buffer;
 
   return err;
 }
@@ -683,32 +769,32 @@ md1_load(CBuf buf, Sz buf_sz, MD1* md1) {
   ND_I32(&rh.flags, ndb);
   ND_F32(&rh.size, ndb);
 
-  MD1Header* h = &md1->header;
+  MD1Details* details = &md1->details;
 
-  h->radius = rh.bounding_radius;
-  h->skin_width = rh.skin_width;
-  h->skin_height = rh.skin_height;
-  h->skins_count = rh.skins_count;
-  h->vertices_count = rh.vertices_count;
-  h->triangles_count = rh.triangles_count;
-  h->frames_count = rh.frames_count;
-  h->scale.X = rh.scale[0];
-  h->scale.Y = rh.scale[1];
-  h->scale.Z = rh.scale[2];
-  h->translate.X = rh.translate[0];
-  h->translate.Y = rh.translate[1];
-  h->translate.Z = rh.translate[2];
-  h->eye.X = rh.eye_position[0];
-  h->eye.Y = rh.eye_position[1];
-  h->eye.Z = rh.eye_position[2];
+  details->radius = rh.bounding_radius;
+  details->skin_width = rh.skin_width;
+  details->skin_height = rh.skin_height;
+  details->skins_count = rh.skins_count;
+  details->vertices_count = rh.vertices_count;
+  details->triangles_count = rh.triangles_count;
+  details->frames_count = rh.frames_count;
+  details->scale.X = rh.scale[0];
+  details->scale.Y = rh.scale[1];
+  details->scale.Z = rh.scale[2];
+  details->translate.X = rh.translate[0];
+  details->translate.Y = rh.translate[1];
+  details->translate.Z = rh.translate[2];
+  details->eye.X = rh.eye_position[0];
+  details->eye.Y = rh.eye_position[1];
+  details->eye.Z = rh.eye_position[2];
 
-  AssertAlways(h->radius > 0);
-  AssertAlways(h->skin_width > 0);
-  AssertAlways(h->skin_height > 0);
-  AssertAlways(h->skins_count > 0);
-  AssertAlways(h->vertices_count > 0);
-  AssertAlways(h->triangles_count > 0);
-  AssertAlways(h->frames_count > 0);
+  AssertAlways(details->radius > 0);
+  AssertAlways(details->skin_width > 0);
+  AssertAlways(details->skin_height > 0);
+  AssertAlways(details->skins_count > 0);
+  AssertAlways(details->vertices_count > 0);
+  AssertAlways(details->triangles_count > 0);
+  AssertAlways(details->frames_count > 0);
 
   // TODO: set some initial params
   md1->arena = arena_create();
@@ -733,23 +819,20 @@ md1_load(CBuf buf, Sz buf_sz, MD1* md1) {
   if (err != MD1_ERR_SUCCESS)
     return err;
 
-  err = md1_scale_and_translate_bbox(md1);
-  if (err != MD1_ERR_SUCCESS)
-    return err;
-
   err = md1_make_display_list(md1, uvs, faced_triangles);
   if (err != MD1_ERR_SUCCESS)
     return err;
 
+  // NOTE: this has some bugs!
   // err = md1_make_display_list_v2(md1, uvs, faced_triangles);
   // if (err != MD1_ERR_SUCCESS)
   //   return err;
 
-  Dbg("header.vertices: %d", h->vertices_count);
-  Dbg("header.triangles: %d", h->triangles_count);
-  Dbg("header.frames: %d", h->frames_count);
-  Dbg("header.skins: %d", h->skins_count);
-  Dbg("header.skin size: %d x %d", h->skin_width, h->skin_height);
+  Dbg("details.vertices: %d", details->vertices_count);
+  Dbg("details.triangles: %d", details->triangles_count);
+  Dbg("details.frames: %d", details->frames_count);
+  Dbg("details.skins: %d", details->skins_count);
+  Dbg("details.skin size: %d x %d", details->skin_width, details->skin_height);
 
   return err;
 }
@@ -763,14 +846,15 @@ md1_get_vertices(const MD1* md1,
   Assert(md1 != 0);
   Assert(frame_vbuf != 0);
   Assert(frame_vertex_buffer_size != 0);
-  Assert(pose_idx < md1->header.poses_count);
+  Assert(pose_idx < md1->details.poses_count);
   Assert(pose_frame_idx < md1->poses[pose_idx].frames_count);
 
   MD1Error err = MD1_ERR_SUCCESS;
   MD1Pose* pose = &md1->poses[pose_idx];
-  *frame_vbuf = &md1->frames_vbuf[(pose->first_frame + pose_frame_idx) *
-                                  md1->header.frame_vertex_buffer_size];
-  *frame_vertex_buffer_size = md1->header.frame_vertex_buffer_size;
+  *frame_vbuf =
+      &md1->gpu.frames_vertex_buffer[(pose->first_frame + pose_frame_idx) *
+                                     md1->gpu.frame_vertex_buffer_size];
+  *frame_vertex_buffer_size = md1->gpu.frame_vertex_buffer_size * sizeof(F32);
   return err;
 }
 
@@ -787,18 +871,19 @@ md1_get_vertices_v2(MD1*  md1,
   Assert(vbuf_size != 0);
   Assert(ibuf != 0);
   Assert(ibuf_size != 0);
-  Assert(pose_idx < md1->header.poses_count);
+  Assert(pose_idx < md1->details.poses_count);
   Assert(frame_idx < md1->poses[pose_idx].frames_count);
 
-  MD1Error   err = MD1_ERR_SUCCESS;
-  MD1Header* h = &md1->header;
-  MD1Pose*   pose = &md1->poses[pose_idx];
-  U32 vbuf_loc = (pose->first_frame + frame_idx) * h->frame_vertex_buffer_size;
+  MD1Error    err = MD1_ERR_SUCCESS;
+  MD1Details* details = &md1->details;
+  MD1Pose*    pose = &md1->poses[pose_idx];
+  U32         vbuf_loc =
+      (pose->first_frame + frame_idx) * md1->gpu.frame_vertex_buffer_size;
 
-  *vbuf = &md1->frames_vbuf_v2[vbuf_loc];
-  *vbuf_size = h->frame_vertex_buffer_size;
-  *ibuf = md1->index_buffer;
-  *ibuf_size = h->index_buffer_size;
+  *vbuf = &md1->gpu.frames_vertex_buffer_v2[vbuf_loc];
+  *vbuf_size = md1->gpu.frame_vertex_buffer_size;
+  *ibuf = md1->gpu.index_buffer;
+  *ibuf_size = md1->gpu.index_buffer_size;
 
   return err;
 }
