@@ -15,8 +15,3 @@
 #include "sokol_log.h"
 #include "../nuklear/nuklear.h"
 #include "sokol_nuklear.h"
-
-#ifdef DEBUG
-#define SOKOL_MEMTRACK_API_DECL
-#include "sokol_memtrack.h"
-#endif

@@ -1,4 +1,6 @@
----@diagnostic disable: undefined-global
+--
+-- WORKSPACE -----------------------
+--
 
 workspace "ProjectWorkspace"
   configurations { "Debug", "Release" }
@@ -16,8 +18,12 @@ workspace "ProjectWorkspace"
     defines { "NDEBUG" }
     optimize "Speed"
 
--- Rxi Log Library
-project "mk_log"
+--
+-- MODULES -----------------------
+--
+
+-- MODULE::log
+project "module_log"
   kind "StaticLib"
   language "C"
   location ".build"
@@ -26,8 +32,8 @@ project "mk_log"
   targetname "log"
   files { "src/deps/log/log.c" }
 
--- Sokol Library
-project "mk_sokol"
+-- MODULE::sokol
+project "module_sokol"
   kind "StaticLib"
   language "C"
   location ".build"
@@ -45,8 +51,8 @@ project "mk_sokol"
     defines { "SOKOL_GLCORE" }
     links { "X11", "Xi", "Xcursor", "GL", "m" }
 
--- Handmade Math (HMM) Library
-project "mk_hmm"
+-- MODULE::hmm
+project "module_hmm"
   kind "StaticLib"
   language "C"
   location ".build"
@@ -55,8 +61,8 @@ project "mk_hmm"
   targetname "hmm"
   files { "src/deps/hmm/hmm.c" }
 
--- STB Library
-project "mk_stb"
+-- MODULE::stb
+project "module_stb"
   kind "StaticLib"
   language "C"
   location ".build"
@@ -66,8 +72,8 @@ project "mk_stb"
   buildoptions { "-Wno-deprecated-declarations" }
   files { "src/deps/stb/stb.c" }
 
--- STB Library
-project "mk_sepi"
+-- MODULE::sepi
+project "module_sepi"
   kind "StaticLib"
   language "C"
   location ".build"
@@ -79,39 +85,21 @@ project "mk_sepi"
   defines { "USE_MEM_DEBUGGER" }
   files { "src/deps/sepi/sepi.c" }
 
--- Main Application
--- project "mk_sqv"
---   kind "ConsoleApp"
---   language "C"
---   location ".build"
---   targetdir ".build/"
---   objdir ".build/obj"
---   targetname "sqv"
---   includedirs { "src", "src/deps" }
---   links { "mk_log:static", "mk_stb:static", "mk_hmm:static", "mk_sepi:static", "mk_sokol:static", }
---   files { "src/app.c", "src/render_common.c", "src/render_init.c", "src/render_lmp.c", "src/render_md1.c", "src/render_pak.c", "src/render_ui.c", "src/render_wad.c", }
+--
+-- APPS -----------------------
+--
 
---   buildoptions { "-std=gnu11" }
---   defines { "SOKOL_GLCORE" }
---   defines { "_POSIX_C_SOURCE=199309L" } -- Needed for some C23 features
-
---   filter "system:macosx"
---     links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
-
---   filter "system:linux"
---     links { "X11", "Xi", "Xcursor", "GL", "m" }
-
--- Playground Application
-project "mk_dapp"
+-- APP::playground (testing ideas)
+project "app_playground"
   kind "ConsoleApp"
   language "C"
   location ".build"
   targetdir ".build/"
   objdir ".build/obj"
-  targetname "dapp"
+  targetname "app_playground"
   includedirs { "src", "src/deps" }
-  links { "mk_log:static", "mk_stb:static", "mk_hmm:static", "mk_sepi:static", "mk_sokol:static", }
-  files { "src/dapp.c" }
+  links { "module_log:static", "module_stb:static", "module_hmm:static", "module_sepi:static", "module_sokol:static", }
+  files { "src/app_playground.c" }
 
   buildoptions { "-std=gnu11" }
   defines { "SOKOL_GLCORE" }
@@ -123,8 +111,33 @@ project "mk_dapp"
   filter "system:linux"
     links { "X11", "Xi", "Xcursor", "GL", "m" }
 
+-- APP::pak
+project "app_pak"
+  kind "ConsoleApp"
+  language "C"
+  location ".build"
+  targetdir ".build/"
+  objdir ".build/obj"
+  targetname "app_pak"
+  includedirs { "src", "src/deps" }
+  links { "module_log:static", "module_stb:static", "module_hmm:static", "module_sepi:static", "module_sokol:static", }
+  files { "src/app_pak.c" }
 
--- GLSL Shader Compilation Action
+  buildoptions { "-std=gnu11" }
+  defines { "SOKOL_GLCORE" }
+  defines { "_POSIX_C_SOURCE=199309L" } -- Needed for some C23 features
+
+  filter "system:macosx"
+    links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
+
+  filter "system:linux"
+    links { "X11", "Xi", "Xcursor", "GL", "m" }
+
+--
+-- ACTIONS -----------------------
+--
+
+-- ACTION::glsl
 newaction {
   trigger = "glsl",
   description = "Compile shaders into C headers",
@@ -135,7 +148,7 @@ newaction {
   end
 }
 
--- Update License Header
+-- ACTION::licence
 newaction {
   trigger = "license",
   description = "Adds/Updates license header to all source files",
@@ -144,40 +157,27 @@ newaction {
   end
 }
 
--- Clean SQV Action
+-- ACTION::clean
 newaction {
-  trigger = "c",
+  trigger = "clean",
   description = "Execute the program with optional arguments",
   execute = function()
     os.execute("make --no-print-directory -C .build -f mk_sqv.make clean")
   end
 }
 
---
--- ACTIONS -----------------------
---
-
 newaction {
-  trigger = "p",
-  description = "execute",
+  trigger = "app_playground",
+  description = "run playground app",
   execute = function()
-    os.execute("LSAN_OPTIONS=suppressions=~/Documents/lsan.supp .build/sqv")
+    os.execute("LSAN_OPTIONS=suppressions=~/Documents/lsan.supp .build/app_playground")
   end
 }
 
 newaction {
-  trigger = "r",
-  description = "quick execute",
+  trigger = "app_pak",
+  description = "run pak app",
   execute = function()
-    os.execute("LSAN_OPTIONS=suppressions=~/Documents/lsan.supp .build/sqv -i=.keep/pak0.pak")
-  end
-}
-
-
-newaction {
-  trigger = "d",
-  description = "play ground",
-  execute = function()
-    os.execute("LSAN_OPTIONS=suppressions=~/Documents/lsan.supp .build/dapp")
+    os.execute("LSAN_OPTIONS=suppressions=~/Documents/lsan.supp .build/app_pak")
   end
 }

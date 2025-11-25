@@ -9,74 +9,83 @@ ifndef verbose
 endif
 
 ifeq ($(config),debug)
-  mk_log_config = debug
-  mk_sokol_config = debug
-  mk_hmm_config = debug
-  mk_stb_config = debug
-  mk_sepi_config = debug
-  mk_dapp_config = debug
+  module_log_config = debug
+  module_sokol_config = debug
+  module_hmm_config = debug
+  module_stb_config = debug
+  module_sepi_config = debug
+  app_playground_config = debug
+  app_pak_config = debug
 
 else ifeq ($(config),release)
-  mk_log_config = release
-  mk_sokol_config = release
-  mk_hmm_config = release
-  mk_stb_config = release
-  mk_sepi_config = release
-  mk_dapp_config = release
+  module_log_config = release
+  module_sokol_config = release
+  module_hmm_config = release
+  module_stb_config = release
+  module_sepi_config = release
+  app_playground_config = release
+  app_pak_config = release
 
 else
   $(error "invalid configuration $(config)")
 endif
 
-PROJECTS := mk_log mk_sokol mk_hmm mk_stb mk_sepi mk_dapp
+PROJECTS := module_log module_sokol module_hmm module_stb module_sepi app_playground app_pak
 
-.PHONY: all clean help $(PROJECTS)
+.PHONY: all clean help $(PROJECTS) 
 
 all: $(PROJECTS)
 
-mk_log:
-ifneq (,$(mk_log_config))
-	@echo "==== Building mk_log ($(mk_log_config)) ===="
-	@${MAKE} --no-print-directory -C .build -f mk_log.make config=$(mk_log_config)
+module_log:
+ifneq (,$(module_log_config))
+	@echo "==== Building module_log ($(module_log_config)) ===="
+	@${MAKE} --no-print-directory -C .build -f module_log.make config=$(module_log_config)
 endif
 
-mk_sokol:
-ifneq (,$(mk_sokol_config))
-	@echo "==== Building mk_sokol ($(mk_sokol_config)) ===="
-	@${MAKE} --no-print-directory -C .build -f mk_sokol.make config=$(mk_sokol_config)
+module_sokol:
+ifneq (,$(module_sokol_config))
+	@echo "==== Building module_sokol ($(module_sokol_config)) ===="
+	@${MAKE} --no-print-directory -C .build -f module_sokol.make config=$(module_sokol_config)
 endif
 
-mk_hmm:
-ifneq (,$(mk_hmm_config))
-	@echo "==== Building mk_hmm ($(mk_hmm_config)) ===="
-	@${MAKE} --no-print-directory -C .build -f mk_hmm.make config=$(mk_hmm_config)
+module_hmm:
+ifneq (,$(module_hmm_config))
+	@echo "==== Building module_hmm ($(module_hmm_config)) ===="
+	@${MAKE} --no-print-directory -C .build -f module_hmm.make config=$(module_hmm_config)
 endif
 
-mk_stb:
-ifneq (,$(mk_stb_config))
-	@echo "==== Building mk_stb ($(mk_stb_config)) ===="
-	@${MAKE} --no-print-directory -C .build -f mk_stb.make config=$(mk_stb_config)
+module_stb:
+ifneq (,$(module_stb_config))
+	@echo "==== Building module_stb ($(module_stb_config)) ===="
+	@${MAKE} --no-print-directory -C .build -f module_stb.make config=$(module_stb_config)
 endif
 
-mk_sepi:
-ifneq (,$(mk_sepi_config))
-	@echo "==== Building mk_sepi ($(mk_sepi_config)) ===="
-	@${MAKE} --no-print-directory -C .build -f mk_sepi.make config=$(mk_sepi_config)
+module_sepi:
+ifneq (,$(module_sepi_config))
+	@echo "==== Building module_sepi ($(module_sepi_config)) ===="
+	@${MAKE} --no-print-directory -C .build -f module_sepi.make config=$(module_sepi_config)
 endif
 
-mk_dapp:
-ifneq (,$(mk_dapp_config))
-	@echo "==== Building mk_dapp ($(mk_dapp_config)) ===="
-	@${MAKE} --no-print-directory -C .build -f mk_dapp.make config=$(mk_dapp_config)
+app_playground:
+ifneq (,$(app_playground_config))
+	@echo "==== Building app_playground ($(app_playground_config)) ===="
+	@${MAKE} --no-print-directory -C .build -f app_playground.make config=$(app_playground_config)
+endif
+
+app_pak:
+ifneq (,$(app_pak_config))
+	@echo "==== Building app_pak ($(app_pak_config)) ===="
+	@${MAKE} --no-print-directory -C .build -f app_pak.make config=$(app_pak_config)
 endif
 
 clean:
-	@${MAKE} --no-print-directory -C .build -f mk_log.make clean
-	@${MAKE} --no-print-directory -C .build -f mk_sokol.make clean
-	@${MAKE} --no-print-directory -C .build -f mk_hmm.make clean
-	@${MAKE} --no-print-directory -C .build -f mk_stb.make clean
-	@${MAKE} --no-print-directory -C .build -f mk_sepi.make clean
-	@${MAKE} --no-print-directory -C .build -f mk_dapp.make clean
+	@${MAKE} --no-print-directory -C .build -f module_log.make clean
+	@${MAKE} --no-print-directory -C .build -f module_sokol.make clean
+	@${MAKE} --no-print-directory -C .build -f module_hmm.make clean
+	@${MAKE} --no-print-directory -C .build -f module_stb.make clean
+	@${MAKE} --no-print-directory -C .build -f module_sepi.make clean
+	@${MAKE} --no-print-directory -C .build -f app_playground.make clean
+	@${MAKE} --no-print-directory -C .build -f app_pak.make clean
 
 help:
 	@echo "Usage: make [config=name] [target]"
@@ -88,11 +97,12 @@ help:
 	@echo "TARGETS:"
 	@echo "   all (default)"
 	@echo "   clean"
-	@echo "   mk_log"
-	@echo "   mk_sokol"
-	@echo "   mk_hmm"
-	@echo "   mk_stb"
-	@echo "   mk_sepi"
-	@echo "   mk_dapp"
+	@echo "   module_log"
+	@echo "   module_sokol"
+	@echo "   module_hmm"
+	@echo "   module_stb"
+	@echo "   module_sepi"
+	@echo "   app_playground"
+	@echo "   app_pak"
 	@echo ""
 	@echo "For more information, see https://github.com/premake/premake-core/wiki"
