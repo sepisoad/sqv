@@ -170,7 +170,7 @@ newaction {
   trigger = "app_playground",
   description = "run playground app",
   execute = function()
-    os.execute("LSAN_OPTIONS=suppressions=~/Documents/lsan.supp .build/app_playground")
+    os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_playground")
   end
 }
 
@@ -178,6 +178,6 @@ newaction {
   trigger = "app_pak",
   description = "run pak app",
   execute = function()
-    os.execute("LSAN_OPTIONS=suppressions=~/Documents/lsan.supp .build/app_pak")
+    os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak")
   end
 }
