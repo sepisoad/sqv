@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025 Sepehr Aryani (me@sepi.me)
+ * Licensed under LGPL v3
+ */
+
 #ifndef MD1_HEADER_
 #define MD1_HEADER_
 

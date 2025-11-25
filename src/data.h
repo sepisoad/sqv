@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025 Sepehr Aryani (me@sepi.me)
+ * Licensed under LGPL v3
+ */
+
 #ifndef QK_DATA_HEADER_
 #define QK_DATA_HEADER_
 

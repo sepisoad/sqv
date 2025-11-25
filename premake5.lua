@@ -135,6 +135,15 @@ newaction {
   end
 }
 
+-- Update License Header
+newaction {
+  trigger = "license",
+  description = "Adds/Updates license header to all source files",
+  execute = function()
+    os.execute("lice -f LICENSE_HEADER -e src/deps src")
+  end
+}
+
 -- Clean SQV Action
 newaction {
   trigger = "c",

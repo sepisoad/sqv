@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025 Sepehr Aryani (me@sepi.me)
+ * Licensed under LGPL v3
+ */
+
 #include "deps/sepi/base.h"
 #include "deps/nuklear/nuklear.h"
 #include "deps/sokol/sokol_app.h"

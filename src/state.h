@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025 Sepehr Aryani (me@sepi.me)
+ * Licensed under LGPL v3
+ */
+
 #ifndef SQV_APP_HEADER_
 #define SQV_APP_HEADER_
 
