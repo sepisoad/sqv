@@ -170,31 +170,27 @@ static Nothing
 frame(void) {
   MD1*     m = &S.md1;
 
-  F32      field_of_view = 60.0;  // * (3.14159265f / 180.0f);
+  F32      field_of_view = 60.0;
   F32      view_aspect_ratio = sapp_widthf() / sapp_heightf();
   F32      camera_distance = m->bbox.radius * 3;
-  // hmm_vec3 view_center = HMM_Vec3(m->bbox.center.X, m->bbox.center.Y,
-  // m->bbox.center.Z);
   hmm_vec3 view_center = HMM_Vec3(0.0f, 0.0f, 0.0f);
   hmm_vec3 camera_position = HMM_Vec3(m->bbox.center.X, m->bbox.center.Y,
                                       m->bbox.center.Z + camera_distance);
-
-  // projection and view matrices
   hmm_mat4 proj = HMM_Perspective(field_of_view, view_aspect_ratio,
                                   m->bbox.radius / 100, m->bbox.radius * 100);
   hmm_mat4 view = HMM_LookAt(camera_position, view_center, HMM_Vec3(0, 1, 0));
-
+  hmm_mat4 center = HMM_Translate(HMM_MultiplyVec3f(m->bbox.center, -1.0f));
   hmm_mat4 rot_x = HMM_Rotate(-90.0f, HMM_Vec3(1.0f, 0.0f, 0.0f));
   hmm_mat4 rot_z = HMM_Rotate(-90.0f, HMM_Vec3(0.0f, 0.0f, 1.0f));
+  hmm_mat4 rot = HMM_MultiplyMat4(rot_x, rot_z);
   hmm_mat4 model =
-      HMM_MultiplyMat4(HMM_MultiplyMat4(rot_x, rot_z), HMM_Mat4d(1.0f));
-
+      HMM_MultiplyMat4(rot, center);
   hmm_mat4 mvp = HMM_MultiplyMat4(proj, HMM_MultiplyMat4(view, model));
 
   default_vs_params_t vs_params = {.mvp = mvp};
 
-  sg_begin_pass(&(sg_pass){.action = S.pass_action,
-                           .swapchain = sglue_swapchain()});
+  sg_begin_pass(
+      &(sg_pass){.action = S.pass_action, .swapchain = sglue_swapchain()});
 
   sg_apply_pipeline(S.model.pipeline);
   sg_apply_bindings(&S.model.bindings);
@@ -221,6 +217,7 @@ sokol_main(I32 argc, char* argv[]) {
 
   // CStr inpath = "/home/sepi/Projects/sepi/sqv/.keep/pak0/progs/spike.mdl";
   // CStr inpath = "/home/sepi/Projects/sepi/sqv/.keep/pak0/progs/shambler.mdl";
+  // CStr inpath = "/home/sepi/Projects/sepi/sqv/.keep/pak0/progs/boss.mdl";
   CStr inpath = "/home/sepi/Games/pc/quake1/dwellv1p2/progs/boss_egypt.mdl";
   // CStr inpath = "/home/sepi/Games/pc/quake1/MALICE/progs/rat.mdl";
 
