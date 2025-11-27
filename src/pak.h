@@ -6,56 +6,66 @@
 #ifndef PAK_HEADER_
 #define PAK_HEADER_
 
+/* ===================================================== */
+/*                     DEPENDENCIES                      */
+/* ===================================================== */
+
 #include <string.h>
 #include <stdlib.h>
 
-#include "deps/sepi/endian.h"
 #include "deps/sepi/arena.h"
+#include "deps/sepi/endian.h"
 
 #include "kind.h"
 
-#define PAK_HEADER_LEN 4
+/* ===================================================== */
+/*                       CONSTANTS                       */
+/* ===================================================== */
+
+#define PAK_MAGIC_CODE_LEN 4
 #define PAK_ENTRY_NAME_LEN 56
-#define PAK_HEADER_ID "PACK"
+
+/* ===================================================== */
+/*                         TYPES                         */
+/* ===================================================== */
 
 typedef enum {
-  PAK_ERR_UNKNOWN = -1,
-  PAK_ERR_SUCCESS = 0,
+  PAK_ERR_UNKNOWN,
+  PAK_ERR_SUCCESS,
   PAK_ERR_MALFORMED,
+  PAK_ERR__COUNT,
 } PakError;
 
 typedef struct {
-  char id[PAK_HEADER_LEN];
-  I32 offset;
-  I32 size;
-} PakRawHeader;
-
-typedef struct {
   char name[PAK_ENTRY_NAME_LEN];
-  I32 offset;
-  I32 size;
+  I32  offset;
+  I32  size;
 } PakRawEntry;
 
 typedef struct {
-  char name[PAK_ENTRY_NAME_LEN];
-  Kind kind;
-  Sz size;
+  U32 entries_count;
+} PakDetails;
+
+typedef struct {
+  char   name[PAK_ENTRY_NAME_LEN];
+  Kind   kind;
+  Sz     size;
   RawPtr data;
 } PakEntry;
 
 typedef struct {
-  U32 entries_count;
-  PakEntry* entries;
-  char* _ex_pak_tree_list[PAK_ENTRY_NAME_LEN];
-  Arena* arena;
+  PakDetails details;
+  PakEntry*  entries;
+  char*      _ex_pak_tree_list[PAK_ENTRY_NAME_LEN];
+  Arena*     arena;
 } Pak;
 
 /* ===================================================== */
 /*                          API                          */
 /* ===================================================== */
 
-PakError pak_load(CBuf, Sz, Pak*);
-Nothing pak_unload(Pak*);
+PakError pak_load(Pak*, NDBuffer*);
+Nothing  pak_unload(Pak*);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -63,80 +73,85 @@ Nothing pak_unload(Pak*);
 
 #ifdef PAK_IMPLEMENTATION
 
-static PakError
-pak_read_header(CBuf buf, Sz bufsz, Pak* pak, I32* tbloff) {
-  Dbg("reading pak header");
+internal PakError
+pak_read_entries(Pak* pak, NDBuffer* ndb) {
+  Dbg("pak_read_entries() ...");
 
-  PakRawHeader* rhdr = (PakRawHeader*)buf;
+  Assert(pak != 0);
+  Assert(ndb != 0);
 
-  I32 offset = nd_i32(rhdr->offset);
-  I32 size = nd_i32(rhdr->size);
-  I32 idlen = (sizeof(PAK_HEADER_ID) / sizeof(char)) - 1;
-
-  ErrorOut(!strncmp(rhdr->id, PAK_HEADER_ID, idlen), PAK_ERR_MALFORMED);
-  ErrorOut(offset > 0, PAK_ERR_MALFORMED);
-  ErrorOut(size > 0, PAK_ERR_MALFORMED);
-
-  pak->entries_count = size / sizeof(PakRawEntry);
-  ErrorOut(pak->entries_count > 0, PAK_ERR_MALFORMED);
-
-  *tbloff = offset;
-  return PAK_ERR_SUCCESS;
-}
-
-static PakError
-pak_read_entries(CBuf buf, Sz bufsz, Pak* pak, I32 tbloff) {
-  Dbg("reading pak entries");
-
-  Arena* arena = pak->arena;
-  PakRawEntry* ptr = (PakRawEntry*)(buf + tbloff);
-  Sz sz = sizeof(PakEntry) * pak->entries_count;
-  PakEntry* entries = (PakEntry*)arena_push(arena, sz, alignof(PakEntry), TRUE);
+  Arena*       arena = pak->arena;
+  Sz           sz = sizeof(PakEntry) * pak->details.entries_count;
+  PakEntry* entries = (PakEntry*)arena_push(arena, sz, AlignOf(PakEntry), TRUE);
 
   pak->entries = entries;
 
-  for (I32 i = 0; i < pak->entries_count; i++) {
-    char* name = ptr->name;
-    I32 offset = nd_i32(ptr->offset);
-    I32 size = nd_i32(ptr->size);
-    CBuf pos = buf + offset;
-    entries->size = size;
-    entries->data = arena_push(arena, size, alignof(char), TRUE);
-    memcpy(entries->data, pos, size);
-    strncpy(entries->name, name, PAK_ENTRY_NAME_LEN);
-    entries->kind = kind_guess_entry(entries->name, PAK_ENTRY_NAME_LEN);
-    if (entries->kind == KIND_UNKNOWN) {
-      log_warn("the entry kind for '%s' is unknonw", entries->name);
+  for (U32 i = 0; i < pak->details.entries_count; i++) {
+    PakEntry* entry = entries + i;
+    U32       offset = 0;
+
+    memcpy(entry->name, ND_ADDR(ndb), PAK_ENTRY_NAME_LEN);
+    ND_MOVE(ndb, PAK_ENTRY_NAME_LEN);
+    ND_I32(ndb, &offset);
+    ND_I32(ndb, &entry->size);
+
+    KindError err =
+        kind_guess_entry(entry->name, PAK_ENTRY_NAME_LEN, &entry->kind);
+    if (err != KIND_ERR_SUCCESS) {
+      return PAK_ERR_MALFORMED;
     }
 
-    ptr++;
-    entries++;
+    entry->data = arena_push(arena, entry->size, AlignOf(U8), TRUE);
+    memcpy(entry->data, ndb->base + offset, entry->size);
   }
 
   return PAK_ERR_SUCCESS;
 }
 
+// TODO: do i need the `buffer_size`
 PakError
-pak_load(CBuf buf, Sz bufsz, Pak* pak) {
-  Arena* arena = arena_alloc(.requested_reserve_size = 1024,
-                             .requested_commit_size = 1024);
-  pak->arena = arena;
+pak_load(Pak* pak, NDBuffer* ndb) {
+  Dbg("pak_load() ...");
 
-  I32 tbloff;
-  PakError err = pak_read_header(buf, bufsz, pak, &tbloff);
+  Assert(pak != 0);
+  Assert(ndb != 0);
+  Assert(pak->arena == 0);
+
+  PakError     err;
+  U8           magic_code[PAK_MAGIC_CODE_LEN] = {0};
+  I32          offset = 0;
+  I32          size = 0;
+
+  pak->arena = arena_create();
+
+  memcpy(magic_code, ndb->base, PAK_MAGIC_CODE_LEN);
+  ND_MOVE(ndb, PAK_MAGIC_CODE_LEN);
+  ND_I32(ndb, &offset);
+  ND_I32(ndb, &size);
+  ND_ADDR_SET(ndb, offset);
+
+  // TODO: replace these with error codes!
+  AssertAlways(offset > 0);
+  AssertAlways(size > 0);
+  AssertAlways(magic_code[0] == 'P');
+  AssertAlways(magic_code[1] == 'A');
+  AssertAlways(magic_code[2] == 'C');
+  AssertAlways(magic_code[3] == 'K');
+
+  pak->details.entries_count = size / sizeof(PakRawEntry);
+
+  err = pak_read_entries(pak, ndb);
   if (err != PAK_ERR_SUCCESS) {
     return err;
   }
 
-  pak_read_entries(buf, bufsz, pak, tbloff);
-
   return PAK_ERR_SUCCESS;
 }
 
-void
+Nothing
 pak_unload(Pak* pak) {
-  if(pak->arena) {
-    arena_release(pak->arena);
+  if (pak->arena) {
+    arena_destroy(pak->arena);
   }
 }
 

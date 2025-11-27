@@ -6,6 +6,7 @@
 #define MD1_IMPLEMENTATION
 
 #include <stdio.h>
+
 #include "deps/hmm/hmm.h"
 #include "deps/log/log.h"
 #include "deps/nuklear/nuklear.h"
@@ -18,13 +19,15 @@
 #include "deps/sokol/sokol_time.h"
 #include "deps/sepi/base.h"
 #include "deps/sepi/io.h"
+
 #include "shaders/default.glsl.h"
 #include "shaders/bbox.glsl.h"
+
 #include "md1.h"
 
 internal struct {
   Arena*         arena;
-  MD1            md1;
+  Md1            md1;
   U32            zoom;
   sg_pass_action pass_action;
   struct {
@@ -42,9 +45,6 @@ internal struct {
   } bbox;
 } S;
 
-internal Arena* arena = {0};
-internal MD1    md1 = {0};
-
 internal Nothing
 init(void) {
   log_info("initializing gpu ...");
@@ -58,12 +58,17 @@ init(void) {
   // init arena allocator
   S.arena = arena_create();
 
-  // load default MD1 file
+  // load default Md1 file
   CStr path = (CStr)sapp_userdata();
-  Buf  buf = 0;
-  Sz   bufsz = io_load_file(S.arena, path, &buf);
-  md1_load((CBuf)buf, bufsz, &S.md1);
 
+  NDBuffer ndb = {0};
+  Buf  buf = 0;
+  IOError ioerr = io_load_file(S.arena, path, &ndb);
+  if (ioerr != IO_ERR_SUCCESS) {
+    // NOTE: this is a playground!
+  }
+
+  md1_load(&S.md1, &ndb);
   md1_get_vertices(&S.md1, 0, 0, &S.model.vbuf, &S.model.vbuf_size);
 
   // MODEL
@@ -141,7 +146,7 @@ internal Nothing
 cleanup(void) {
   log_info("shutting down");
 
-  md1_unload(&md1);
+  md1_unload(&S.md1);
   arena_destroy(S.arena);
   sg_shutdown();
 
@@ -173,7 +178,7 @@ input(const sapp_event* e) {
 
 static Nothing
 frame(void) {
-  MD1*     m = &S.md1;
+  Md1*     m = &S.md1;
 
   F32      field_of_view = 60.0;
   F32      view_aspect_ratio = sapp_widthf() / sapp_heightf();

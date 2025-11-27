@@ -1,5 +1,5 @@
 [executable]
-path=.build/dapp
+path=.build/app_pak
 arguments=
 ask_directory=1
 

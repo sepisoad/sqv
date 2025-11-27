@@ -3,7 +3,11 @@
  * Licensed under LGPL v3
  */
 
+#define PAK_IMPLEMENTATION
+#define KIND_IMPLEMENTATION
+
 #include <stdio.h>
+
 #include "deps/hmm/hmm.h"
 #include "deps/log/log.h"
 #include "deps/nuklear/nuklear.h"
@@ -16,27 +20,44 @@
 #include "deps/sokol/sokol_time.h"
 #include "deps/sepi/base.h"
 #include "deps/sepi/io.h"
+
 #include "shaders/default.glsl.h"
 
-// CStr inpath = "/home/sepi/Projects/sepi/sqv/.keep/pak0.pak";
+#include "pak.h"
+
+internal struct {
+  Arena* arena;
+  Pak    pak;
+} S;
 
 internal int draw_demo_ui(struct nk_context* ctx);
 
 internal void
 init(void) {
-  // setup sokol-gfx and sokol-nuklear
   sg_setup(&(sg_desc){
       .environment = sglue_environment(),
       .logger.func = slog_func,
   });
 
-  // use sokol-nuklear with all default-options (we're not doing
-  // multi-sampled rendering or using non-default pixel formats)
   snk_setup(&(snk_desc_t){
       .enable_set_mouse_cursor = true,
       .dpi_scale = sapp_dpi_scale(),
       .logger.func = slog_func,
   });
+
+  S.arena = arena_create();
+
+  NDBuffer ndb = {0};
+  CStr path = "/home/sepi/Games/pc/quake1/id1/pak0.pak";
+  IOError  ioerr = io_load_file(S.arena, path, &ndb);
+  if (ioerr != IO_ERR_SUCCESS) {
+    // TODO: handle the error
+  }
+
+  PakError pakerr = pak_load(&S.pak, &ndb);
+  if (pakerr != PAK_ERR_SUCCESS) {
+    // TODO: handle the error
+  }
 }
 
 internal void
@@ -90,8 +111,9 @@ sokol_main(int argc, char* argv[]) {
 
 static int
 draw_demo_ui(struct nk_context* ctx) {
-  internal const char *window_title = "SQV::Pak Explorer";
-  internal nk_flags window_flags = NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BORDER | NK_WINDOW_TITLE;
+  internal const char* window_title = "SQV::Pak Explorer";
+  internal nk_flags    window_flags =
+      NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BORDER | NK_WINDOW_TITLE;
 
   nk_style_hide_cursor(ctx);
 

@@ -21,6 +21,7 @@
 typedef struct {
   CBuf base;
   U32  offset;
+  Sz   size;
 } NDBuffer;
 
 /* ===================================================== */
@@ -34,9 +35,10 @@ F32 nd_f32(F32 num);
 F64 nd_f64(F64 num);
 
 #define ND_ADDR(ndb) ((ndb)->base + (ndb)->offset)
+#define ND_ADDR_SET(ndb, ofs) ((ndb)->offset = (ofs))
 #define ND_MOVE(ndb, sz) ((ndb)->offset += (sz))
 
-#define ND_I16(num /* I16* */, ndb /* NDBuffer* */) \
+#define ND_I16(ndb /* NDBuffer* */, num /* I16* */) \
   {                                                 \
     I16 tmp;                                        \
     memcpy(&tmp, ND_ADDR((ndb)), sizeof(I16));      \
@@ -45,7 +47,7 @@ F64 nd_f64(F64 num);
     ND_MOVE((ndb), sizeof(I16));                    \
   }
 
-#define ND_I32(num /* I32* */, ndb /* NDBuffer* */) \
+#define ND_I32(ndb /* NDBuffer* */, num /* I32* */) \
   {                                                 \
     I32 tmp;                                        \
     memcpy(&tmp, ND_ADDR((ndb)), sizeof(I32));      \
@@ -54,7 +56,7 @@ F64 nd_f64(F64 num);
     ND_MOVE((ndb), sizeof(I32));                    \
   }
 
-#define ND_I64(num /* I64* */, ndb /* NDBuffer* */) \
+#define ND_I64(ndb /* NDBuffer* */, num /* I64* */) \
   {                                                 \
     I64 tmp;                                        \
     memcpy(&tmp, ND_ADDR((ndb)), sizeof(I64));      \
@@ -63,7 +65,7 @@ F64 nd_f64(F64 num);
     ND_MOVE((ndb), sizeof(I64));                    \
   }
 
-#define ND_F32(num /* F32* */, ndb /* NDBuffer* */) \
+#define ND_F32(ndb /* NDBuffer* */, num /* F32* */) \
   {                                                 \
     F32 tmp;                                        \
     memcpy(&tmp, ND_ADDR((ndb)), sizeof(F32));      \
@@ -72,7 +74,7 @@ F64 nd_f64(F64 num);
     ND_MOVE((ndb), sizeof(F32));                    \
   }
 
-#define ND_F64(num /* F64* */, ndb /* NDBuffer* */) \
+#define ND_F64(ndb /* NDBuffer* */, num /* F64* */) \
   {                                                 \
     F64 tmp;                                        \
     memcpy(&tmp, ND_ADDR((ndb)), sizeof(F64));      \

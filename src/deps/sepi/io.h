@@ -9,19 +9,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "base.h"
+
+#include "endian.h"
 #include "arena.h"
 
 /* ===================================================== */
 /*                       CONSTANTS                       */
 /* ===================================================== */
 
-//
+/* ===================================================== */
+/*                         TYPES                         */
+/* ===================================================== */
+
+typedef enum {
+  IO_ERR_UNKNOWN,
+  IO_ERR_SUCCESS,
+  IO_ERR_FAILED,
+  IO_ERR__COUNT,
+} IOError;
 
 /* ===================================================== */
 /*                          API                          */
 /* ===================================================== */
 
-Sz io_load_file(Arena*, CStr, Buf*);
+IOError io_load_file(Arena*, CStr, NDBuffer*);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -29,31 +40,30 @@ Sz io_load_file(Arena*, CStr, Buf*);
 
 #ifdef SEPI_IO_IMPLEMENTATION
 
-Sz
-io_load_file(Arena* arena, CStr path, Buf* buf) {
+IOError
+io_load_file(Arena* arena, CStr path, NDBuffer* ndb) {
   Assert(arena != 0);
   Assert(path != 0);
-  Assert(buf != 0);
+  Assert(ndb != 0);
 
   FILE* f = fopen(path, "rb");
   AssertAlways(f != 0);
 
   fseek(f, 0, SEEK_END);
-  Sz fsize = ftell(f);
+  ndb->size = ftell(f) * sizeof(U8);
   rewind(f);
 
-  Sz size = sizeof(U8) * fsize;
-  *buf = (Buf)arena_push(arena, size, AlignOf(U8), FALSE);
-  AssertAlways(buf != 0);
+  ndb->base = (CBuf)arena_push(arena, ndb->size, AlignOf(U8), FALSE);
+  AssertAlways(ndb->base != 0);
 
-  Sz rsize = fread(*buf, 1, fsize, f);
-  AssertAlways(rsize == fsize);
+  Sz rsize = fread((void*)ndb->base, 1, ndb->size, f);
+  AssertAlways(rsize == ndb->size);
 
-  if(f) {
+  if (f) {
     fclose(f);
   }
 
-  return fsize;
+  return IO_ERR_SUCCESS;
 }
 
 /* ===================================================== */
