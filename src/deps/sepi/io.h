@@ -32,7 +32,7 @@ typedef enum {
 /*                          API                          */
 /* ===================================================== */
 
-IOError io_load_file(Arena*, CStr, NDBuffer*);
+IOError io_load_file(Arena*, CBuf, NDBuffer*);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -41,7 +41,7 @@ IOError io_load_file(Arena*, CStr, NDBuffer*);
 #ifdef SEPI_IO_IMPLEMENTATION
 
 IOError
-io_load_file(Arena* arena, CStr path, NDBuffer* ndb) {
+io_load_file(Arena* arena, CBuf path, NDBuffer* ndb) {
   Assert(arena != 0);
   Assert(path != 0);
   Assert(ndb != 0);

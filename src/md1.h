@@ -220,7 +220,7 @@ Md1Error md1_unload(Md1* md1);
 #include "data.h"
 
 static Nothing
-md1_load_image(CBuf ptr, Buf pixels, Sz sz) {
+md1_load_image(CBuf ptr, CStr pixels, Sz sz) {
   Dbg("md1_load_image() ...");
 
   Assert(pixels != 0);
@@ -261,8 +261,8 @@ md1_load_skins(Md1* md1, NDBuffer* ndb) {
     ND_MOVE(ndb, sizeof(MD1SkinType));
 
     if (MD1_SKIN_SINGLE == *st) {
-      Sz  data_sz = sizeof(U8) * skin_sz * channels;
-      Buf data = (Buf)arena_push(a, data_sz, AlignOf(U8), TRUE);
+      Sz   data_sz = sizeof(U8) * skin_sz * channels;
+      CStr data = (CStr)arena_push(a, data_sz, AlignOf(U8), TRUE);
       Assert(data != 0);
 
       // constructing pixel data
@@ -370,7 +370,7 @@ md1_load_triangles(Md1* md1, NDBuffer* ndb, Md1FacedTriangle** fts) {
 }
 
 internal Bool
-md1_has_pose_name_changed(Str new, Str old) {
+md1_has_pose_name_changed(CStr new, CBuf old) {
   for (U32 i = 0; i < MD1_MAX_FRAME_NAME_LEN - 1; i++) {
     if (isdigit(new[i])) {
       new[i] = 0;
@@ -392,7 +392,7 @@ internal Md1Error
 md1_load_single_frame(Md1*      md1,
                       NDBuffer* ndb,
                       U32       frame_idx,
-                      Str       frame_name,
+                      CStr      frame_name,
                       Bool*     is_bbox_loaded) {
   Dbg("md1_load_single_frame() ...");
 

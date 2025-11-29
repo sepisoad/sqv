@@ -15,6 +15,8 @@
 
 #include "deps/sepi/arena.h"
 #include "deps/sepi/endian.h"
+#include "deps/sepi/hashmap.h"
+#include "deps/sepi/string.h"
 
 #include "kind.h"
 
@@ -33,6 +35,7 @@ typedef enum {
   PAK_ERR_UNKNOWN,
   PAK_ERR_SUCCESS,
   PAK_ERR_MALFORMED,
+  PAK_ERR_INVALID_ENTRY_PATH,
   PAK_ERR__COUNT,
 } PakError;
 
@@ -54,9 +57,19 @@ typedef struct {
 } PakEntry;
 
 typedef struct {
+  char     name[PAK_ENTRY_NAME_LEN];
+  Bool     is_dir;
+  HashMap* children;
+} PakTreeNode;
+
+typedef struct {
+  PakTreeNode root;
+} PakTree;
+
+typedef struct {
   PakDetails details;
   PakEntry*  entries;
-  char*      _ex_pak_tree_list[PAK_ENTRY_NAME_LEN];
+  PakTree    tree;
   Arena*     arena;
 } Pak;
 
@@ -74,20 +87,68 @@ Nothing  pak_unload(Pak*);
 #ifdef PAK_IMPLEMENTATION
 
 internal PakError
+pak_get_path_depth(CStr path, U32 length, U32* depth) {
+  Dbg("pak_get_path_depth() ...");
+
+  Assert(path != 0);
+  Assert(length > 0);
+  Assert(depth != 0);
+
+  for (U32 index = 0; index < length; index++) {
+    if (path[index] == 0) {
+      break;
+    }
+
+    if (path[index] == '/') {
+      *depth = *depth + 1;
+    }
+  }
+
+  return PAK_ERR_SUCCESS;
+}
+
+internal PakError
+pak_get_path_segment_at_depth(CStr path,
+                              U32  length,
+                              U32  segments,
+                              char out[PAK_ENTRY_NAME_LEN]) {
+  Dbg("pak_get_path_depth() ...");
+
+  Assert(path != 0);
+  Assert(out != 0);
+
+  U32 traversed = 0;
+
+  for (U32 index = 0; index < length; index++) {
+    if (path[index] == 0 || traversed >= segments) {
+      break;
+    }
+
+    if (path[index] == '/') {
+      traversed++;
+    }
+
+    out[index] = path[index];
+  }
+
+  return PAK_ERR_SUCCESS;
+}
+
+internal PakError
 pak_read_entries(Pak* pak, NDBuffer* ndb) {
   Dbg("pak_read_entries() ...");
 
   Assert(pak != 0);
   Assert(ndb != 0);
 
-  Arena*       arena = pak->arena;
-  Sz           sz = sizeof(PakEntry) * pak->details.entries_count;
+  Arena*    arena = pak->arena;
+  Sz        sz = sizeof(PakEntry) * pak->details.entries_count;
   PakEntry* entries = (PakEntry*)arena_push(arena, sz, AlignOf(PakEntry), TRUE);
 
   pak->entries = entries;
 
-  for (U32 i = 0; i < pak->details.entries_count; i++) {
-    PakEntry* entry = entries + i;
+  for (U32 index = 0; index < pak->details.entries_count; index++) {
+    PakEntry* entry = entries + index;
     U32       offset = 0;
 
     memcpy(entry->name, ND_ADDR(ndb), PAK_ENTRY_NAME_LEN);
@@ -95,14 +156,53 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
     ND_I32(ndb, &offset);
     ND_I32(ndb, &entry->size);
 
-    KindError err =
+    KindError kerr =
         kind_guess_entry(entry->name, PAK_ENTRY_NAME_LEN, &entry->kind);
-    if (err != KIND_ERR_SUCCESS) {
+    if (kerr != KIND_ERR_SUCCESS) {
       return PAK_ERR_MALFORMED;
     }
 
     entry->data = arena_push(arena, entry->size, AlignOf(U8), TRUE);
     memcpy(entry->data, ndb->base + offset, entry->size);
+
+    U32      depth = 0;
+    PakError perr = pak_get_path_depth(entry->name, PAK_ENTRY_NAME_LEN, &depth);
+    if (perr != PAK_ERR_SUCCESS) {
+      return perr;
+    }
+
+    PakTreeNode* node = &pak->tree.root;
+    for (U32 depth_index = 0; depth_index < depth + 1; depth_index++) {
+      char     name[PAK_ENTRY_NAME_LEN] = {0};
+
+      PakError perr = pak_get_path_segment_at_depth(
+          entry->name, PAK_ENTRY_NAME_LEN, depth_index+1, &name[0]);
+      if (perr != PAK_ERR_SUCCESS) {
+        return perr;
+      }
+
+      HashMapKV* kv = hashmap_find(node->children, str8(name));
+      if (kv) {
+        node = (PakTreeNode*)kv->v_rawptr;
+        continue;
+      }
+
+      PakTreeNode* child =
+          arena_push(arena, sizeof(PakTreeNode), AlignOf(PakTreeNode), TRUE);
+      AssertAlways(child != 0);
+
+      memcpy(child->name, name, PAK_ENTRY_NAME_LEN);
+      hashmap_push_rawptr(arena, node->children, str8(child->name), (RawPtr)child);
+
+      if (depth_index >= depth) {
+        child->is_dir = FALSE;
+        continue;
+      }
+
+      child->is_dir = TRUE;
+      child->children = hashmap_init(arena, 64);
+      node = child;
+    }
   }
 
   return PAK_ERR_SUCCESS;
@@ -117,10 +217,10 @@ pak_load(Pak* pak, NDBuffer* ndb) {
   Assert(ndb != 0);
   Assert(pak->arena == 0);
 
-  PakError     err;
-  U8           magic_code[PAK_MAGIC_CODE_LEN] = {0};
-  I32          offset = 0;
-  I32          size = 0;
+  PakError err;
+  U8       magic_code[PAK_MAGIC_CODE_LEN] = {0};
+  I32      offset = 0;
+  I32      size = 0;
 
   pak->arena = arena_create();
 
@@ -140,10 +240,24 @@ pak_load(Pak* pak, NDBuffer* ndb) {
 
   pak->details.entries_count = size / sizeof(PakRawEntry);
 
+  // TODO: find a proper default 'cap'
+  pak->tree.root.children = hashmap_init(pak->arena, 64);
+  pak->tree.root.is_dir = TRUE;
+  MemZero(pak->tree.root.name, PAK_ENTRY_NAME_LEN);
+  pak->tree.root.name[0] = '.';
+
   err = pak_read_entries(pak, ndb);
   if (err != PAK_ERR_SUCCESS) {
     return err;
   }
+
+  // TODO: delete this2
+  // DEBUG {
+  // Str8* keys = hashmap_keys(pak->arena, pak->tree.root.children);
+  // for(U32 i = 0; i < pak->tree.root.children->count; i++) {
+  //   printf("%s\n", keys[i].cstr);
+  // }
+  // DEBUG }
 
   return PAK_ERR_SUCCESS;
 }

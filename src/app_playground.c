@@ -62,7 +62,7 @@ init(void) {
   CStr path = (CStr)sapp_userdata();
 
   NDBuffer ndb = {0};
-  Buf  buf = 0;
+  CBuf  buf = 0;
   IOError ioerr = io_load_file(S.arena, path, &ndb);
   if (ioerr != IO_ERR_SUCCESS) {
     // NOTE: this is a playground!

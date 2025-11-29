@@ -35,10 +35,8 @@ typedef const intptr_t CIPtr;
 typedef const uintptr_t CPtr;
 typedef ptrdiff_t PtrDiff;
 
-typedef char* Str;
-typedef const char* CStr;
-typedef unsigned char* Buf;
-typedef const unsigned char* CBuf;
+typedef U8* CStr;
+typedef const U8* CBuf;
 
 /* ===================================================== */
 /*                       KEYWORDS                        */

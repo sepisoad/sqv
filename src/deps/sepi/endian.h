@@ -169,9 +169,9 @@ nd_f32(F32 num) {
     return num;
   }
 
-  F32 result;
-  Str src = (Str)&num;
-  Str dst = (Str)&result;
+  F32  result;
+  CStr src = (CStr)&num;
+  CStr dst = (CStr)&result;
   dst[0] = src[3];
   dst[1] = src[2];
   dst[2] = src[1];
@@ -184,9 +184,9 @@ nd_f64(F64 num) {
   if (isle()) {
     return num;
   }
-  F64 result;
-  Str src = (Str)&num;
-  Str dst = (Str)&result;
+  F64  result;
+  CStr src = (CStr)&num;
+  CStr dst = (CStr)&result;
   dst[0] = src[7];
   dst[1] = src[6];
   dst[2] = src[5];

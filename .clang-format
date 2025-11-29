@@ -4,5 +4,4 @@ ColumnLimit: 80
 IndentWidth: 2
 TabWidth: 2
 SortIncludes: false
-AlignConsecutiveDeclarations: AcrossEmptyLinesAndComments
 AlwaysBreakAfterDefinitionReturnType: TopLevel

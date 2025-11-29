@@ -11,11 +11,6 @@
 /*                       CONSTANTS                       */
 /* ===================================================== */
 
-#if defined(SEPI_STRING_IMPLEMENTATION)
-#define MODULE
-#else
-#define MODULE static
-#endif /* SEPI_STRING_IMPLEMENTATION */
 
 /* ===================================================== */
 /*                         TYPES                         */
@@ -38,18 +33,18 @@ typedef struct {
 /*                          API                          */
 /* ===================================================== */
 
-MODULE Str8 str8(CStr cstr);
-MODULE Str8 str8_raw(RawPtr rptr, Sz size);
-MODULE Str8 str8_zero(void);
-MODULE Bool is_space_char(U8 c);
-MODULE Bool is_upper_char(U8 c);
-MODULE Bool is_lower_char(U8 c);
-MODULE Bool is_alpha_char(U8 c);
-MODULE Bool is_slash_char(U8 c);
-MODULE Bool is_digit_char(U8 c, U32 base);
-MODULE U8 to_lower_char(U8 c);
-MODULE U8 to_upper_char(U8 c);
-MODULE U8 correct_slash_from_char(U8 c);
+Str8 str8(CStr cstr);
+Str8 str8_raw(RawPtr rptr, Sz size);
+Str8 str8_zero(void);
+Bool is_space_char(U8 c);
+Bool is_upper_char(U8 c);
+Bool is_lower_char(U8 c);
+Bool is_alpha_char(U8 c);
+Bool is_slash_char(U8 c);
+Bool is_digit_char(U8 c, U32 base);
+U8 to_lower_char(U8 c);
+U8 to_upper_char(U8 c);
+U8 correct_slash_from_char(U8 c);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -69,51 +64,51 @@ internal U8 integer_symbol_reverse[128] = {
 };
 
 
-MODULE Str8
+Str8
 str8(CStr cstr) {
   Str8 result = {cstr, strlen(cstr)};
   return result;
 }
 
-MODULE Str8
+Str8
 str8_raw(RawPtr rptr, Sz size) {
   Str8 result = {(CStr)rptr, size};
   return result;
 }
 
-MODULE Str8
+Str8
 str8_zero(void) {
   Str8 result = {0};
   return result;
 }
 
-MODULE Bool
+Bool
 is_space_char(U8 c) {
   return (c == ' ' || c == '\n' || c == '\t' || c == '\r' || c == '\f'
           || c == '\v');
 }
 
-MODULE Bool
+Bool
 is_upper_char(U8 c) {
   return ('A' <= c && c <= 'Z');
 }
 
-MODULE Bool
+Bool
 is_lower_char(U8 c) {
   return ('a' <= c && c <= 'z');
 }
 
-MODULE Bool
+Bool
 is_alpha_char(U8 c) {
   return (is_upper_char(c) || is_lower_char(c));
 }
 
-MODULE Bool
+Bool
 is_slash_char(U8 c) {
   return (c == '/' || c == '\\');
 }
 
-MODULE Bool
+Bool
 is_digit_char(U8 c, U32 base) {
   Bool result = FALSE;
   if(0 < base && base <= 16) {
@@ -125,7 +120,7 @@ is_digit_char(U8 c, U32 base) {
   return result;
 }
 
-MODULE U8
+U8
 to_lower_char(U8 c) {
   if(is_upper_char(c)) {
     c += ('a' - 'A');
@@ -133,7 +128,7 @@ to_lower_char(U8 c) {
   return c;
 }
 
-MODULE U8
+U8
 to_upper_char(U8 c) {
   if(is_lower_char(c)) {
     c += ('A' - 'a');
@@ -141,7 +136,7 @@ to_upper_char(U8 c) {
   return c;
 }
 
-MODULE U8
+U8
 correct_slash_from_char(U8 c) {
   if(is_slash_char(c)) {
     c = '/';
@@ -149,7 +144,7 @@ correct_slash_from_char(U8 c) {
   return c;
 }
 
-MODULE Bool
+Bool
 str8_cmp(Str8 a, Str8 b, StringCompareFlags flags) {
   Bool result = FALSE;
   if(a.size == b.size && flags == 0) {

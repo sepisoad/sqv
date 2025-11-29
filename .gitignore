@@ -1,10 +1,15 @@
-.DS_Store
-.ignore
+# dirs
 .keep
 .vscode
 .zed
 .build
 .keep
 
-notes.md
 src/debug.c
+
+#files
+.DS_Store
+.breakpoints
+
+notes.md
+
