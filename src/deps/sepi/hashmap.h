@@ -24,23 +24,23 @@
 typedef struct HashMapKV HashMapKV;
 struct HashMapKV {
   union {
-    Str8   k_str;
+    Str8 k_str;
     RawPtr k_rawptr;
-    U32    k_u32;
-    U64    k_u64;
+    U32 k_u32;
+    U64 k_u64;
   };
   union {
-    Str8   v_str;
+    Str8 v_str;
     RawPtr v_rawptr;
-    U32    v_u32;
-    U64    v_u64;
+    U32 v_u32;
+    U64 v_u64;
   };
 };
 
 typedef struct HashMapNode HashMapNode;
 struct HashMapNode {
   HashMapNode* next;
-  HashMapKV    kv;
+  HashMapKV kv;
 };
 
 typedef struct HashMapList HashMapList;
@@ -51,26 +51,27 @@ struct HashMapList {
 
 typedef struct HashMap HashMap;
 struct HashMap {
-  U64          count;
-  U64          capacity;
+  U64 count;
+  U64 capacity;
   HashMapList* list;
-  HashMapList  free_list;
+  HashMapList free_list;
 };
 
 /* ===================================================== */
 /*                          API                          */
 /* ===================================================== */
 
-HashMap*     hashmap_init(Arena* a, U64 cap);
-Nothing      hashmap_purge(HashMap* hm);
+HashMap* hashmap_init(Arena* a, U64 cap);
+Nothing hashmap_purge(HashMap* hm);
 HashMapNode* hashmap_push(Arena* a, HashMap* hm, U64 hash, HashMapKV kv);
 HashMapNode* hashmap_push_str8(Arena* a, HashMap* hm, Str8 key, Str8 value);
 HashMapNode* hashmap_push_rawptr(Arena* a, HashMap* hm, Str8 key, RawPtr value);
 HashMapNode* hashmap_push_u32(Arena* a, HashMap* hm, Str8 key, U32 value);
 HashMapNode* hashmap_push_u64(Arena* a, HashMap* hm, Str8 key, U64 value);
-HashMapKV*   hashmap_find(HashMap* hm, Str8 key);
-HashMapKV    hashmap_pop(HashMap* hm, Str8 key);
-Str8*        hashmap_keys(Arena* a, HashMap* hm);
+HashMapKV* hashmap_find(HashMap* hm, Str8 key);
+HashMapKV hashmap_pop(HashMap* hm, Str8 key);
+Str8* hashmap_keys(Arena* a, HashMap* hm);
+HashMapKV* hashmap_key_at(HashMap* hm, U32 index);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -186,14 +187,14 @@ hashmap_push_u64(Arena* a, HashMap* hm, Str8 key, U64 value) {
 HashMapNode*
 hashmap_push_u32_str8(Arena* a, HashMap* hm, U32 key, Str8 value) {
   Str8 strkey = str8_raw(&key, sizeof(key));
-  U64  hash = hashmap_hasher(strkey);
+  U64 hash = hashmap_hasher(strkey);
   return hashmap_push(a, hm, hash, (HashMapKV){.k_u32 = key, .v_str = value});
 }
 
 HashMapKV*
 hashmap_find(HashMap* hm, Str8 key) {
-  U64          hash = hashmap_hasher(key);
-  U64          i = hash % hm->capacity;
+  U64 hash = hashmap_hasher(key);
+  U64 i = hash % hm->capacity;
   HashMapList* list = hm->list + i;
   for (HashMapNode* hmn = list->first; hmn != 0; hmn = hmn->next) {
     if (str8_cmp(hmn->kv.k_str, key, 0)) {
@@ -205,13 +206,13 @@ hashmap_find(HashMap* hm, Str8 key) {
 
 HashMapKV
 hashmap_pop(HashMap* hm, Str8 key) {
-  HashMapKV    kv = {0};
-  U64          hash = hashmap_hasher(key);
-  U64          i = hash % hm->capacity;
+  HashMapKV kv = {0};
+  U64 hash = hashmap_hasher(key);
+  U64 i = hash % hm->capacity;
   HashMapList* list = hm->list + i;
   HashMapNode* itr = list->first;
   HashMapNode* prv = itr;
-  Bool         single = list->first == list->last ? TRUE : FALSE;
+  Bool single = list->first == list->last ? TRUE : FALSE;
   for (; itr != 0; prv = itr, itr = itr->next) {
     if (str8_cmp(itr->kv.k_str, key, 0)) {
       prv->next = itr->next;
@@ -238,6 +239,20 @@ hashmap_keys(Arena* a, HashMap* hm) {
     }
   }
   return keys;
+}
+
+HashMapKV*
+hashmap_key_at(HashMap* hm, U32 index) {
+  for (U64 listidx = 0, cursor = 0; listidx < hm->capacity; ++listidx) {
+    for (HashMapNode* node = hm->list[listidx].first; node != 0;
+         node = node->next) {
+      if (cursor == index) {
+        return &node->kv;
+      }
+      Assert(cursor < hm->count);
+      cursor++;
+    }
+  }
 }
 
 /* ===================================================== */

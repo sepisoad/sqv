@@ -178,6 +178,7 @@ newaction {
   trigger = "app_pak",
   description = "run pak app",
   execute = function()
-    os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak")
+    os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/id1/pak0.pak")
+    -- os.execute(".build/app_pak --input=/home/sepi/Games/pc/quake1/id1/pak0.pak")
   end
 }

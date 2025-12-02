@@ -149,8 +149,6 @@ cleanup(void) {
   md1_unload(&S.md1);
   arena_destroy(S.arena);
   sg_shutdown();
-
-  printf("FUCKING QUITING...\n");
 }
 
 static Nothing

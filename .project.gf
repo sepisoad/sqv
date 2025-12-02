@@ -9,7 +9,7 @@ layout=h(75,v(75,Source,Console),v(50,t(Commands,Locals,Watch,Struct,Exe),t(Stac
 
 [executable]
 path=.build/app_pak
-arguments=
+arguments=--input=/home/sepi/Games/pc/quake1/id1/pak0.pak
 ask_directory=0
 
 [gdb]
