@@ -35,8 +35,11 @@
 /*                       CONSTANTS                       */
 /* ===================================================== */
 
+#define APP_PAK_EXPLORER_ICON_IMAGE_HEIGHT 50
+#define APP_PAK_EXPLORER_ICON_TEXT_HEIGHT 20
+#define APP_PAK_EXPLORER_ICON_HEIGHT \
+  APP_PAK_EXPLORER_ICON_IMAGE_HEIGHT + APP_PAK_EXPLORER_ICON_TEXT_HEIGHT
 #define APP_PAK_EXPLORER_ICON_WIDTH 50
-#define APP_PAK_EXPLORER_ICON_HEIGHT 50
 #define APP_PAK_EXPLORER_ICON_GAP 5
 
 /* ===================================================== */
@@ -442,16 +445,16 @@ app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
                                   CBuf text) {
   if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR)) {
     if (is_dir) {
-      nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_HEIGHT,
+      nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_IMAGE_HEIGHT,
                            APP_PAK_EXPLORER_ICON_WIDTH, 1);
       nk_button_image(ctx, ICONS.folder);
-      nk_layout_row_dynamic(ctx, 10, 1);
+      nk_layout_row_dynamic(ctx, APP_PAK_EXPLORER_ICON_TEXT_HEIGHT, 1);
       nk_label(ctx, text, NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
     } else {
-      nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_HEIGHT,
+      nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_IMAGE_HEIGHT,
                            APP_PAK_EXPLORER_ICON_WIDTH, 1);
       nk_button_image(ctx, ICONS.text);
-      nk_layout_row_dynamic(ctx, 10, 1);
+      nk_layout_row_dynamic(ctx, APP_PAK_EXPLORER_ICON_TEXT_HEIGHT, 1);
       nk_label(ctx, text, NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
     }
     nk_group_end(ctx);
@@ -471,10 +474,21 @@ app_pak_draw_widget_explorer_area(struct nk_context* ctx,
   columns = columns ? columns : 1;
   U32 rows = (items_count / columns);
   U32 remainder = items_count % columns;
+  U32 row_height =
+      (APP_PAK_EXPLORER_ICON_HEIGHT + APP_PAK_EXPLORER_ICON_GAP);
+  U32 actual_height = rows * row_height;
+  if (remainder > 0) {
+    actual_height += row_height;
+  }
 
-  nk_layout_row_dynamic(ctx, window_height, 1);
+  if (actual_height < window_height) {
+    actual_height = window_height;
+  }
+
+  nk_layout_row_dynamic(ctx, actual_height, 1);
   if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR)) {
-    nk_layout_row_static(ctx, 70, APP_PAK_EXPLORER_ICON_WIDTH, columns);
+    nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_HEIGHT,
+                         APP_PAK_EXPLORER_ICON_WIDTH, columns);
     U32 index = 0;
     for (U32 row = 0; row < rows; row++) {
       for (U32 column = 0; column < columns; column++) {
