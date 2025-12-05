@@ -10,7 +10,7 @@
 -- run `premake gen-module
 -- this will produce a module scaffold for you
 -- the output is a file named module_XXX.h
--- renamed the 'XXX' part to some name
+-- rename the 'XXX' part to some name
 -- then you add the actual source code
 --
 
