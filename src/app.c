@@ -23,8 +23,8 @@
 
 #include "shaders/default.glsl.h"
 #include "state.h"
-#include "md1.h"
-#include "pak.h"
+#include "module_md1.h"
+#include "module_pak.h"
 
 Context3D ctx3d = {0};
 static State s;

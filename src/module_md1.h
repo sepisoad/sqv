@@ -3,8 +3,8 @@
  * Licensed under LGPL v3
  */
 
-#ifndef MD1_HEADER_
-#define MD1_HEADER_
+#ifndef MODULE_MD1_HEADER
+#define MODULE_MD1_HEADER
 
 /* ===================================================== */
 /*                     DEPENDENCIES                      */
@@ -215,7 +215,7 @@ Md1Error md1_unload(Md1* md1);
 /*                    IMPLEMENTATION                     */
 /* ===================================================== */
 
-#ifdef MD1_IMPLEMENTATION
+#ifdef MODULE_MD1_IMPLEMENTATION
 
 #include "data.h"
 
@@ -902,5 +902,5 @@ md1_unload(Md1* md1) {
 /*                          END                          */
 /* ===================================================== */
 
-#endif  // MD1_IMPLEMENTATION
-#endif  // MD1_HEADER_
+#endif  // MODULE_MD1_IMPLEMENTATION
+#endif  // MODULE_MD1_HEADER

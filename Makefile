@@ -9,20 +9,22 @@ ifndef verbose
 endif
 
 ifeq ($(config),debug)
-  module_log_config = debug
-  module_sokol_config = debug
-  module_hmm_config = debug
-  module_stb_config = debug
-  module_sepi_config = debug
+  lib_log_config = debug
+  lib_sokol_config = debug
+  lib_hmm_config = debug
+  lib_stb_config = debug
+  lib_sepi_config = debug
+  tool_lua_config = debug
   app_playground_config = debug
   app_pak_config = debug
 
 else ifeq ($(config),release)
-  module_log_config = release
-  module_sokol_config = release
-  module_hmm_config = release
-  module_stb_config = release
-  module_sepi_config = release
+  lib_log_config = release
+  lib_sokol_config = release
+  lib_hmm_config = release
+  lib_stb_config = release
+  lib_sepi_config = release
+  tool_lua_config = release
   app_playground_config = release
   app_pak_config = release
 
@@ -30,40 +32,46 @@ else
   $(error "invalid configuration $(config)")
 endif
 
-PROJECTS := module_log module_sokol module_hmm module_stb module_sepi app_playground app_pak
+PROJECTS := lib_log lib_sokol lib_hmm lib_stb lib_sepi tool_lua app_playground app_pak
 
 .PHONY: all clean help $(PROJECTS) 
 
 all: $(PROJECTS)
 
-module_log:
-ifneq (,$(module_log_config))
-	@echo "==== Building module_log ($(module_log_config)) ===="
-	@${MAKE} --no-print-directory -C .build -f module_log.make config=$(module_log_config)
+lib_log:
+ifneq (,$(lib_log_config))
+	@echo "==== Building lib_log ($(lib_log_config)) ===="
+	@${MAKE} --no-print-directory -C .build -f lib_log.make config=$(lib_log_config)
 endif
 
-module_sokol:
-ifneq (,$(module_sokol_config))
-	@echo "==== Building module_sokol ($(module_sokol_config)) ===="
-	@${MAKE} --no-print-directory -C .build -f module_sokol.make config=$(module_sokol_config)
+lib_sokol:
+ifneq (,$(lib_sokol_config))
+	@echo "==== Building lib_sokol ($(lib_sokol_config)) ===="
+	@${MAKE} --no-print-directory -C .build -f lib_sokol.make config=$(lib_sokol_config)
 endif
 
-module_hmm:
-ifneq (,$(module_hmm_config))
-	@echo "==== Building module_hmm ($(module_hmm_config)) ===="
-	@${MAKE} --no-print-directory -C .build -f module_hmm.make config=$(module_hmm_config)
+lib_hmm:
+ifneq (,$(lib_hmm_config))
+	@echo "==== Building lib_hmm ($(lib_hmm_config)) ===="
+	@${MAKE} --no-print-directory -C .build -f lib_hmm.make config=$(lib_hmm_config)
 endif
 
-module_stb:
-ifneq (,$(module_stb_config))
-	@echo "==== Building module_stb ($(module_stb_config)) ===="
-	@${MAKE} --no-print-directory -C .build -f module_stb.make config=$(module_stb_config)
+lib_stb:
+ifneq (,$(lib_stb_config))
+	@echo "==== Building lib_stb ($(lib_stb_config)) ===="
+	@${MAKE} --no-print-directory -C .build -f lib_stb.make config=$(lib_stb_config)
 endif
 
-module_sepi:
-ifneq (,$(module_sepi_config))
-	@echo "==== Building module_sepi ($(module_sepi_config)) ===="
-	@${MAKE} --no-print-directory -C .build -f module_sepi.make config=$(module_sepi_config)
+lib_sepi:
+ifneq (,$(lib_sepi_config))
+	@echo "==== Building lib_sepi ($(lib_sepi_config)) ===="
+	@${MAKE} --no-print-directory -C .build -f lib_sepi.make config=$(lib_sepi_config)
+endif
+
+tool_lua:
+ifneq (,$(tool_lua_config))
+	@echo "==== Building tool_lua ($(tool_lua_config)) ===="
+	@${MAKE} --no-print-directory -C .build -f tool_lua.make config=$(tool_lua_config)
 endif
 
 app_playground:
@@ -79,11 +87,12 @@ ifneq (,$(app_pak_config))
 endif
 
 clean:
-	@${MAKE} --no-print-directory -C .build -f module_log.make clean
-	@${MAKE} --no-print-directory -C .build -f module_sokol.make clean
-	@${MAKE} --no-print-directory -C .build -f module_hmm.make clean
-	@${MAKE} --no-print-directory -C .build -f module_stb.make clean
-	@${MAKE} --no-print-directory -C .build -f module_sepi.make clean
+	@${MAKE} --no-print-directory -C .build -f lib_log.make clean
+	@${MAKE} --no-print-directory -C .build -f lib_sokol.make clean
+	@${MAKE} --no-print-directory -C .build -f lib_hmm.make clean
+	@${MAKE} --no-print-directory -C .build -f lib_stb.make clean
+	@${MAKE} --no-print-directory -C .build -f lib_sepi.make clean
+	@${MAKE} --no-print-directory -C .build -f tool_lua.make clean
 	@${MAKE} --no-print-directory -C .build -f app_playground.make clean
 	@${MAKE} --no-print-directory -C .build -f app_pak.make clean
 
@@ -97,11 +106,12 @@ help:
 	@echo "TARGETS:"
 	@echo "   all (default)"
 	@echo "   clean"
-	@echo "   module_log"
-	@echo "   module_sokol"
-	@echo "   module_hmm"
-	@echo "   module_stb"
-	@echo "   module_sepi"
+	@echo "   lib_log"
+	@echo "   lib_sokol"
+	@echo "   lib_hmm"
+	@echo "   lib_stb"
+	@echo "   lib_sepi"
+	@echo "   tool_lua"
 	@echo "   app_playground"
 	@echo "   app_pak"
 	@echo ""

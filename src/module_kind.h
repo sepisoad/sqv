@@ -3,8 +3,8 @@
  * Licensed under LGPL v3
  */
 
-#ifndef KIND_HEADER_
-#define KIND_HEADER_
+#ifndef MODULE_KIND_HEADER
+#define MODULE_KIND_HEADER
 
 /* ===================================================== */
 /*                     DEPENDENCIES                      */
@@ -95,7 +95,7 @@ KindError kind_guess_entry(CStr, U32, Kind*);
 /*                    IMPLEMENTATION                     */
 /* ===================================================== */
 
-#ifdef KIND_IMPLEMENTATION
+#ifdef MODULE_KIND_IMPLEMENTATION
 
 internal KindError
 guess_file_type(CStr buf, Kind* kind) {
@@ -371,5 +371,5 @@ kind_guess_buffer(CStr data, Kind* kind) {
 /*                          END                          */
 /* ===================================================== */
 
-#endif  // KIND_IMPLEMENTATION
-#endif  // KIND_HEADER_
+#endif  // MODULE_KIND_IMPLEMENTATION
+#endif  // MODULE_KIND_HEADER

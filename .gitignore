@@ -6,6 +6,7 @@
 .keep
 
 src/debug.c
+src/module_XXX.h
 
 #files
 .DS_Store

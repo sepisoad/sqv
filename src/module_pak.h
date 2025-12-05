@@ -3,8 +3,8 @@
  * Licensed under LGPL v3
  */
 
-#ifndef PAK_HEADER_
-#define PAK_HEADER_
+#ifndef MODULE_PAK_HEADER
+#define MODULE_PAK_HEADER
 
 /* ===================================================== */
 /*                     DEPENDENCIES                      */
@@ -18,7 +18,7 @@
 #include "deps/sepi/hashmap.h"
 #include "deps/sepi/string.h"
 
-#include "kind.h"
+#include "module_kind.h"
 
 /* ===================================================== */
 /*                       CONSTANTS                       */
@@ -84,7 +84,7 @@ Nothing  pak_unload(Pak*);
 /*                    IMPLEMENTATION                     */
 /* ===================================================== */
 
-#ifdef PAK_IMPLEMENTATION
+#ifdef MODULE_PAK_IMPLEMENTATION
 
 internal PakError
 pak_get_path_depth(CStr path, U32 length, U32* depth) {
@@ -273,5 +273,5 @@ pak_unload(Pak* pak) {
 /*                          END                          */
 /* ===================================================== */
 
-#endif  // PAK_IMPLEMENTATION
-#endif  // PAK_HEADER_
+#endif  // MODULE_PAK_IMPLEMENTATION
+#endif  // MODULE_PAK_HEADER

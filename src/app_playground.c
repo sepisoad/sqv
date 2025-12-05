@@ -3,7 +3,7 @@
  * Licensed under LGPL v3
  */
 
-#define MD1_IMPLEMENTATION
+#define MODULE_MD1_IMPLEMENTATION
 
 #include <stdio.h>
 
@@ -23,7 +23,7 @@
 #include "shaders/default.glsl.h"
 #include "shaders/bbox.glsl.h"
 
-#include "md1.h"
+#include "module_md1.h"
 
 internal struct {
   Arena*         arena;

@@ -19,11 +19,11 @@ workspace "ProjectWorkspace"
     optimize "Speed"
 
 --
--- MODULES -----------------------
+-- LIBRARIES -----------------------
 --
 
--- MODULE::log
-project "module_log"
+-- LIBRARY::log
+project "lib_log"
   kind "StaticLib"
   language "C"
   location ".build"
@@ -32,8 +32,8 @@ project "module_log"
   targetname "log"
   files { "src/deps/log/log.c" }
 
--- MODULE::sokol
-project "module_sokol"
+-- LIBRARY::sokol
+project "lib_sokol"
   kind "StaticLib"
   language "C"
   location ".build"
@@ -51,8 +51,8 @@ project "module_sokol"
     defines { "SOKOL_GLCORE" }
     links { "X11", "Xi", "Xcursor", "GL", "m" }
 
--- MODULE::hmm
-project "module_hmm"
+-- LIBRARY::hmm
+project "lib_hmm"
   kind "StaticLib"
   language "C"
   location ".build"
@@ -61,8 +61,8 @@ project "module_hmm"
   targetname "hmm"
   files { "src/deps/hmm/hmm.c" }
 
--- MODULE::stb
-project "module_stb"
+-- LIBRARY::stb
+project "lib_stb"
   kind "StaticLib"
   language "C"
   location ".build"
@@ -72,8 +72,8 @@ project "module_stb"
   buildoptions { "-Wno-deprecated-declarations" }
   files { "src/deps/stb/stb.c" }
 
--- MODULE::sepi
-project "module_sepi"
+-- LIBRARY::sepi
+project "lib_sepi"
   kind "StaticLib"
   language "C"
   location ".build"
@@ -84,6 +84,21 @@ project "module_sepi"
   buildoptions { "-std=gnu11" }
   defines { "USE_MEM_DEBUGGER" }
   files { "src/deps/sepi/sepi.c" }
+
+--
+-- TOOLS -----------------------
+--
+
+-- TOOL::lua
+project "tool_lua"
+  kind "ConsoleApp"
+  language "C"
+  location ".build"
+  targetdir ".build/"
+  objdir ".build/obj"
+  targetname "lua"
+  files { "src/deps/lua/lua.c" }
+  buildoptions { "-std=gnu11" }
 
 --
 -- APPS -----------------------
@@ -98,7 +113,7 @@ project "app_playground"
   objdir ".build/obj"
   targetname "app_playground"
   includedirs { "src", "src/deps" }
-  links { "module_log:static", "module_stb:static", "module_hmm:static", "module_sepi:static", "module_sokol:static", }
+  links { "lib_log:static", "lib_stb:static", "lib_hmm:static", "lib_sepi:static", "lib_sokol:static", }
   files { "src/app_playground.c" }
 
   buildoptions { "-std=gnu11" }
@@ -120,7 +135,7 @@ project "app_pak"
   objdir ".build/obj"
   targetname "app_pak"
   includedirs { "src", "src/deps" }
-  links { "module_log:static", "module_stb:static", "module_hmm:static", "module_sepi:static", "module_sokol:static", }
+  links { "lib_log:static", "lib_stb:static", "lib_hmm:static", "lib_sepi:static", "lib_sokol:static", }
   files { "src/app_pak.c" }
 
   buildoptions { "-std=gnu11" }
@@ -166,16 +181,27 @@ newaction {
   end
 }
 
+-- ACTION::gen_module
 newaction {
-  trigger = "app_playground",
+  trigger = "gen-module",
+  description = "generate a c module scaffold",
+  execute = function()
+    os.execute(".build/lua scripts/gen-module.lua")
+  end
+}
+
+-- ACTION::app-playground
+newaction {
+  trigger = "app-playground",
   description = "run playground app",
   execute = function()
     os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_playground")
   end
 }
 
+-- ACTION::app-pak
 newaction {
-  trigger = "app_pak",
+  trigger = "app-pak",
   description = "run pak app",
   execute = function()
     os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/id1/pak0.pak")
