@@ -35,12 +35,20 @@
 /*                       CONSTANTS                       */
 /* ===================================================== */
 
+#define APP_PAK_WINDOW_PADDING_X 2
+#define APP_PAK_WINDOW_PADDING_Y 2
+#define APP_PAK_TOP_REGION_HEIGHT 35
+#define APP_PAK_BOTTOM_REGION_HEIGHT 30
 #define APP_PAK_EXPLORER_ICON_IMAGE_HEIGHT 50
-#define APP_PAK_EXPLORER_ICON_TEXT_HEIGHT 20
+#define APP_PAK_EXPLORER_ICON_TEXT_HEIGHT 25
 #define APP_PAK_EXPLORER_ICON_HEIGHT \
   APP_PAK_EXPLORER_ICON_IMAGE_HEIGHT + APP_PAK_EXPLORER_ICON_TEXT_HEIGHT
-#define APP_PAK_EXPLORER_ICON_WIDTH 50
-#define APP_PAK_EXPLORER_ICON_GAP 5
+#define APP_PAK_EXPLORER_ICON_IMAGE_WIDTH 50
+#define APP_PAK_EXPLORER_ICON_TEXT_WIDTH 350
+#define APP_PAK_EXPLORER_ICON_GAP 2
+#define APP_PAK_EXPLORER_PADDING_X 2
+#define APP_PAK_EXPLORER_PADDING_Y 2
+#define APP_PAK_STATUSBAR_HEIGHT 20
 
 /* ===================================================== */
 /*                         TYPES                         */
@@ -90,17 +98,14 @@ internal Nothing app_pak_handle_file_drop(CBuf path);
 internal U32 app_pak_draw(struct nk_context* ctx);
 internal U32 app_pak_draw_mode_empty(struct nk_context* ctx,
                                      nk_flags window_flags,
-                                     CBuf window_title,
                                      U32 window_width,
                                      U32 window_height);
 internal U32 app_pak_draw_mode_loaded(struct nk_context* ctx,
                                       nk_flags window_flags,
-                                      CBuf window_title,
                                       U32 window_width,
                                       U32 window_height);
 internal Nothing app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
-                                                   Bool is_dir,
-                                                   CBuf text);
+                                                   PakTreeNode* node);
 internal Nothing app_pak_draw_widget_explorer_area(struct nk_context* ctx,
                                                    U32 window_width,
                                                    U32 window_height);
@@ -176,12 +181,12 @@ internal Nothing
 app_pak_init_style(struct nk_style* s) {
   struct nk_style_window* window = &s->window;
 
-  window->padding.x = 2;
-  window->padding.y = 2;
+  window->padding.x = APP_PAK_WINDOW_PADDING_X;
+  window->padding.y = APP_PAK_WINDOW_PADDING_Y;
   window->scrollbar_size.x = 2;
   window->scrollbar_size.y = 2;
-  window->group_padding.x = 0;
-  window->group_padding.y = 0;
+  window->group_padding.x = APP_PAK_EXPLORER_PADDING_X;
+  window->group_padding.y = APP_PAK_EXPLORER_PADDING_Y;
 
   window->border = 0;
   window->group_border = 0;
@@ -190,6 +195,11 @@ app_pak_init_style(struct nk_style* s) {
   window->background.g = 0;
   window->background.b = 0;
   window->background.a = 255;
+
+  window->fixed_background.type = NK_STYLE_ITEM_COLOR;
+  window->fixed_background.data.color.r = 54;
+  window->fixed_background.data.color.g = 51;
+  window->fixed_background.data.color.b = 50;
 
   struct nk_style_button* button = &s->button;
 
@@ -346,11 +356,9 @@ app_pak_draw(struct nk_context* ctx) {
 
   nk_style_hide_cursor(ctx);
   if (S.mode == APP_PAK_MODE_EMPTY) {
-    app_pak_draw_mode_empty(ctx, window_flags, window_title, window_width,
-                            window_height);
+    app_pak_draw_mode_empty(ctx, window_flags, window_width, window_height);
   } else if (S.mode == APP_PAK_MODE_LOADED) {
-    app_pak_draw_mode_loaded(ctx, window_flags, window_title, window_width,
-                             window_height);
+    app_pak_draw_mode_loaded(ctx, window_flags, window_width, window_height);
   }
 
   return !nk_window_is_closed(ctx, window_title);
@@ -361,14 +369,13 @@ app_pak_draw(struct nk_context* ctx) {
 internal U32
 app_pak_draw_mode_empty(struct nk_context* ctx,
                         nk_flags window_flags,
-                        CBuf window_title,
                         U32 window_width,
                         U32 window_height) {
   // Dbg("app_pak_draw_mode_empty() ...");
 
   internal CBuf label = "Please drop a .PAK file here, I'm hungry!";
 
-  if (nk_begin(ctx, window_title, nk_rect(0, 0, window_width, window_height),
+  if (nk_begin(ctx, "", nk_rect(0, 0, window_width, window_height),
                window_flags)) {
     struct nk_rect content_region = nk_window_get_content_region(ctx);
     const struct nk_user_font* font = ctx->style.font;
@@ -401,38 +408,70 @@ app_pak_draw_mode_empty(struct nk_context* ctx,
 internal U32
 app_pak_draw_mode_loaded(struct nk_context* ctx,
                          nk_flags window_flags,
-                         CBuf window_title,
                          U32 window_width,
                          U32 window_height) {
   // Dbg("app_pak_draw_mode_loaded() ...");
 
-  if (nk_begin(ctx, window_title, nk_rect(0, 0, window_width, window_height),
-               window_flags)) {
+  // === TOP REGION ===
+  if (nk_begin(ctx, "loaded_mode_top_region",
+               nk_rect(0, 0, window_width, APP_PAK_TOP_REGION_HEIGHT),
+               NK_WINDOW_NO_SCROLLBAR)) {
+
+    nk_layout_row_template_begin(ctx, ICONS.home.h);
+    nk_layout_row_template_push_static(ctx, 30);
+    nk_layout_row_template_push_static(ctx, 30);
+    nk_layout_row_template_push_static(ctx, 30);
+    nk_layout_row_template_push_dynamic(ctx);
+    nk_layout_row_template_end(ctx);
+
+    if (nk_button_image(ctx, ICONS.settings)) {
+      // S.current_pak_tree_node = &S.pak.tree.root;
+    }
+
+    if (nk_button_image(ctx, ICONS.home)) {
+      S.current_pak_tree_node = &S.pak.tree.root;
+    }
+
+    if (nk_button_image(ctx, ICONS.back)) {
+      if (S.current_pak_tree_node->parent) {
+        S.current_pak_tree_node = S.current_pak_tree_node->parent;
+      }
+    }
+
+    nk_label(ctx, S.current_pak_tree_node->name,
+             NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
+  }
+  nk_end(ctx);
+
+  // === MIDDLE REGION ===
+  U32 middle_region_height =
+      window_height - APP_PAK_TOP_REGION_HEIGHT - APP_PAK_BOTTOM_REGION_HEIGHT;
+  struct nk_style_item bkg = {
+      .type = NK_STYLE_ITEM_COLOR,
+      .data = {.color = {.r = 34, .g = 37, .b = 35, .a = 255}}};
+
+  nk_style_push_style_item(ctx, &ctx->style.window.fixed_background, bkg);
+
+  if (nk_begin(ctx, "loaded_mode_middle_region",
+               nk_rect(0, APP_PAK_TOP_REGION_HEIGHT, window_width,
+                       middle_region_height),
+               NK_WINDOW_SCROLL_AUTO_HIDE)) {
     const struct nk_user_font* font = ctx->style.font;
     F32 text_height = font->height;
 
-    struct nk_rect content = nk_window_get_content_region(ctx);
+    app_pak_draw_widget_explorer_area(ctx, window_width, middle_region_height);
+  }
+  nk_end(ctx);
+  nk_style_pop_style_item(ctx);
 
-    // nk_layout_row_static(ctx, ICONS.home.h, 32, 3);
-    // nk_button_image(ctx, ICONS.home);
-    // nk_button_image(ctx, ICONS.back);
-    // nk_label(ctx, S.current_pak_tree_node->name,
-    //          NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
-
-    // nk_layout_row_static(ctx, ICONS.home.h, 32, 2);
-    // nk_button_image(ctx, ICONS.settings);
-    // nk_button_image(ctx, ICONS.back);
-
-    app_pak_draw_widget_explorer_area(ctx, window_width, window_height);
-
-    // char count_str[16] = {0};
-    // sprintf(count_str, "%d", 1987);
-
-    // nk_layout_space_begin(ctx, NK_STATIC, window_height - 200, 1);
-    // nk_layout_row_dynamic(ctx, 0, 2);
-    // nk_label(ctx, S.input_pak_file_path, NK_TEXT_LEFT);
-    // nk_label(ctx, count_str, NK_TEXT_RIGHT);
-    // nk_layout_space_end(ctx);
+  // === BOTTOM REGION ===
+  if (nk_begin(ctx, "loaded_mode_bottom_region",
+               nk_rect(0, window_height - APP_PAK_BOTTOM_REGION_HEIGHT,
+                       window_width, APP_PAK_BOTTOM_REGION_HEIGHT),
+               NK_WINDOW_NO_SCROLLBAR)) {
+    nk_layout_row_dynamic(ctx, 0, 1);
+    nk_label(ctx, S.input_pak_file_path,
+             NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
   }
   nk_end(ctx);
 }
@@ -440,22 +479,26 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
 /* ===================================================== */
 
 internal Nothing
-app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
-                                  Bool is_dir,
-                                  CBuf text) {
-  if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR)) {
-    if (is_dir) {
+app_pak_draw_widget_explorer_icon(struct nk_context* ctx, PakTreeNode* node) {
+  if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_NO_INPUT)) {
+    if (node->is_dir) {
       nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_IMAGE_HEIGHT,
-                           APP_PAK_EXPLORER_ICON_WIDTH, 1);
-      nk_button_image(ctx, ICONS.folder);
-      nk_layout_row_dynamic(ctx, APP_PAK_EXPLORER_ICON_TEXT_HEIGHT, 1);
-      nk_label(ctx, text, NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
+                           APP_PAK_EXPLORER_ICON_IMAGE_WIDTH, 1);
+      if (nk_button_image(ctx, ICONS.folder)) {
+        S.current_pak_tree_node = node;
+      }
+      nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_TEXT_HEIGHT,
+                           APP_PAK_EXPLORER_ICON_TEXT_WIDTH, 1);
+      nk_label(ctx, node->name, NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
     } else {
       nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_IMAGE_HEIGHT,
-                           APP_PAK_EXPLORER_ICON_WIDTH, 1);
-      nk_button_image(ctx, ICONS.text);
-      nk_layout_row_dynamic(ctx, APP_PAK_EXPLORER_ICON_TEXT_HEIGHT, 1);
-      nk_label(ctx, text, NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
+                           APP_PAK_EXPLORER_ICON_IMAGE_WIDTH, 1);
+      if (nk_button_image(ctx, ICONS.text)) {
+        // S.current_pak_tree_node = node;
+      }
+      nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_TEXT_HEIGHT,
+                           APP_PAK_EXPLORER_ICON_TEXT_WIDTH, 1);
+      nk_label(ctx, node->name, NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
     }
     nk_group_end(ctx);
   }
@@ -470,12 +513,12 @@ app_pak_draw_widget_explorer_area(struct nk_context* ctx,
   HashMap* children = S.current_pak_tree_node->children;
   U32 items_count = children->count;
   U32 columns = (window_width + APP_PAK_EXPLORER_ICON_GAP) /
-                (APP_PAK_EXPLORER_ICON_WIDTH + APP_PAK_EXPLORER_ICON_GAP);
+                (APP_PAK_EXPLORER_ICON_TEXT_WIDTH + APP_PAK_EXPLORER_ICON_GAP);
   columns = columns ? columns : 1;
   U32 rows = (items_count / columns);
   U32 remainder = items_count % columns;
-  U32 row_height =
-      (APP_PAK_EXPLORER_ICON_HEIGHT + APP_PAK_EXPLORER_ICON_GAP);
+  U32 row_height = (APP_PAK_EXPLORER_ICON_HEIGHT + APP_PAK_EXPLORER_ICON_GAP +
+                    APP_PAK_EXPLORER_PADDING_Y);
   U32 actual_height = rows * row_height;
   if (remainder > 0) {
     actual_height += row_height;
@@ -487,29 +530,20 @@ app_pak_draw_widget_explorer_area(struct nk_context* ctx,
 
   nk_layout_row_dynamic(ctx, actual_height, 1);
   if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR)) {
-    nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_HEIGHT,
-                         APP_PAK_EXPLORER_ICON_WIDTH, columns);
+    nk_layout_row_dynamic(ctx, APP_PAK_EXPLORER_ICON_HEIGHT, columns);
     U32 index = 0;
     for (U32 row = 0; row < rows; row++) {
       for (U32 column = 0; column < columns; column++) {
         if (index >= items_count)
           break;
-
         HashMapKV* kv = hashmap_key_at(children, index);
-        Bool is_dir = ((PakTreeNode*)kv->v_rawptr)->is_dir;
-
-        app_pak_draw_widget_explorer_icon(ctx, is_dir, kv->k_str.cstr);
-
+        app_pak_draw_widget_explorer_icon(ctx, (PakTreeNode*)kv->v_rawptr);
         index++;
       }
     }
-
     for (U32 column = 0; column < remainder; column++) {
       HashMapKV* kv = hashmap_key_at(children, index);
-      Bool is_dir = ((PakTreeNode*)kv->v_rawptr)->is_dir;
-
-      app_pak_draw_widget_explorer_icon(ctx, is_dir, kv->k_str.cstr);
-
+      app_pak_draw_widget_explorer_icon(ctx, (PakTreeNode*)kv->v_rawptr);
       index++;
     }
     nk_group_end(ctx);

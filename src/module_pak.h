@@ -56,11 +56,14 @@ typedef struct {
   RawPtr data;
 } PakEntry;
 
-typedef struct {
+typedef struct PakTreeNode PakTreeNode;
+
+struct PakTreeNode{
   char     name[PAK_ENTRY_NAME_LEN];
   Bool     is_dir;
   HashMap* children;
-} PakTreeNode;
+  PakTreeNode* parent;
+};
 
 typedef struct {
   PakTreeNode root;
@@ -201,6 +204,7 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
 
       child->is_dir = TRUE;
       child->children = hashmap_init(arena, 64);
+      child->parent = node;
       node = child;
     }
   }
@@ -241,10 +245,11 @@ pak_load(Pak* pak, NDBuffer* ndb) {
   pak->details.entries_count = size / sizeof(PakRawEntry);
 
   // TODO: find a proper default 'cap'
+  pak->tree.root.parent = 0;
   pak->tree.root.children = hashmap_init(pak->arena, 64);
   pak->tree.root.is_dir = TRUE;
   MemZero(pak->tree.root.name, PAK_ENTRY_NAME_LEN);
-  pak->tree.root.name[0] = '.';
+  pak->tree.root.name[0] = ' ';
 
   err = pak_read_entries(pak, ndb);
   if (err != PAK_ERR_SUCCESS) {
