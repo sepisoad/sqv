@@ -154,7 +154,15 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
     PakEntry* entry = entries + index;
     U32       offset = 0;
 
-    memcpy(entry->name, ND_ADDR(ndb), PAK_ENTRY_NAME_LEN);
+    // NOTE: i was under impression the the name buffer is filled with zeros
+    //       after the last character, but i was proven wrong when i tested
+    //       https://www.slipseer.com/index.php?resources/dwell.21/
+    //       unfortunately using memcpy here is not that safe
+    //       so i had to compromise and use strncpy instead!
+    //       ---
+    //       memcpy(entry->name, ND_ADDR(ndb), PAK_ENTRY_NAME_LEN);
+
+    strncpy(entry->name, ND_ADDR(ndb), PAK_ENTRY_NAME_LEN);
     ND_MOVE(ndb, PAK_ENTRY_NAME_LEN);
     ND_I32(ndb, &offset);
     ND_I32(ndb, &entry->size);

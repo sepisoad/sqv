@@ -26,14 +26,12 @@
 /*                         TYPES                         */
 /* ===================================================== */
 
-
 typedef enum {
   KIND_ERR_UNKNOWN,
   KIND_ERR_SUCCESS,
   KIND_ERR_INVALID,
   KIND_ERR__COUNT,
 } KindError;
-
 
 typedef enum {
   KIND_UNKNOWN = -1,
@@ -48,6 +46,7 @@ typedef enum {
   KIND_MD2,
   KIND_MD3,
   KIND_MS2,
+  KIND_SMD,
   KIND_BSP,
   KIND_ENT,
   KIND_MD5MESH,
@@ -75,6 +74,7 @@ typedef enum {
 
   KIND_WAV,
   KIND_OGG,
+  KIND_MP3,
 
   KIND_RC,
   KIND_CFG,
@@ -105,12 +105,14 @@ guess_file_type(CStr buf, Kind* kind) {
   Assert(kind != 0);
 
   if (strncmp(buf, "PACK", 4) == 0) {
-    *kind = KIND_PAK;;
+    *kind = KIND_PAK;
+    ;
     return KIND_ERR_SUCCESS;
   }
 
   if (strncmp(buf, "IDPO", 4) == 0) {
-    *kind = KIND_MD1;;
+    *kind = KIND_MD1;
+    ;
     return KIND_ERR_SUCCESS;
   }
 
@@ -126,10 +128,10 @@ kind_guess_entry(CStr path, U32 len, Kind* kind) {
   Assert(kind != 0);
 
   char ext[32] = {0};
-  I32  ridx = len;
-  I32  end = 0;
-  I32  start = 0;
-  I32  extlen = 0;
+  I32 ridx = len;
+  I32 end = 0;
+  I32 start = 0;
+  I32 extlen = 0;
 
   for (; ridx >= 0; ridx--)
     if (path[ridx] != 0)
@@ -184,6 +186,11 @@ kind_guess_entry(CStr path, U32 len, Kind* kind) {
 
   if (!strncmp(ext, "MS2", 3)) {
     *kind = KIND_MS2;
+    return KIND_ERR_SUCCESS;
+  }
+
+  if (!strncmp(ext, "SMD", 3)) {
+    *kind = KIND_SMD;
     return KIND_ERR_SUCCESS;
   }
 
@@ -307,6 +314,11 @@ kind_guess_entry(CStr path, U32 len, Kind* kind) {
     return KIND_ERR_SUCCESS;
   }
 
+  if (!strncmp(ext, "MP3", 3)) {
+    *kind = KIND_MP3;
+    return KIND_ERR_SUCCESS;
+  }
+
   if (!strncmp(ext, "RC", 3)) {
     *kind = KIND_RC;
     return KIND_ERR_SUCCESS;
@@ -327,7 +339,8 @@ kind_guess_entry(CStr path, U32 len, Kind* kind) {
     return KIND_ERR_SUCCESS;
   }
 
-  return KIND_ERR_INVALID;
+  *kind = KIND_UNKNOWN;
+  return KIND_ERR_SUCCESS;
 }
 
 KindError
@@ -337,7 +350,7 @@ kind_guess_file(CStr path, Kind* kind) {
   Assert(path != 0);
   Assert(kind != 0);
 
-  char  buf[MAXBUFSIZE + 1] = {0};
+  char buf[MAXBUFSIZE + 1] = {0};
 
   FILE* f = fopen(path, "rb");
 
