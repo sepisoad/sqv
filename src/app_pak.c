@@ -60,17 +60,26 @@ typedef enum {
   APP_PAK_MODE_LOAD_FAILED,
 } AppPakMode;
 
+typedef struct {
+  sg_image image;
+  sg_view view;
+  sg_sampler sampler;
+  snk_image_t ui_image;
+  nk_handle handle;
+  struct nk_image icon_image;
+} AppPakImage;
+
 /* ===================================================== */
 /*                        GLOBALS                        */
 /* ===================================================== */
 
 internal struct {
-  struct nk_image home;
-  struct nk_image back;
-  struct nk_image settings;
-  struct nk_image folder;
-  struct nk_image text;
-  struct nk_image extract;
+  AppPakImage home;
+  AppPakImage back;
+  AppPakImage settings;
+  AppPakImage folder;
+  AppPakImage text;
+  AppPakImage extract;
 } ICONS;
 
 internal struct {
@@ -88,10 +97,10 @@ internal struct {
 internal Nothing app_pak_init();
 internal Nothing app_pak_init_style(struct nk_style* s);
 internal Nothing app_pak_init_icons();
-internal Nothing app_pak_init_icon(struct nk_image* icon_image,
-                                   CBuf buffer,
-                                   Sz size);
+internal Nothing app_pak_init_icon(AppPakImage* app_icon, CBuf buffer, Sz size);
 internal Nothing app_pak_cleanup();
+internal Nothing app_pak_cleanup_icons();
+internal Nothing app_pak_cleanup_icon(AppPakImage* app_icon);
 internal Nothing app_pak_input(const sapp_event* event);
 internal Nothing app_pak_frame();
 internal Nothing app_pak_handle_file_drop(CBuf path);
@@ -218,18 +227,6 @@ app_pak_init_style(struct nk_style* s) {
   button->active.data.color.r = 200;
   button->active.data.color.g = 200;
   button->active.data.color.b = 200;
-
-  struct nk_style_button* contextual_button = &s->contextual_button;
-
-  // contextual_button->text_background.r = 100;
-  // contextual_button->text_background.g = 100;
-  // contextual_button->text_background.b = 100;
-  // contextual_button->text_background.a = 255;
-
-  // contextual_button->normal.data.color.r = 100;
-  // contextual_button->normal.data.color.g = 100;
-  // contextual_button->normal.data.color.b = 100;
-  // contextual_button->normal.data.color.a = 255;
 }
 
 /* ===================================================== */
@@ -248,11 +245,11 @@ app_pak_init_icons() {
 /* ===================================================== */
 
 internal Nothing
-app_pak_init_icon(struct nk_image* icon_image, CBuf buffer, Sz size) {
+app_pak_init_icon(AppPakImage* app_icon, CBuf buffer, Sz size) {
   U32 w, h, c = 0;
-  CBuf data = stbi_load_from_memory(buffer, size, &w, &h, &c, 4);
+  CStr data = stbi_load_from_memory(buffer, size, &w, &h, &c, 4);
 
-  sg_image image = sg_make_image(&(sg_image_desc){
+  app_icon->image = sg_make_image(&(sg_image_desc){
       .width = w,
       .height = h,
       .pixel_format = SG_PIXELFORMAT_RGBA8,
@@ -260,30 +257,54 @@ app_pak_init_icon(struct nk_image* icon_image, CBuf buffer, Sz size) {
       .num_mipmaps = 1,
       .data.mip_levels[0] = {.ptr = data, .size = (Sz)(w * h * 4)}});
 
-  sg_view view = sg_make_view(&(sg_view_desc){
-      .texture = {.image = image},
+  app_icon->view = sg_make_view(&(sg_view_desc){
+      .texture = {.image = app_icon->image},
   });
 
-  sg_sampler sampler = sg_make_sampler(&(sg_sampler_desc){
+  app_icon->sampler = sg_make_sampler(&(sg_sampler_desc){
       .min_filter = SG_FILTER_LINEAR,
       .mag_filter = SG_FILTER_LINEAR,
   });
 
-  snk_image_t ui_image = snk_make_image(&(snk_image_desc_t){
-      .texture_view = view,
-      .sampler = sampler,
+  app_icon->ui_image = snk_make_image(&(snk_image_desc_t){
+      .texture_view = app_icon->view,
+      .sampler = app_icon->sampler,
   });
 
-  nk_handle handle = snk_nkhandle(ui_image);
-  *icon_image = nk_image_handle(handle);
+  app_icon->handle = snk_nkhandle(app_icon->ui_image);
+  app_icon->icon_image = nk_image_handle(app_icon->handle);
+
+  // TODO: if i could use arena allocator with stb,
+  //       then i could avoid making direct call to free!
+  free(data);
 }
 
 /* ===================================================== */
 
 internal Nothing
 app_pak_cleanup() {
+  app_pak_cleanup_icons();
   snk_shutdown();
   sg_shutdown();
+  pak_unload(&S.pak);
+}
+
+internal Nothing
+app_pak_cleanup_icons() {
+  app_pak_cleanup_icon(&ICONS.home);
+  app_pak_cleanup_icon(&ICONS.back);
+  app_pak_cleanup_icon(&ICONS.settings);
+  app_pak_cleanup_icon(&ICONS.folder);
+  app_pak_cleanup_icon(&ICONS.text);
+  app_pak_cleanup_icon(&ICONS.extract);
+}
+
+internal Nothing
+app_pak_cleanup_icon(AppPakImage* app_icon) {
+  sg_destroy_view(app_icon->view);
+  sg_destroy_sampler(app_icon->sampler);
+  sg_destroy_image(app_icon->image);
+  snk_destroy_image(app_icon->ui_image);
 }
 
 /* ===================================================== */
@@ -341,8 +362,8 @@ app_pak_handle_file_drop(CBuf path) {
    * just focus on quake 1 '.PAK' files
    */
 
-  Arena* arena = arena_create(.requested_reserve_size = 512,
-                              .requested_commit_size = 512);
+  Arena* arena =
+      arena_create(.requested_reserve_size = 512, .requested_commit_size = 512);
 
   NDBuffer ndb = {0};
   IOError ioerr = io_load_file(arena, path, &ndb);
@@ -439,7 +460,7 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
   if (nk_begin(ctx, "loaded_mode_top_region",
                nk_rect(0, 0, window_width, APP_PAK_TOP_REGION_HEIGHT),
                NK_WINDOW_NO_SCROLLBAR)) {
-    nk_layout_row_template_begin(ctx, ICONS.home.h);
+    nk_layout_row_template_begin(ctx, ICONS.home.icon_image.h);
     nk_layout_row_template_push_static(ctx, 30);
     if (is_root == TRUE) {
       nk_layout_row_template_push_static(ctx, 30);
@@ -449,21 +470,21 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
     nk_layout_row_template_push_dynamic(ctx);
     nk_layout_row_template_end(ctx);
 
-    if (nk_button_image(ctx, ICONS.settings)) {
+    if (nk_button_image(ctx, ICONS.settings.icon_image)) {
       // S.current_pak_tree_node = &S.pak.tree.root;
     }
 
     if (is_root == TRUE) {
-      if (nk_button_image(ctx, ICONS.extract)) {
+      if (nk_button_image(ctx, ICONS.extract.icon_image)) {
         // S.current_pak_tree_node = &S.pak.tree.root;
       }
     }
 
-    if (nk_button_image(ctx, ICONS.home)) {
+    if (nk_button_image(ctx, ICONS.home.icon_image)) {
       S.current_pak_tree_node = &S.pak.tree.root;
     }
 
-    if (nk_button_image(ctx, ICONS.back)) {
+    if (nk_button_image(ctx, ICONS.back.icon_image)) {
       if (S.current_pak_tree_node->parent) {
         S.current_pak_tree_node = S.current_pak_tree_node->parent;
       }
@@ -563,11 +584,11 @@ internal Nothing
 app_pak_draw_widget_explorer_item(struct nk_context* ctx, PakTreeNode* node) {
   if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_NO_INPUT)) {
     if (node->is_dir) {
-      app_pak_draw_widget_explorer_icon(ctx, node, TRUE, &ICONS.folder,
-                                        node->name);
+      app_pak_draw_widget_explorer_icon(ctx, node, TRUE,
+                                        &ICONS.folder.icon_image, node->name);
     } else {
-      app_pak_draw_widget_explorer_icon(ctx, node, FALSE, &ICONS.text,
-                                        node->name);
+      app_pak_draw_widget_explorer_icon(ctx, node, FALSE,
+                                        &ICONS.text.icon_image, node->name);
     }
     nk_group_end(ctx);
   }
