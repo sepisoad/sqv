@@ -70,6 +70,7 @@ internal struct {
   struct nk_image settings;
   struct nk_image folder;
   struct nk_image text;
+  struct nk_image extract;
 } ICONS;
 
 internal struct {
@@ -104,11 +105,16 @@ internal U32 app_pak_draw_mode_loaded(struct nk_context* ctx,
                                       nk_flags window_flags,
                                       U32 window_width,
                                       U32 window_height);
-internal Nothing app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
-                                                   PakTreeNode* node);
 internal Nothing app_pak_draw_widget_explorer_area(struct nk_context* ctx,
                                                    U32 window_width,
                                                    U32 window_height);
+internal Nothing app_pak_draw_widget_explorer_item(struct nk_context* ctx,
+                                                   PakTreeNode* node);
+internal Nothing app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
+                                                   PakTreeNode* node,
+                                                   Bool is_dir,
+                                                   struct nk_image* image,
+                                                   CStr text);
 
 /* ===================================================== */
 /*                       FUNCTIONS                       */
@@ -191,9 +197,9 @@ app_pak_init_style(struct nk_style* s) {
   window->border = 0;
   window->group_border = 0;
 
-  window->background.r = 0;
-  window->background.g = 0;
-  window->background.b = 0;
+  window->background.r = 100;
+  window->background.g = 100;
+  window->background.b = 100;
   window->background.a = 255;
 
   window->fixed_background.type = NK_STYLE_ITEM_COLOR;
@@ -214,6 +220,18 @@ app_pak_init_style(struct nk_style* s) {
   button->active.data.color.r = 200;
   button->active.data.color.g = 200;
   button->active.data.color.b = 200;
+
+  struct nk_style_button* contextual_button = &s->contextual_button;
+
+  // contextual_button->text_background.r = 100;
+  // contextual_button->text_background.g = 100;
+  // contextual_button->text_background.b = 100;
+  // contextual_button->text_background.a = 255;
+
+  // contextual_button->normal.data.color.r = 100;
+  // contextual_button->normal.data.color.g = 100;
+  // contextual_button->normal.data.color.b = 100;
+  // contextual_button->normal.data.color.a = 255;
 }
 
 /* ===================================================== */
@@ -226,6 +244,7 @@ app_pak_init_icons() {
                     sizeof(icon_settings_png));
   app_pak_init_icon(&ICONS.folder, icon_folder_png, sizeof(icon_folder_png));
   app_pak_init_icon(&ICONS.text, icon_text_png, sizeof(icon_text_png));
+  app_pak_init_icon(&ICONS.extract, icon_extract_png, sizeof(icon_extract_png));
 }
 
 /* ===================================================== */
@@ -412,13 +431,17 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
                          U32 window_height) {
   // Dbg("app_pak_draw_mode_loaded() ...");
 
+  Bool is_root = S.current_pak_tree_node->name[0] == ' ';
+
   // === TOP REGION ===
   if (nk_begin(ctx, "loaded_mode_top_region",
                nk_rect(0, 0, window_width, APP_PAK_TOP_REGION_HEIGHT),
                NK_WINDOW_NO_SCROLLBAR)) {
-
     nk_layout_row_template_begin(ctx, ICONS.home.h);
     nk_layout_row_template_push_static(ctx, 30);
+    if (is_root == TRUE) {
+      nk_layout_row_template_push_static(ctx, 30);
+    }
     nk_layout_row_template_push_static(ctx, 30);
     nk_layout_row_template_push_static(ctx, 30);
     nk_layout_row_template_push_dynamic(ctx);
@@ -426,6 +449,12 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
 
     if (nk_button_image(ctx, ICONS.settings)) {
       // S.current_pak_tree_node = &S.pak.tree.root;
+    }
+
+    if (is_root == TRUE) {
+      if (nk_button_image(ctx, ICONS.extract)) {
+        // S.current_pak_tree_node = &S.pak.tree.root;
+      }
     }
 
     if (nk_button_image(ctx, ICONS.home)) {
@@ -479,34 +508,6 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
 /* ===================================================== */
 
 internal Nothing
-app_pak_draw_widget_explorer_icon(struct nk_context* ctx, PakTreeNode* node) {
-  if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_NO_INPUT)) {
-    if (node->is_dir) {
-      nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_IMAGE_HEIGHT,
-                           APP_PAK_EXPLORER_ICON_IMAGE_WIDTH, 1);
-      if (nk_button_image(ctx, ICONS.folder)) {
-        S.current_pak_tree_node = node;
-      }
-      nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_TEXT_HEIGHT,
-                           APP_PAK_EXPLORER_ICON_TEXT_WIDTH, 1);
-      nk_label(ctx, node->name, NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
-    } else {
-      nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_IMAGE_HEIGHT,
-                           APP_PAK_EXPLORER_ICON_IMAGE_WIDTH, 1);
-      if (nk_button_image(ctx, ICONS.text)) {
-        // S.current_pak_tree_node = node;
-      }
-      nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_TEXT_HEIGHT,
-                           APP_PAK_EXPLORER_ICON_TEXT_WIDTH, 1);
-      nk_label(ctx, node->name, NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
-    }
-    nk_group_end(ctx);
-  }
-}
-
-/* ===================================================== */
-
-internal Nothing
 app_pak_draw_widget_explorer_area(struct nk_context* ctx,
                                   U32 window_width,
                                   U32 window_height) {
@@ -537,17 +538,78 @@ app_pak_draw_widget_explorer_area(struct nk_context* ctx,
         if (index >= items_count)
           break;
         HashMapKV* kv = hashmap_key_at(children, index);
-        app_pak_draw_widget_explorer_icon(ctx, (PakTreeNode*)kv->v_rawptr);
         index++;
+        if (((PakTreeNode*)kv->v_rawptr)->is_deleted == FALSE) {
+          app_pak_draw_widget_explorer_item(ctx, (PakTreeNode*)kv->v_rawptr);
+        }
       }
     }
     for (U32 column = 0; column < remainder; column++) {
       HashMapKV* kv = hashmap_key_at(children, index);
-      app_pak_draw_widget_explorer_icon(ctx, (PakTreeNode*)kv->v_rawptr);
       index++;
+      if (((PakTreeNode*)kv->v_rawptr)->is_deleted == FALSE) {
+        app_pak_draw_widget_explorer_item(ctx, (PakTreeNode*)kv->v_rawptr);
+      }
     }
     nk_group_end(ctx);
   }
+}
+
+/* ===================================================== */
+
+internal Nothing
+app_pak_draw_widget_explorer_item(struct nk_context* ctx, PakTreeNode* node) {
+  if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_NO_INPUT)) {
+    if (node->is_dir) {
+      app_pak_draw_widget_explorer_icon(ctx, node, TRUE, &ICONS.folder,
+                                        node->name);
+    } else {
+      app_pak_draw_widget_explorer_icon(ctx, node, FALSE, &ICONS.text,
+                                        node->name);
+    }
+    nk_group_end(ctx);
+  }
+}
+
+internal Nothing
+app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
+                                  PakTreeNode* node,
+                                  Bool is_dir,
+                                  struct nk_image* image,
+                                  CStr text) {
+  // icon image
+  nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_IMAGE_HEIGHT,
+                       APP_PAK_EXPLORER_ICON_IMAGE_WIDTH, 1);
+
+  // icon image context menue
+  struct nk_rect bounds;
+  bounds = nk_widget_bounds(ctx);
+  if (nk_contextual_begin(ctx, 0, nk_vec2(100, 300), bounds)) {
+    nk_layout_row_dynamic(ctx, 15, 1);
+    if (nk_contextual_item_label(ctx, "view", NK_TEXT_CENTERED)) {
+      if (is_dir) {
+        S.current_pak_tree_node = node;
+      }
+    }
+    if (nk_contextual_item_label(ctx, "delete", NK_TEXT_CENTERED)) {
+      node->is_deleted = TRUE;
+      node->actual_count--;
+    }
+    if (nk_contextual_item_label(ctx, "extract", NK_TEXT_CENTERED)) {
+    }
+    nk_contextual_end(ctx);
+  }
+
+  if (nk_button_image(ctx, *image)) {
+    if (is_dir) {
+      S.current_pak_tree_node = node;
+    }
+  }
+
+  // icon text
+  nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_TEXT_HEIGHT,
+                       APP_PAK_EXPLORER_ICON_TEXT_WIDTH, 1);
+  nk_label(ctx, text, NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
 }
 
 /* ===================================================== */

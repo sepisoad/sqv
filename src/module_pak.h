@@ -41,8 +41,8 @@ typedef enum {
 
 typedef struct {
   char name[PAK_ENTRY_NAME_LEN];
-  I32  offset;
-  I32  size;
+  I32 offset;
+  I32 size;
 } PakRawEntry;
 
 typedef struct {
@@ -50,17 +50,19 @@ typedef struct {
 } PakDetails;
 
 typedef struct {
-  char   name[PAK_ENTRY_NAME_LEN];
-  Kind   kind;
-  Sz     size;
+  char name[PAK_ENTRY_NAME_LEN];
+  Kind kind;
+  Sz size;
   RawPtr data;
 } PakEntry;
 
 typedef struct PakTreeNode PakTreeNode;
 
-struct PakTreeNode{
-  char     name[PAK_ENTRY_NAME_LEN];
-  Bool     is_dir;
+struct PakTreeNode {
+  char name[PAK_ENTRY_NAME_LEN];
+  Bool is_dir;
+  Bool is_deleted;
+  U32 actual_count;
   HashMap* children;
   PakTreeNode* parent;
 };
@@ -71,9 +73,9 @@ typedef struct {
 
 typedef struct {
   PakDetails details;
-  PakEntry*  entries;
-  PakTree    tree;
-  Arena*     arena;
+  PakEntry* entries;
+  PakTree tree;
+  Arena* arena;
 } Pak;
 
 /* ===================================================== */
@@ -81,7 +83,9 @@ typedef struct {
 /* ===================================================== */
 
 PakError pak_load(Pak*, NDBuffer*);
-Nothing  pak_unload(Pak*);
+Nothing pak_unload(Pak*);
+PakError pak_extract(Pak*);
+PakError pak_extract_item(Pak*, PakTreeNode* node);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -110,10 +114,12 @@ pak_get_path_depth(CStr path, U32 length, U32* depth) {
   return PAK_ERR_SUCCESS;
 }
 
+/* ===================================================== */
+
 internal PakError
 pak_get_path_segment_at_depth(CStr path,
-                              U32  length,
-                              U32  segments,
+                              U32 length,
+                              U32 segments,
                               char out[PAK_ENTRY_NAME_LEN]) {
   Dbg("pak_get_path_depth() ...");
 
@@ -137,6 +143,8 @@ pak_get_path_segment_at_depth(CStr path,
   return PAK_ERR_SUCCESS;
 }
 
+/* ===================================================== */
+
 internal PakError
 pak_read_entries(Pak* pak, NDBuffer* ndb) {
   Dbg("pak_read_entries() ...");
@@ -144,15 +152,15 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
   Assert(pak != 0);
   Assert(ndb != 0);
 
-  Arena*    arena = pak->arena;
-  Sz        sz = sizeof(PakEntry) * pak->details.entries_count;
+  Arena* arena = pak->arena;
+  Sz sz = sizeof(PakEntry) * pak->details.entries_count;
   PakEntry* entries = (PakEntry*)arena_push(arena, sz, AlignOf(PakEntry), TRUE);
 
   pak->entries = entries;
 
   for (U32 index = 0; index < pak->details.entries_count; index++) {
     PakEntry* entry = entries + index;
-    U32       offset = 0;
+    U32 offset = 0;
 
     // NOTE: i was under impression the the name buffer is filled with zeros
     //       after the last character, but i was proven wrong when i tested
@@ -176,7 +184,7 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
     entry->data = arena_push(arena, entry->size, AlignOf(U8), TRUE);
     memcpy(entry->data, ndb->base + offset, entry->size);
 
-    U32      depth = 0;
+    U32 depth = 0;
     PakError perr = pak_get_path_depth(entry->name, PAK_ENTRY_NAME_LEN, &depth);
     if (perr != PAK_ERR_SUCCESS) {
       return perr;
@@ -184,10 +192,10 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
 
     PakTreeNode* node = &pak->tree.root;
     for (U32 depth_index = 0; depth_index < depth + 1; depth_index++) {
-      char     name[PAK_ENTRY_NAME_LEN] = {0};
+      char name[PAK_ENTRY_NAME_LEN] = {0};
 
       PakError perr = pak_get_path_segment_at_depth(
-          entry->name, PAK_ENTRY_NAME_LEN, depth_index+1, &name[0]);
+          entry->name, PAK_ENTRY_NAME_LEN, depth_index + 1, &name[0]);
       if (perr != PAK_ERR_SUCCESS) {
         return perr;
       }
@@ -201,26 +209,31 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
       PakTreeNode* child =
           arena_push(arena, sizeof(PakTreeNode), AlignOf(PakTreeNode), TRUE);
       AssertAlways(child != 0);
+      node->actual_count++;
 
       memcpy(child->name, name, PAK_ENTRY_NAME_LEN);
-      hashmap_push_rawptr(arena, node->children, str8(child->name), (RawPtr)child);
+      hashmap_push_rawptr(arena, node->children, str8(child->name),
+                          (RawPtr)child);
 
       if (depth_index >= depth) {
         child->is_dir = FALSE;
         continue;
       }
 
+      child->is_deleted = FALSE;
       child->is_dir = TRUE;
       child->children = hashmap_init(arena, 64);
       child->parent = node;
       node = child;
+      node->actual_count = 0;
     }
   }
 
   return PAK_ERR_SUCCESS;
 }
 
-// TODO: do i need the `buffer_size`
+/* ===================================================== */
+
 PakError
 pak_load(Pak* pak, NDBuffer* ndb) {
   Dbg("pak_load() ...");
@@ -230,9 +243,9 @@ pak_load(Pak* pak, NDBuffer* ndb) {
   Assert(pak->arena == 0);
 
   PakError err;
-  U8       magic_code[PAK_MAGIC_CODE_LEN] = {0};
-  I32      offset = 0;
-  I32      size = 0;
+  U8 magic_code[PAK_MAGIC_CODE_LEN] = {0};
+  I32 offset = 0;
+  I32 size = 0;
 
   pak->arena = arena_create();
 
@@ -255,6 +268,7 @@ pak_load(Pak* pak, NDBuffer* ndb) {
   // TODO: find a proper default 'cap'
   pak->tree.root.parent = 0;
   pak->tree.root.children = hashmap_init(pak->arena, 64);
+  pak->tree.root.is_deleted = FALSE;
   pak->tree.root.is_dir = TRUE;
   MemZero(pak->tree.root.name, PAK_ENTRY_NAME_LEN);
   pak->tree.root.name[0] = ' ';
@@ -263,23 +277,28 @@ pak_load(Pak* pak, NDBuffer* ndb) {
   if (err != PAK_ERR_SUCCESS) {
     return err;
   }
-
-  // TODO: delete this2
-  // DEBUG {
-  // Str8* keys = hashmap_keys(pak->arena, pak->tree.root.children);
-  // for(U32 i = 0; i < pak->tree.root.children->count; i++) {
-  //   printf("%s\n", keys[i].cstr);
-  // }
-  // DEBUG }
+  pak->tree.root.actual_count = pak->tree.root.children->count;
 
   return PAK_ERR_SUCCESS;
 }
+
+/* ===================================================== */
 
 Nothing
 pak_unload(Pak* pak) {
   if (pak->arena) {
     arena_destroy(pak->arena);
   }
+}
+
+/* ===================================================== */
+
+PakError pak_extract(Pak*) {
+}
+
+/* ===================================================== */
+
+PakError pak_extract_item(Pak*, PakTreeNode* node) {
 }
 
 /* ===================================================== */
