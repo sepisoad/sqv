@@ -48,8 +48,7 @@ typedef I32 MD1RawTriangle[3];
 typedef U8  MD1RawVertex[3];
 
 typedef enum {
-  MD1_ERR_UNKNOWN,
-  MD1_ERR_SUCCESS,
+  MD1_ERR_SUCCESS = 1,
   MD1_ERR_FILE_OPEN,
   MD1_ERR_MEM_ALLOC,
   MD1_ERR_READ_SIZE,

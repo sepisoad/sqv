@@ -27,8 +27,7 @@
 /* ===================================================== */
 
 typedef enum {
-  KIND_ERR_UNKNOWN,
-  KIND_ERR_SUCCESS,
+  KIND_ERR_SUCCESS = 1,
   KIND_ERR_INVALID,
   KIND_ERR__COUNT,
 } KindError;

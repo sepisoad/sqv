@@ -45,7 +45,7 @@ f:write('/*                         TYPES                         */\n')
 f:write('/* ===================================================== */\n\n')
 
 f:write('// typedef enum {\n')
-f:write('//   '..module_name..'_ERR_UNKNOWN,\n')
+f:write('//   '..module_name..'_ERR_SUCCESS = 1,\n')
 f:write('//   '..module_name..'_ERR__COUNT,\n')
 f:write('// } '..error_type..';\n\n')
 

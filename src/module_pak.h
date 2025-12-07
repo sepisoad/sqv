@@ -15,6 +15,7 @@
 
 #include "deps/sepi/arena.h"
 #include "deps/sepi/endian.h"
+#include "deps/sepi/list.h"
 #include "deps/sepi/hashmap.h"
 #include "deps/sepi/string.h"
 
@@ -32,7 +33,6 @@
 /* ===================================================== */
 
 typedef enum {
-  PAK_ERR_UNKNOWN,
   PAK_ERR_SUCCESS,
   PAK_ERR_MALFORMED,
   PAK_ERR_INVALID_ENTRY_PATH,
@@ -71,9 +71,31 @@ typedef struct {
 } PakTree;
 
 typedef struct {
+  PakTreeNode node;
+  Str8 file_path;
+} PakItemAdded;
+
+typedef struct {
+  PakTreeNode node;
+} PakItemDeleted;
+
+typedef struct {
+  PakTreeNode node;
+  CBuf data;
+} PakItemModified;
+
+typedef struct {
+  List added;
+  List deleted;
+  List modified;
+} PakItemDiff;
+
+typedef struct {
   PakDetails details;
   PakEntry* entries;
   PakTree tree;
+  Bool is_modified;
+  PakItemDiff diff;
   Arena* arena;
 } Pak;
 
@@ -274,6 +296,7 @@ pak_load(Pak* pak, NDBuffer* ndb) {
     return err;
   }
   pak->tree.root.actual_count = pak->tree.root.children->count;
+  pak->is_modified = FALSE;
 
   return PAK_ERR_SUCCESS;
 }

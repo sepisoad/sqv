@@ -22,8 +22,7 @@
 /* ===================================================== */
 
 typedef enum {
-  IO_ERR_UNKNOWN,
-  IO_ERR_SUCCESS,
+  IO_ERR_SUCCESS = 1,
   IO_ERR_FAILED,
   IO_ERR__COUNT,
 } IOError;

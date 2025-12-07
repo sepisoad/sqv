@@ -21,6 +21,13 @@
 /*                         TYPES                         */
 /* ===================================================== */
 
+// TODO: update api to return HashMapError to achieve a more
+//       unified api
+typedef enum {
+  HASHMAP_ERR_SUCCESS = 1,
+  HASHMAP_ERR__COUNT,
+} HashMapError;
+
 typedef struct HashMapKV HashMapKV;
 struct HashMapKV {
   union {

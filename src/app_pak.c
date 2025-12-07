@@ -76,10 +76,10 @@ typedef struct {
 internal struct {
   AppPakImage home;
   AppPakImage back;
-  AppPakImage settings;
+  AppPakImage save;
+  AppPakImage extract;
   AppPakImage folder;
   AppPakImage text;
-  AppPakImage extract;
 } ICONS;
 
 internal struct {
@@ -150,8 +150,8 @@ sokol_main(int argc, char* argv[]) {
       .cleanup_cb = app_pak_cleanup,
       .event_cb = app_pak_input,
       .enable_clipboard = true,
-      .width = 640,
-      .height = 480,
+      .width = 640,   // TODO: hard coded
+      .height = 480,  // TODO: hard coded
       .enable_dragndrop = true,
       .max_dropped_files = 1,
       .window_title = "nuklear (sokol-app)",
@@ -235,11 +235,10 @@ internal Nothing
 app_pak_init_icons() {
   app_pak_init_icon(&ICONS.home, icon_home_png, sizeof(icon_home_png));
   app_pak_init_icon(&ICONS.back, icon_back_png, sizeof(icon_back_png));
-  app_pak_init_icon(&ICONS.settings, icon_settings_png,
-                    sizeof(icon_settings_png));
+  app_pak_init_icon(&ICONS.save, icon_save_png, sizeof(icon_save_png));
+  app_pak_init_icon(&ICONS.extract, icon_extract_png, sizeof(icon_extract_png));
   app_pak_init_icon(&ICONS.folder, icon_folder_png, sizeof(icon_folder_png));
   app_pak_init_icon(&ICONS.text, icon_text_png, sizeof(icon_text_png));
-  app_pak_init_icon(&ICONS.extract, icon_extract_png, sizeof(icon_extract_png));
 }
 
 /* ===================================================== */
@@ -293,10 +292,10 @@ internal Nothing
 app_pak_cleanup_icons() {
   app_pak_cleanup_icon(&ICONS.home);
   app_pak_cleanup_icon(&ICONS.back);
-  app_pak_cleanup_icon(&ICONS.settings);
+  app_pak_cleanup_icon(&ICONS.save);
+  app_pak_cleanup_icon(&ICONS.extract);
   app_pak_cleanup_icon(&ICONS.folder);
   app_pak_cleanup_icon(&ICONS.text);
-  app_pak_cleanup_icon(&ICONS.extract);
 }
 
 internal Nothing
@@ -362,8 +361,7 @@ app_pak_handle_file_drop(CBuf path) {
    * just focus on quake 1 '.PAK' files
    */
 
-  Arena* arena =
-      arena_create(.requested_reserve_size = 512, .requested_commit_size = 512);
+  Arena* arena = arena_create();
 
   NDBuffer ndb = {0};
   IOError ioerr = io_load_file(arena, path, &ndb);
@@ -461,7 +459,9 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
                nk_rect(0, 0, window_width, APP_PAK_TOP_REGION_HEIGHT),
                NK_WINDOW_NO_SCROLLBAR)) {
     nk_layout_row_template_begin(ctx, ICONS.home.icon_image.h);
-    nk_layout_row_template_push_static(ctx, 30);
+    if (S.pak.is_modified) {
+      nk_layout_row_template_push_static(ctx, 30);
+    }
     if (is_root == TRUE) {
       nk_layout_row_template_push_static(ctx, 30);
     }
@@ -470,8 +470,10 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
     nk_layout_row_template_push_dynamic(ctx);
     nk_layout_row_template_end(ctx);
 
-    if (nk_button_image(ctx, ICONS.settings.icon_image)) {
-      // S.current_pak_tree_node = &S.pak.tree.root;
+    if (S.pak.is_modified == TRUE) {
+      if (nk_button_image(ctx, ICONS.save.icon_image)) {
+        // S.current_pak_tree_node = &S.pak.tree.root;
+      }
     }
 
     if (is_root == TRUE) {
@@ -615,6 +617,7 @@ app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
       }
     }
     if (nk_contextual_item_label(ctx, "delete", NK_TEXT_CENTERED)) {
+      S.pak.is_modified = TRUE;
       node->is_deleted = TRUE;
       node->actual_count--;
     }
