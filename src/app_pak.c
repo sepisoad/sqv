@@ -88,6 +88,7 @@ internal struct {
   AppPakMode mode;
   PakTreeNode* current_pak_tree_node;
   CBuf input_pak_file_path;
+  Arena* arena;
 } S;
 
 /* ===================================================== */
@@ -166,6 +167,8 @@ sokol_main(int argc, char* argv[]) {
 internal Nothing
 app_pak_init() {
   Dbg("app_pak_init() ...");
+
+  S.arena = arena_create();
 
   sg_setup(&(sg_desc){
       .environment = sglue_environment(),
@@ -286,6 +289,7 @@ app_pak_cleanup() {
   snk_shutdown();
   sg_shutdown();
   pak_unload(&S.pak);
+  arena_destroy(S.arena);
 }
 
 internal Nothing
@@ -361,10 +365,10 @@ app_pak_handle_file_drop(CBuf path) {
    * just focus on quake 1 '.PAK' files
    */
 
-  Arena* arena = arena_create();
+  ArenaScratch scratch = arena_scratch_begin(S.arena);
 
   NDBuffer ndb = {0};
-  IOError ioerr = io_load_file(arena, path, &ndb);
+  IOError ioerr = io_load_file(scratch.arena, path, &ndb);
   if (ioerr != IO_ERR_SUCCESS) {
     S.mode = APP_PAK_MODE_LOAD_FAILED;
     return;
@@ -375,11 +379,12 @@ app_pak_handle_file_drop(CBuf path) {
     S.mode = APP_PAK_MODE_LOAD_FAILED;
     return;
   }
-  arena_destroy(arena);
 
   S.mode = APP_PAK_MODE_LOADED;
   S.input_pak_file_path = path;
   S.current_pak_tree_node = &S.pak.tree.root;
+
+  arena_scratch_end(scratch);
 }
 
 /* ===================================================== */
@@ -620,6 +625,9 @@ app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
       S.pak.is_modified = TRUE;
       node->is_deleted = TRUE;
       node->actual_count--;
+
+      // TODO: use arena from this module instead of pak arena item
+      // list_push(S.pak.arena, &S.pak.diff.deleted, node);
     }
     if (nk_contextual_item_label(ctx, "extract", NK_TEXT_CENTERED)) {
     }
