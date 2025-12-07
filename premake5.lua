@@ -85,20 +85,6 @@ project "lib_sepi"
   defines { "USE_MEM_DEBUGGER" }
   files { "src/deps/sepi/sepi.c" }
 
---
--- TOOLS -----------------------
---
-
--- TOOL::lua
-project "tool_lua"
-  kind "ConsoleApp"
-  language "C"
-  location ".build"
-  targetdir ".build/"
-  objdir ".build/obj"
-  targetname "lua"
-  files { "src/deps/lua/lua.c" }
-  buildoptions { "-std=gnu11" }
 
 --
 -- APPS -----------------------
@@ -106,7 +92,7 @@ project "tool_lua"
 
 -- APP::playground (testing ideas)
 project "app_playground"
-  kind "ConsoleApp"
+  kind "WindowedApp"
   language "C"
   location ".build"
   targetdir ".build/"
@@ -128,19 +114,18 @@ project "app_playground"
 
 -- APP::pak
 project "app_pak"
-  kind "ConsoleApp"
+  kind "WindowedApp"
   language "C"
   location ".build"
   targetdir ".build/"
   objdir ".build/obj"
   targetname "app_pak"
   includedirs { "src", "src/deps" }
-  links { "lib_log:static", "lib_stb:static", "lib_hmm:static", "lib_sepi:static", "lib_sokol:static", }
+  links { "lib_log:static", "lib_stb:static", "lib_sepi:static", "lib_sokol:static", }
   files { "src/app_pak.c" }
 
   buildoptions { "-std=gnu11" }
   defines { "SOKOL_GLCORE" }
-  defines { "_POSIX_C_SOURCE=199309L" } -- Needed for some C23 features
 
   filter "system:macosx"
     links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
@@ -186,7 +171,7 @@ newaction {
   trigger = "gen-module",
   description = "generate a c module scaffold",
   execute = function()
-    os.execute(".build/lua scripts/gen-module.lua")
+    os.execute("lua scripts/gen-module.lua")
   end
 }
 

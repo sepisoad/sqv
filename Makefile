@@ -14,7 +14,6 @@ ifeq ($(config),debug)
   lib_hmm_config = debug
   lib_stb_config = debug
   lib_sepi_config = debug
-  tool_lua_config = debug
   app_playground_config = debug
   app_pak_config = debug
 
@@ -24,7 +23,6 @@ else ifeq ($(config),release)
   lib_hmm_config = release
   lib_stb_config = release
   lib_sepi_config = release
-  tool_lua_config = release
   app_playground_config = release
   app_pak_config = release
 
@@ -32,7 +30,7 @@ else
   $(error "invalid configuration $(config)")
 endif
 
-PROJECTS := lib_log lib_sokol lib_hmm lib_stb lib_sepi tool_lua app_playground app_pak
+PROJECTS := lib_log lib_sokol lib_hmm lib_stb lib_sepi app_playground app_pak
 
 .PHONY: all clean help $(PROJECTS) 
 
@@ -68,12 +66,6 @@ ifneq (,$(lib_sepi_config))
 	@${MAKE} --no-print-directory -C .build -f lib_sepi.make config=$(lib_sepi_config)
 endif
 
-tool_lua:
-ifneq (,$(tool_lua_config))
-	@echo "==== Building tool_lua ($(tool_lua_config)) ===="
-	@${MAKE} --no-print-directory -C .build -f tool_lua.make config=$(tool_lua_config)
-endif
-
 app_playground:
 ifneq (,$(app_playground_config))
 	@echo "==== Building app_playground ($(app_playground_config)) ===="
@@ -92,7 +84,6 @@ clean:
 	@${MAKE} --no-print-directory -C .build -f lib_hmm.make clean
 	@${MAKE} --no-print-directory -C .build -f lib_stb.make clean
 	@${MAKE} --no-print-directory -C .build -f lib_sepi.make clean
-	@${MAKE} --no-print-directory -C .build -f tool_lua.make clean
 	@${MAKE} --no-print-directory -C .build -f app_playground.make clean
 	@${MAKE} --no-print-directory -C .build -f app_pak.make clean
 
@@ -111,7 +102,6 @@ help:
 	@echo "   lib_hmm"
 	@echo "   lib_stb"
 	@echo "   lib_sepi"
-	@echo "   tool_lua"
 	@echo "   app_playground"
 	@echo "   app_pak"
 	@echo ""

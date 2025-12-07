@@ -75,7 +75,6 @@ internal struct {
 
 internal struct {
   Bool is_app_styled;
-  Arena* arena;
   Pak pak;
   AppPakMode mode;
   PakTreeNode* current_pak_tree_node;
@@ -171,7 +170,6 @@ app_pak_init() {
   });
 
   S.mode = APP_PAK_MODE_EMPTY;
-  S.arena = arena_create();
 
   if (S.input_pak_file_path != NULL) {
     log_info("loading '%s' model", S.input_pak_file_path);
@@ -343,8 +341,11 @@ app_pak_handle_file_drop(CBuf path) {
    * just focus on quake 1 '.PAK' files
    */
 
+  Arena* arena = arena_create(.requested_reserve_size = 512,
+                              .requested_commit_size = 512);
+
   NDBuffer ndb = {0};
-  IOError ioerr = io_load_file(S.arena, path, &ndb);
+  IOError ioerr = io_load_file(arena, path, &ndb);
   if (ioerr != IO_ERR_SUCCESS) {
     S.mode = APP_PAK_MODE_LOAD_FAILED;
     return;
@@ -355,6 +356,7 @@ app_pak_handle_file_drop(CBuf path) {
     S.mode = APP_PAK_MODE_LOAD_FAILED;
     return;
   }
+  arena_destroy(arena);
 
   S.mode = APP_PAK_MODE_LOADED;
   S.input_pak_file_path = path;

@@ -224,6 +224,8 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 #ifdef DEBUG_MODE
 #include <stdio.h>
 #define Dbg(msg, ...) do { printf(msg, ##__VA_ARGS__); printf("\n"); } while(0);
+#else
+#define Dbg(msg, ...)
 #endif /* DEBUG_MODE */
 
 /* ===================================================== */
