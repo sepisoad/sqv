@@ -71,16 +71,16 @@ typedef struct {
 } PakTree;
 
 typedef struct {
-  PakTreeNode node;
+  PakTreeNode* node;
   Str8 file_path;
 } PakItemAdded;
 
 typedef struct {
-  PakTreeNode node;
+  PakTreeNode* node;
 } PakItemDeleted;
 
 typedef struct {
-  PakTreeNode node;
+  PakTreeNode* node;
   CBuf data;
 } PakItemModified;
 

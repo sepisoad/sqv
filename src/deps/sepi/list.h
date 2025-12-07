@@ -109,10 +109,14 @@ list_push(Arena* a, List* l, RawPtr data) {
       (ListNode*)arena_push(a, sizeof(ListNode), AlignOf(ListNode), TRUE);
 
   node->data = data;
-  node->previous = l->tail;
-  l->tail->next = node;
-  l->tail = node;
-  l->count++;
+  if (l->tail == l->head) {
+    l->head = l->tail = node;
+  } else {
+    node->previous = l->tail;
+    l->tail->next = node;
+    l->tail = node;
+    l->count++;
+  }
 
   return LIST_ERR_SUCCESS;
 }

@@ -626,8 +626,10 @@ app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
       node->is_deleted = TRUE;
       node->actual_count--;
 
-      // TODO: use arena from this module instead of pak arena item
-      // list_push(S.pak.arena, &S.pak.diff.deleted, node);
+      PakItemDeleted* deleted_item = arena_push(S.arena, sizeof(PakItemDeleted),
+                                                AlignOf(PakItemDeleted), TRUE);
+      deleted_item->node = node;
+      list_push(S.arena, &S.pak.diff.deleted, deleted_item);
     }
     if (nk_contextual_item_label(ctx, "extract", NK_TEXT_CENTERED)) {
     }
