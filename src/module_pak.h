@@ -53,7 +53,6 @@ typedef struct {
   char name[PAK_ENTRY_NAME_LEN];
   Kind kind;
   Sz size;
-  RawPtr data;
 } PakEntry;
 
 typedef struct PakTreeNode PakTreeNode;
@@ -180,9 +179,6 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
     if (kerr != KIND_ERR_SUCCESS) {
       return PAK_ERR_MALFORMED;
     }
-
-    entry->data = arena_push(arena, entry->size, AlignOf(U8), TRUE);
-    memcpy(entry->data, ndb->base + offset, entry->size);
 
     U32 depth = 0;
     PakError perr = pak_get_path_depth(entry->name, PAK_ENTRY_NAME_LEN, &depth);
