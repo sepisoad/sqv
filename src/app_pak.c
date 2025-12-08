@@ -457,7 +457,7 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
                          U32 window_height) {
   // Dbg("app_pak_draw_mode_loaded() ...");
 
-  Bool is_root = S.current_pak_tree_node->name[0] == ' ';
+  Bool is_root = S.current_pak_tree_node->item_name[0] == ' ';
 
   // === TOP REGION ===
   if (nk_begin(ctx, "loaded_mode_top_region",
@@ -592,10 +592,10 @@ app_pak_draw_widget_explorer_item(struct nk_context* ctx, PakTreeNode* node) {
   if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_NO_INPUT)) {
     if (node->is_dir) {
       app_pak_draw_widget_explorer_icon(ctx, node, TRUE,
-                                        &ICONS.folder.icon_image, node->name);
+                                        &ICONS.folder.icon_image, node->item_name);
     } else {
       app_pak_draw_widget_explorer_icon(ctx, node, FALSE,
-                                        &ICONS.text.icon_image, node->name);
+                                        &ICONS.text.icon_image, node->item_name);
     }
     nk_group_end(ctx);
   }

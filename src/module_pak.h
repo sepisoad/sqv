@@ -59,6 +59,7 @@ typedef struct PakTreeNode PakTreeNode;
 
 struct PakTreeNode {
   char name[PAK_ENTRY_NAME_LEN];
+  char item_name[PAK_ENTRY_NAME_LEN];
   Bool is_dir;
   Bool is_deleted;
   U32 actual_count;
@@ -138,10 +139,10 @@ pak_get_path_depth(CStr path, U32 length, U32* depth) {
 /* ===================================================== */
 
 internal PakError
-pak_get_path_segment_at_depth(CStr path,
-                              U32 length,
-                              U32 segments,
-                              char out[PAK_ENTRY_NAME_LEN]) {
+pak_get_path_at_depth(CStr path,
+                      U32 length,
+                      U32 depth,
+                      char out[PAK_ENTRY_NAME_LEN]) {
   Dbg("pak_get_path_depth() ...");
 
   Assert(path != 0);
@@ -150,7 +151,7 @@ pak_get_path_segment_at_depth(CStr path,
   U32 traversed = 0;
 
   for (U32 index = 0; index < length; index++) {
-    if (path[index] == 0 || traversed >= segments) {
+    if (path[index] == 0 || traversed >= depth) {
       break;
     }
 
@@ -159,6 +160,36 @@ pak_get_path_segment_at_depth(CStr path,
     }
 
     out[index] = path[index];
+  }
+
+  return PAK_ERR_SUCCESS;
+}
+
+internal PakError
+pak_get_item_name_at_depth(CStr path,
+                           U32 length,
+                           U32 depth,
+                           char out[PAK_ENTRY_NAME_LEN]) {
+  Dbg("pak_get_item_name_at_depth() ...");
+
+  Assert(path != 0);
+  Assert(out != 0);
+
+  U32 traversed = 0;
+
+  for (U32 idxsrc = 0, idxdst = 0; idxsrc < length; idxsrc++) {
+    if (path[idxsrc] == 0 || traversed > depth) {
+      break;
+    }
+
+    if (path[idxsrc] == '/') {
+      traversed++;
+      continue;
+    }
+
+    if (traversed == depth) {
+      out[idxdst++] = path[idxsrc];
+    }
   }
 
   return PAK_ERR_SUCCESS;
@@ -211,9 +242,16 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
     PakTreeNode* node = &pak->tree.root;
     for (U32 depth_index = 0; depth_index < depth + 1; depth_index++) {
       char name[PAK_ENTRY_NAME_LEN] = {0};
+      char item_name[PAK_ENTRY_NAME_LEN] = {0};
 
-      PakError perr = pak_get_path_segment_at_depth(
-          entry->name, PAK_ENTRY_NAME_LEN, depth_index + 1, &name[0]);
+      PakError perr = pak_get_path_at_depth(entry->name, PAK_ENTRY_NAME_LEN,
+                                            depth_index + 1, &name[0]);
+      if (perr != PAK_ERR_SUCCESS) {
+        return perr;
+      }
+
+      perr = pak_get_item_name_at_depth(name, strlen(name), depth_index,
+                                        &item_name[0]);
       if (perr != PAK_ERR_SUCCESS) {
         return perr;
       }
@@ -230,6 +268,8 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
       node->actual_count++;
 
       memcpy(child->name, name, PAK_ENTRY_NAME_LEN);
+      memcpy(child->item_name, item_name, PAK_ENTRY_NAME_LEN);
+
       hashmap_push_rawptr(arena, node->children, str8(child->name),
                           (RawPtr)child);
 
@@ -312,13 +352,13 @@ pak_unload(Pak* pak) {
 
 /* ===================================================== */
 
-PakError pak_extract(Pak*) {
-}
+PakError
+pak_extract(Pak*) {}
 
 /* ===================================================== */
 
-PakError pak_extract_item(Pak*, PakTreeNode* node) {
-}
+PakError
+pak_extract_item(Pak*, PakTreeNode* node) {}
 
 /* ===================================================== */
 /*                          END                          */
