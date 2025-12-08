@@ -4,10 +4,20 @@
 - [X] add context menu to files/folders
 - [X] add delete file/folder feature
 - [X] not load file content
-- [!] use Str8 everywhere it makes sense
-- [@] edit mode
 - [X] show proper node name, instead of 'foo/bar/baz.txt' show 'baz.txt'
-- [ ] add save current pak as another name
 - [ ] lazy load file contents when needed! if ever!
 - [ ] extract file/foler
-- [ ] add file/folder drag into an existing loaded pak
+- [ ] add folder drag into an existing loaded pak to create new .PAK file
+
+# CHALLENGING
+- [!] use Str8 everywhere it makes sense:
+      this requires some annoying code change and i still am
+      not sure about the benefits!
+
+# REJECTED
+- [!] edit mode:
+      let's keep this tool simple, we only have these functionalities:
+      - view and extract items
+      - and create from scratch
+- [!] add save current pak as another name:
+      same as above

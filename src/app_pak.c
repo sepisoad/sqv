@@ -49,6 +49,7 @@
 #define APP_PAK_EXPLORER_PADDING_X 2
 #define APP_PAK_EXPLORER_PADDING_Y 2
 #define APP_PAK_STATUSBAR_HEIGHT 20
+#define APP_PAK_MAX_EXPORT_PATH_LENGTH 1024
 
 /* ===================================================== */
 /*                         TYPES                         */
@@ -84,10 +85,12 @@ internal struct {
 
 internal struct {
   Bool is_app_styled;
+  Bool is_extracting_requested;
   Pak pak;
   AppPakMode mode;
   PakTreeNode* current_pak_tree_node;
   CBuf input_pak_file_path;
+  char export_path_buffer[APP_PAK_MAX_EXPORT_PATH_LENGTH];
   Arena* arena;
 } S;
 
@@ -110,6 +113,10 @@ internal U32 app_pak_draw_mode_empty(struct nk_context* ctx,
                                      nk_flags window_flags,
                                      U32 window_width,
                                      U32 window_height);
+internal U32 app_pak_draw_mode_loaded(struct nk_context* ctx,
+                                      nk_flags window_flags,
+                                      U32 window_width,
+                                      U32 window_height);
 internal U32 app_pak_draw_mode_loaded(struct nk_context* ctx,
                                       nk_flags window_flags,
                                       U32 window_width,
@@ -464,27 +471,15 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
                nk_rect(0, 0, window_width, APP_PAK_TOP_REGION_HEIGHT),
                NK_WINDOW_NO_SCROLLBAR)) {
     nk_layout_row_template_begin(ctx, ICONS.home.icon_image.h);
-    if (S.pak.is_modified) {
-      nk_layout_row_template_push_static(ctx, 30);
-    }
-    if (is_root == TRUE) {
-      nk_layout_row_template_push_static(ctx, 30);
-    }
+    nk_layout_row_template_push_static(ctx, 30);
     nk_layout_row_template_push_static(ctx, 30);
     nk_layout_row_template_push_static(ctx, 30);
     nk_layout_row_template_push_dynamic(ctx);
     nk_layout_row_template_end(ctx);
 
-    if (S.pak.is_modified == TRUE) {
-      if (nk_button_image(ctx, ICONS.save.icon_image)) {
-        // S.current_pak_tree_node = &S.pak.tree.root;
-      }
-    }
-
-    if (is_root == TRUE) {
-      if (nk_button_image(ctx, ICONS.extract.icon_image)) {
-        // S.current_pak_tree_node = &S.pak.tree.root;
-      }
+    if (nk_button_image(ctx, ICONS.extract.icon_image)) {
+      // S.current_pak_tree_node = &S.pak.tree.root;
+      S.is_extracting_requested = TRUE;
     }
 
     if (nk_button_image(ctx, ICONS.home.icon_image)) {
@@ -520,6 +515,21 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
 
     app_pak_draw_widget_explorer_area(ctx, window_width, middle_region_height);
   }
+
+  if (S.is_extracting_requested) {
+    struct nk_rect s = {.x = 50, .y = 50, .w = window_width - 100, .h = 190};
+    if (nk_popup_begin(ctx, NK_POPUP_STATIC, "Export",
+                       NK_WINDOW_CLOSABLE | NK_WINDOW_NO_SCROLLBAR, s)) {
+      nk_layout_row_dynamic(ctx, 20, 1);
+      nk_label(ctx, "output path:", NK_TEXT_LEFT);
+      nk_edit_string_zero_terminated(
+          ctx, NK_EDIT_FIELD, S.export_path_buffer,
+          APP_PAK_MAX_EXPORT_PATH_LENGTH, nk_filter_default);
+      nk_popup_end(ctx);
+    } else
+      S.is_extracting_requested = FALSE;
+  }
+
   nk_end(ctx);
   nk_style_pop_style_item(ctx);
 
@@ -569,17 +579,15 @@ app_pak_draw_widget_explorer_area(struct nk_context* ctx,
           break;
         HashMapKV* kv = hashmap_key_at(children, index);
         index++;
-        if (((PakTreeNode*)kv->v_rawptr)->is_deleted == FALSE) {
-          app_pak_draw_widget_explorer_item(ctx, (PakTreeNode*)kv->v_rawptr);
-        }
+
+        app_pak_draw_widget_explorer_item(ctx, (PakTreeNode*)kv->v_rawptr);
       }
     }
     for (U32 column = 0; column < remainder; column++) {
       HashMapKV* kv = hashmap_key_at(children, index);
       index++;
-      if (((PakTreeNode*)kv->v_rawptr)->is_deleted == FALSE) {
-        app_pak_draw_widget_explorer_item(ctx, (PakTreeNode*)kv->v_rawptr);
-      }
+
+      app_pak_draw_widget_explorer_item(ctx, (PakTreeNode*)kv->v_rawptr);
     }
     nk_group_end(ctx);
   }
@@ -591,11 +599,11 @@ internal Nothing
 app_pak_draw_widget_explorer_item(struct nk_context* ctx, PakTreeNode* node) {
   if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_NO_INPUT)) {
     if (node->is_dir) {
-      app_pak_draw_widget_explorer_icon(ctx, node, TRUE,
-                                        &ICONS.folder.icon_image, node->item_name);
+      app_pak_draw_widget_explorer_icon(
+          ctx, node, TRUE, &ICONS.folder.icon_image, node->item_name);
     } else {
-      app_pak_draw_widget_explorer_icon(ctx, node, FALSE,
-                                        &ICONS.text.icon_image, node->item_name);
+      app_pak_draw_widget_explorer_icon(
+          ctx, node, FALSE, &ICONS.text.icon_image, node->item_name);
     }
     nk_group_end(ctx);
   }
@@ -614,24 +622,9 @@ app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
   // icon image context menue
   struct nk_rect bounds;
   bounds = nk_widget_bounds(ctx);
-  if (nk_contextual_begin(ctx, 0, nk_vec2(100, 300), bounds)) {
-    nk_layout_row_dynamic(ctx, 15, 1);
-    if (nk_contextual_item_label(ctx, "view", NK_TEXT_CENTERED)) {
-      if (is_dir) {
-        S.current_pak_tree_node = node;
-      }
-    }
-    if (nk_contextual_item_label(ctx, "delete", NK_TEXT_CENTERED)) {
-      S.pak.is_modified = TRUE;
-      node->is_deleted = TRUE;
-      node->actual_count--;
-
-      PakItemDeleted* deleted_item = arena_push(S.arena, sizeof(PakItemDeleted),
-                                                AlignOf(PakItemDeleted), TRUE);
-      deleted_item->node = node;
-      list_push(S.arena, &S.pak.diff.deleted, deleted_item);
-    }
-    if (nk_contextual_item_label(ctx, "extract", NK_TEXT_CENTERED)) {
+  if (nk_contextual_begin(ctx, 0, nk_vec2(150, 230), bounds)) {
+    nk_layout_row_dynamic(ctx, 20, 1);
+    if (nk_contextual_item_label(ctx, "extract this item", NK_TEXT_CENTERED)) {
     }
     nk_contextual_end(ctx);
   }

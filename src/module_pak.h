@@ -61,8 +61,6 @@ struct PakTreeNode {
   char name[PAK_ENTRY_NAME_LEN];
   char item_name[PAK_ENTRY_NAME_LEN];
   Bool is_dir;
-  Bool is_deleted;
-  U32 actual_count;
   HashMap* children;
   PakTreeNode* parent;
 };
@@ -72,31 +70,9 @@ typedef struct {
 } PakTree;
 
 typedef struct {
-  PakTreeNode* node;
-  Str8 file_path;
-} PakItemAdded;
-
-typedef struct {
-  PakTreeNode* node;
-} PakItemDeleted;
-
-typedef struct {
-  PakTreeNode* node;
-  CBuf data;
-} PakItemModified;
-
-typedef struct {
-  List added;
-  List deleted;
-  List modified;
-} PakItemDiff;
-
-typedef struct {
   PakDetails details;
   PakEntry* entries;
   PakTree tree;
-  Bool is_modified;
-  PakItemDiff diff;
   Arena* arena;
 } Pak;
 
@@ -265,7 +241,6 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
       PakTreeNode* child =
           arena_push(arena, sizeof(PakTreeNode), AlignOf(PakTreeNode), TRUE);
       AssertAlways(child != 0);
-      node->actual_count++;
 
       memcpy(child->name, name, PAK_ENTRY_NAME_LEN);
       memcpy(child->item_name, item_name, PAK_ENTRY_NAME_LEN);
@@ -278,12 +253,10 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
         continue;
       }
 
-      child->is_deleted = FALSE;
       child->is_dir = TRUE;
       child->children = hashmap_init(arena, 64);
       child->parent = node;
       node = child;
-      node->actual_count = 0;
     }
   }
 
@@ -326,7 +299,6 @@ pak_load(Pak* pak, NDBuffer* ndb) {
   // TODO: find a proper default 'cap'
   pak->tree.root.parent = 0;
   pak->tree.root.children = hashmap_init(pak->arena, 64);
-  pak->tree.root.is_deleted = FALSE;
   pak->tree.root.is_dir = TRUE;
   MemZero(pak->tree.root.name, PAK_ENTRY_NAME_LEN);
   pak->tree.root.name[0] = ' ';
@@ -335,8 +307,6 @@ pak_load(Pak* pak, NDBuffer* ndb) {
   if (err != PAK_ERR_SUCCESS) {
     return err;
   }
-  pak->tree.root.actual_count = pak->tree.root.children->count;
-  pak->is_modified = FALSE;
 
   return PAK_ERR_SUCCESS;
 }
