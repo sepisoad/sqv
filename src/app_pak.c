@@ -12,6 +12,11 @@
 
 #include <stdio.h>
 
+#if defined(PROFILING)
+#include "deps/tracy/tracy.h"
+TracyCZoneCtx trcyctx;
+#endif
+
 #include "deps/hmm/hmm.h"
 #include "deps/log/log.h"
 #include "deps/stb/stb_image.h"
@@ -44,7 +49,7 @@
 #define APP_PAK_EXPLORER_ICON_HEIGHT \
   APP_PAK_EXPLORER_ICON_IMAGE_HEIGHT + APP_PAK_EXPLORER_ICON_TEXT_HEIGHT
 #define APP_PAK_EXPLORER_ICON_IMAGE_WIDTH 50
-#define APP_PAK_EXPLORER_ICON_TEXT_WIDTH 350
+#define APP_PAK_EXPLORER_ICON_TEXT_WIDTH 200
 #define APP_PAK_EXPLORER_ICON_GAP 2
 #define APP_PAK_EXPLORER_PADDING_X 2
 #define APP_PAK_EXPLORER_PADDING_Y 2
@@ -138,7 +143,7 @@ internal Nothing app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
 
 sapp_desc
 sokol_main(int argc, char* argv[]) {
-  Dbg("app_pak::sokol_main() ...");
+  TracyCZoneN(trcyctx, "sokol_main", 1);
 
   sargs_setup(&(sargs_desc){
       .argc = argc,
@@ -167,13 +172,15 @@ sokol_main(int argc, char* argv[]) {
       .icon.sokol_default = true,
       .logger.func = slog_func,
   };
+
+  TracyCZoneEnd(trcyctx);
 }
 
 /* ===================================================== */
 
 internal Nothing
 app_pak_init() {
-  Dbg("app_pak_init() ...");
+  TracyCZoneN(trcyctx, "app_pak_init", 1);
 
   S.arena = arena_create();
 
@@ -196,12 +203,16 @@ app_pak_init() {
   }
 
   app_pak_init_icons();
+
+  TracyCZoneEnd(trcyctx);
 }
 
 /* ===================================================== */
 
 internal Nothing
 app_pak_init_style(struct nk_style* s) {
+  TracyCZoneN(trcyctx, "app_pak_init_style", 1);
+
   struct nk_style_window* window = &s->window;
 
   window->padding.x = APP_PAK_WINDOW_PADDING_X;
@@ -237,24 +248,32 @@ app_pak_init_style(struct nk_style* s) {
   button->active.data.color.r = 200;
   button->active.data.color.g = 200;
   button->active.data.color.b = 200;
+
+  TracyCZoneEnd(trcyctx);
 }
 
 /* ===================================================== */
 
 internal Nothing
 app_pak_init_icons() {
+  TracyCZoneN(trcyctx, "app_pak_init_icons", 1);
+
   app_pak_init_icon(&ICONS.home, icon_home_png, sizeof(icon_home_png));
   app_pak_init_icon(&ICONS.back, icon_back_png, sizeof(icon_back_png));
   app_pak_init_icon(&ICONS.save, icon_save_png, sizeof(icon_save_png));
   app_pak_init_icon(&ICONS.extract, icon_extract_png, sizeof(icon_extract_png));
   app_pak_init_icon(&ICONS.folder, icon_folder_png, sizeof(icon_folder_png));
   app_pak_init_icon(&ICONS.text, icon_text_png, sizeof(icon_text_png));
+
+  TracyCZoneEnd(trcyctx);
 }
 
 /* ===================================================== */
 
 internal Nothing
 app_pak_init_icon(AppPakImage* app_icon, CBuf buffer, Sz size) {
+  TracyCZoneN(trcyctx, "app_pak_init_icon", 1);
+
   U32 w, h, c = 0;
   CStr data = stbi_load_from_memory(buffer, size, &w, &h, &c, 4);
 
@@ -286,54 +305,78 @@ app_pak_init_icon(AppPakImage* app_icon, CBuf buffer, Sz size) {
   // TODO: if i could use arena allocator with stb,
   //       then i could avoid making direct call to free!
   free(data);
+
+  TracyCZoneEnd(trcyctx);
 }
 
 /* ===================================================== */
 
 internal Nothing
 app_pak_cleanup() {
+  TracyCZoneN(trcyctx, "app_pak_cleanup", 1);
+
   app_pak_cleanup_icons();
   snk_shutdown();
   sg_shutdown();
   pak_unload(&S.pak);
   arena_destroy(S.arena);
+
+  TracyCZoneEnd(trcyctx);
 }
 
 internal Nothing
 app_pak_cleanup_icons() {
+  TracyCZoneN(trcyctx, "app_pak_cleanup_icons", 1);
+
   app_pak_cleanup_icon(&ICONS.home);
   app_pak_cleanup_icon(&ICONS.back);
   app_pak_cleanup_icon(&ICONS.save);
   app_pak_cleanup_icon(&ICONS.extract);
   app_pak_cleanup_icon(&ICONS.folder);
   app_pak_cleanup_icon(&ICONS.text);
+
+  TracyCZoneEnd(trcyctx);
 }
 
 internal Nothing
 app_pak_cleanup_icon(AppPakImage* app_icon) {
+  TracyCZoneN(trcyctx, "app_pak_cleanup_icon", 1);
+
   sg_destroy_view(app_icon->view);
   sg_destroy_sampler(app_icon->sampler);
   sg_destroy_image(app_icon->image);
   snk_destroy_image(app_icon->ui_image);
+
+  TracyCZoneEnd(trcyctx);
 }
 
 /* ===================================================== */
 
 internal Nothing
 app_pak_input(const sapp_event* event) {
-  // Dbg("app_pak_input() ...");
+  TracyCZoneN(trcyctx, "app_pak_input", 1);
+
+  if ((event->type == SAPP_EVENTTYPE_KEY_DOWN) && !event->key_repeat) {
+    if (event->key_code == SAPP_KEYCODE_ESCAPE) {
+      sapp_request_quit();
+    }
+  }
+
 
   snk_handle_event(event);
   if (event->type == SAPP_EVENTTYPE_FILES_DROPPED) {
     app_pak_handle_file_drop(sapp_get_dropped_file_path(0));
   }
+
+  TracyCZoneEnd(trcyctx);
 }
 
 /* ===================================================== */
 
 internal Nothing
 app_pak_frame() {
-  // Dbg("app_pak_frame() ...");
+  TracyCZoneN(trcyctx, "app_pak_frame", 1);
+  // TracyCFrameMarkStart(0);
 
   struct nk_context* ctx = snk_new_frame();
 
@@ -353,13 +396,16 @@ app_pak_frame() {
 
   sg_end_pass();
   sg_commit();
+
+  // TracyCFrameMarkEnd(0);
+  TracyCZoneEnd(trcyctx);
 }
 
 /* ===================================================== */
 
 internal Nothing
 app_pak_handle_file_drop(CBuf path) {
-  Dbg("app_pak_handle_file_drop() ...");
+  TracyCZoneN(trcyctx, "app_pak_handle_file_drop", 1);
 
   if (S.mode == APP_PAK_MODE_LOADED) {
     return;
@@ -392,13 +438,15 @@ app_pak_handle_file_drop(CBuf path) {
   S.current_pak_tree_node = &S.pak.tree.root;
 
   arena_scratch_end(scratch);
+
+  TracyCZoneEnd(trcyctx);
 }
 
 /* ===================================================== */
 
 internal U32
 app_pak_draw(struct nk_context* ctx) {
-  // Dbg("app_pak_draw() ...");
+  TracyCZoneN(trcyctx, "app_pak_draw", 1);
 
   internal CBuf window_title = "SQV::Pak Explorer";
   internal nk_flags window_flags = 0;
@@ -413,6 +461,8 @@ app_pak_draw(struct nk_context* ctx) {
     app_pak_draw_mode_loaded(ctx, window_flags, window_width, window_height);
   }
 
+  TracyCZoneEnd(trcyctx);
+
   return !nk_window_is_closed(ctx, window_title);
 }
 
@@ -423,7 +473,7 @@ app_pak_draw_mode_empty(struct nk_context* ctx,
                         nk_flags window_flags,
                         U32 window_width,
                         U32 window_height) {
-  // Dbg("app_pak_draw_mode_empty() ...");
+  TracyCZoneN(trcyctx, "app_pak_draw_mode_empty", 1);
 
   internal CBuf label = "Please drop a .PAK file here, I'm hungry!";
 
@@ -453,6 +503,8 @@ app_pak_draw_mode_empty(struct nk_context* ctx,
     nk_layout_space_end(ctx);
   }
   nk_end(ctx);
+
+  TracyCZoneEnd(trcyctx);
 }
 
 /* ===================================================== */
@@ -462,7 +514,7 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
                          nk_flags window_flags,
                          U32 window_width,
                          U32 window_height) {
-  // Dbg("app_pak_draw_mode_loaded() ...");
+  TracyCZoneN(trcyctx, "app_pak_draw_mode_loaded", 1);
 
   Bool is_root = S.current_pak_tree_node->item_name[0] == ' ';
 
@@ -543,6 +595,8 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
              NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
   }
   nk_end(ctx);
+
+  TracyCZoneEnd(trcyctx);
 }
 
 /* ===================================================== */
@@ -551,6 +605,8 @@ internal Nothing
 app_pak_draw_widget_explorer_area(struct nk_context* ctx,
                                   U32 window_width,
                                   U32 window_height) {
+  TracyCZoneN(trcyctx, "app_pak_draw_widget_explorer_area", 1);
+
   HashMap* children = S.current_pak_tree_node->children;
   U32 items_count = children->count;
   U32 columns = (window_width + APP_PAK_EXPLORER_ICON_GAP) /
@@ -591,12 +647,16 @@ app_pak_draw_widget_explorer_area(struct nk_context* ctx,
     }
     nk_group_end(ctx);
   }
+
+  TracyCZoneEnd(trcyctx);
 }
 
 /* ===================================================== */
 
 internal Nothing
 app_pak_draw_widget_explorer_item(struct nk_context* ctx, PakTreeNode* node) {
+  TracyCZoneN(trcyctx, "app_pak_draw_widget_explorer_item", 1);
+
   if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_NO_INPUT)) {
     if (node->is_dir) {
       app_pak_draw_widget_explorer_icon(
@@ -607,6 +667,8 @@ app_pak_draw_widget_explorer_item(struct nk_context* ctx, PakTreeNode* node) {
     }
     nk_group_end(ctx);
   }
+
+  TracyCZoneEnd(trcyctx);
 }
 
 internal Nothing
@@ -615,6 +677,8 @@ app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
                                   Bool is_dir,
                                   struct nk_image* image,
                                   CStr text) {
+  TracyCZoneN(trcyctx, "app_pak_draw_widget_explorer_icon", 1);
+
   // icon image
   nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_IMAGE_HEIGHT,
                        APP_PAK_EXPLORER_ICON_IMAGE_WIDTH, 1);
@@ -638,7 +702,11 @@ app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
   // icon text
   nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_TEXT_HEIGHT,
                        APP_PAK_EXPLORER_ICON_TEXT_WIDTH, 1);
-  nk_label(ctx, text, NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
+  // nk_text(ctx, text, strlen(text), NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
+  // nk_label_wrap(ctx, text);
+  nk_text_wrap(ctx, text, strlen(text));
+
+  TracyCZoneEnd(trcyctx);
 }
 
 /* ===================================================== */

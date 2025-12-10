@@ -13,6 +13,11 @@
 #include <string.h>
 #include <stdlib.h>
 
+#if defined(PROFILING)
+#include "deps/tracy/tracy.h"
+extern TracyCZoneCtx trcyctx;
+#endif
+
 #include "deps/sepi/arena.h"
 #include "deps/sepi/endian.h"
 #include "deps/sepi/list.h"
@@ -93,7 +98,7 @@ PakError pak_extract_item(Pak*, PakTreeNode* node);
 
 internal PakError
 pak_get_path_depth(CStr path, U32 length, U32* depth) {
-  Dbg("pak_get_path_depth() ...");
+  TracyCZoneN(trcyctx, "pak_get_path_depth", 1);
 
   Assert(path != 0);
   Assert(length > 0);
@@ -109,6 +114,7 @@ pak_get_path_depth(CStr path, U32 length, U32* depth) {
     }
   }
 
+  TracyCZoneEnd(trcyctx);
   return PAK_ERR_SUCCESS;
 }
 
@@ -119,7 +125,7 @@ pak_get_path_at_depth(CStr path,
                       U32 length,
                       U32 depth,
                       char out[PAK_ENTRY_NAME_LEN]) {
-  Dbg("pak_get_path_depth() ...");
+  TracyCZoneN(trcyctx, "pak_get_path_at_depth", 1);
 
   Assert(path != 0);
   Assert(out != 0);
@@ -138,6 +144,7 @@ pak_get_path_at_depth(CStr path,
     out[index] = path[index];
   }
 
+  TracyCZoneEnd(trcyctx);
   return PAK_ERR_SUCCESS;
 }
 
@@ -146,7 +153,7 @@ pak_get_item_name_at_depth(CStr path,
                            U32 length,
                            U32 depth,
                            char out[PAK_ENTRY_NAME_LEN]) {
-  Dbg("pak_get_item_name_at_depth() ...");
+  TracyCZoneN(trcyctx, "pak_get_item_name_at_depth", 1);
 
   Assert(path != 0);
   Assert(out != 0);
@@ -168,6 +175,7 @@ pak_get_item_name_at_depth(CStr path,
     }
   }
 
+  TracyCZoneEnd(trcyctx);
   return PAK_ERR_SUCCESS;
 }
 
@@ -175,7 +183,7 @@ pak_get_item_name_at_depth(CStr path,
 
 internal PakError
 pak_read_entries(Pak* pak, NDBuffer* ndb) {
-  Dbg("pak_read_entries() ...");
+  TracyCZoneN(trcyctx, "pak_read_entries", 1);
 
   Assert(pak != 0);
   Assert(ndb != 0);
@@ -260,6 +268,7 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
     }
   }
 
+  TracyCZoneEnd(trcyctx);
   return PAK_ERR_SUCCESS;
 }
 
@@ -267,7 +276,7 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
 
 PakError
 pak_load(Pak* pak, NDBuffer* ndb) {
-  Dbg("pak_load() ...");
+  TracyCZoneN(trcyctx, "pak_load", 1);
 
   Assert(pak != 0);
   Assert(ndb != 0);
@@ -308,6 +317,7 @@ pak_load(Pak* pak, NDBuffer* ndb) {
     return err;
   }
 
+  TracyCZoneEnd(trcyctx);
   return PAK_ERR_SUCCESS;
 }
 
@@ -315,20 +325,30 @@ pak_load(Pak* pak, NDBuffer* ndb) {
 
 Nothing
 pak_unload(Pak* pak) {
+  TracyCZoneN(trcyctx, "pak_unload", 1);
+
   if (pak->arena) {
     arena_destroy(pak->arena);
   }
+
+  TracyCZoneEnd(trcyctx);
 }
 
 /* ===================================================== */
 
 PakError
-pak_extract(Pak*) {}
+pak_extract(Pak*) {
+  TracyCZoneN(trcyctx, "pak_extract", 1);
+  TracyCZoneEnd(trcyctx);
+}
 
 /* ===================================================== */
 
 PakError
-pak_extract_item(Pak*, PakTreeNode* node) {}
+pak_extract_item(Pak*, PakTreeNode* node) {
+  TracyCZoneN(trcyctx, "pak_extract", 1);
+  TracyCZoneEnd(trcyctx);
+}
 
 /* ===================================================== */
 /*                          END                          */

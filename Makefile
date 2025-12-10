@@ -26,6 +26,15 @@ else ifeq ($(config),release)
   app_playground_config = release
   app_pak_config = release
 
+else ifeq ($(config),profiling)
+  lib_log_config = profiling
+  lib_sokol_config = profiling
+  lib_hmm_config = profiling
+  lib_stb_config = profiling
+  lib_sepi_config = profiling
+  app_playground_config = profiling
+  app_pak_config = profiling
+
 else
   $(error "invalid configuration $(config)")
 endif
@@ -93,6 +102,7 @@ help:
 	@echo "CONFIGURATIONS:"
 	@echo "  debug"
 	@echo "  release"
+	@echo "  profiling"
 	@echo ""
 	@echo "TARGETS:"
 	@echo "   all (default)"

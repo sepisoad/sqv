@@ -3,7 +3,7 @@
 --
 
 workspace "ProjectWorkspace"
-  configurations { "Debug", "Release" }
+  configurations { "Debug", "Release", "Profiling" }
     location "."
     toolset "gcc"
 
@@ -17,6 +17,14 @@ workspace "ProjectWorkspace"
   filter "configurations:Release"
     defines { "NDEBUG" }
     optimize "Speed"
+
+  filter "configurations:Profiling"
+    defines { "DEBUG", "PROFILING", "TRACY_ENABLE" }
+    symbols "On"
+    optimize "On"
+    buildoptions { "-lTracyClient", "-lstdc++", "-pthread", "-ldl"  }
+    linkoptions { "-lTracyClient", "-lstdc++", "-pthread", "-ldl" }
+
 
 --
 -- LIBRARIES -----------------------
