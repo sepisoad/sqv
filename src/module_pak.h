@@ -13,11 +13,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#if defined(PROFILING)
 #include "deps/tracy/tracy.h"
-extern TracyCZoneCtx trcyctx;
-#endif
-
 #include "deps/sepi/arena.h"
 #include "deps/sepi/endian.h"
 #include "deps/sepi/list.h"
@@ -95,6 +91,8 @@ PakError pak_extract_item(Pak*, PakTreeNode* node);
 /* ===================================================== */
 
 #ifdef MODULE_PAK_IMPLEMENTATION
+
+extern TracyCZoneCtx trcyctx;
 
 internal PakError
 pak_get_path_depth(CStr path, U32 length, U32* depth) {
@@ -346,7 +344,7 @@ pak_extract(Pak*) {
 
 PakError
 pak_extract_item(Pak*, PakTreeNode* node) {
-  TracyCZoneN(trcyctx, "pak_extract", 1);
+  TracyCZoneN(trcyctx, "pak_extract_item", 1);
   TracyCZoneEnd(trcyctx);
 }
 

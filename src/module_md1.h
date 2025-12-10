@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "deps/tracy/tracy.h"
 #include "deps/hmm/hmm.h"
 #include "deps/nuklear/nuklear.h"
 #include "deps/sepi/arena.h"
@@ -45,7 +46,7 @@
 
 typedef F32 MD1RawVector3F[3];
 typedef I32 MD1RawTriangle[3];
-typedef U8  MD1RawVertex[3];
+typedef U8 MD1RawVertex[3];
 
 typedef enum {
   MD1_ERR_SUCCESS = 1,
@@ -77,21 +78,21 @@ enum {
 };
 
 typedef struct {
-  I32            magic_code;
-  I32            version;
+  I32 magic_code;
+  I32 version;
   MD1RawVector3F scale;
   MD1RawVector3F translate;
-  F32            bounding_radius;
+  F32 bounding_radius;
   MD1RawVector3F eye_position;
-  I32            skins_count;
-  I32            skin_width;
-  I32            skin_height;
-  I32            vertices_count;
-  I32            triangles_count;
-  I32            frames_count;
-  MD1SyncType    sync_type;
-  I32            flags;
-  F32            size;
+  I32 skins_count;
+  I32 skin_width;
+  I32 skin_height;
+  I32 vertices_count;
+  I32 triangles_count;
+  I32 frames_count;
+  MD1SyncType sync_type;
+  I32 flags;
+  F32 size;
 } Md1RawHeader;
 
 typedef struct {
@@ -101,23 +102,23 @@ typedef struct {
 } Md1UV;
 
 typedef struct {
-  I32            is_front_face;
+  I32 is_front_face;
   MD1RawTriangle vertices_idx;
 } Md1FacedTriangle;
 
 typedef struct {
   MD1RawVertex vertex;
-  U8           normal_idx;
+  U8 normal_idx;
 } Md1NormalVertex;
 
 typedef struct {
   Md1NormalVertex bbox_min;
   Md1NormalVertex bbox_max;
-  char            name[16];
+  char name[16];
 } MD1FrameSingle;
 
 typedef struct {
-  I32             frames_count;
+  I32 frames_count;
   Md1NormalVertex bbox_min;
   Md1NormalVertex bbox_max;
 } MD1FramesGroup;
@@ -133,19 +134,19 @@ typedef struct {
   hmm_v3 min;
   hmm_v3 max;
   hmm_v3 center;
-  F32    radius;
+  F32 radius;
 } Md1BBox;
 
 typedef struct {
-  F32    radius;
-  U32    skin_width;
-  U32    skin_height;
-  U32    skins_count;
-  U32    vertices_count;
-  U32    indices_count;
-  U32    triangles_count;
-  U32    frames_count;
-  U32    poses_count;
+  F32 radius;
+  U32 skin_width;
+  U32 skin_height;
+  U32 skins_count;
+  U32 vertices_count;
+  U32 indices_count;
+  U32 triangles_count;
+  U32 frames_count;
+  U32 poses_count;
   hmm_v3 scale;
   hmm_v3 translate;
   hmm_v3 eye;
@@ -160,35 +161,35 @@ typedef struct {
 
 typedef struct {
   char name[MD1_MAX_FRAME_NAME_LEN];
-  U32  first_frame;
-  U32  frames_count;
+  U32 first_frame;
+  U32 frames_count;
 } Md1Pose;
 
 typedef struct {
-  sg_image   image;
-  sg_image   depth;
-  sg_view    view;
+  sg_image image;
+  sg_image depth;
+  sg_view view;
   sg_sampler sampler;
 } Md1Skin;
 
 typedef struct {
   F32* frames_vertex_buffer;
   F32* frames_vertex_buffer_v2;
-  Sz   frame_vertex_buffer_size;
+  Sz frame_vertex_buffer_size;
   U32* index_buffer;
-  Sz   index_buffer_size;
-  F32  bbox_vertex_buffer[MD1_BBOX_VERTEX_COUNT * 3];
-  Sz   bbox_vertex_buffer_size;
+  Sz index_buffer_size;
+  F32 bbox_vertex_buffer[MD1_BBOX_VERTEX_COUNT * 3];
+  Sz bbox_vertex_buffer_size;
 } Md1GPUBuffers;
 
 typedef struct {
-  Md1Details    details;
-  Md1Skin*      skins;
-  Md1Vertex*    vertices;
-  Md1Pose*      poses;
-  Md1BBox       bbox;
+  Md1Details details;
+  Md1Skin* skins;
+  Md1Vertex* vertices;
+  Md1Pose* poses;
+  Md1BBox bbox;
   Md1GPUBuffers gpu;
-  Arena*        arena;
+  Arena* arena;
 } Md1;
 
 /* ===================================================== */
@@ -197,17 +198,17 @@ typedef struct {
 
 Md1Error md1_load(Md1* md1, NDBuffer* ndb);
 Md1Error md1_get_vertices(const Md1* md1,
-                          U32        pose_idx,
-                          U32        frame_idx,
-                          F32**      frame_vbuf,
-                          Sz*        frame_vertex_buffer_size);
-Md1Error md1_get_vertices_v2(Md1*  md1,
-                             U32   pose_idx,
-                             U32   frame_idx,
+                          U32 pose_idx,
+                          U32 frame_idx,
+                          F32** frame_vbuf,
+                          Sz* frame_vertex_buffer_size);
+Md1Error md1_get_vertices_v2(Md1* md1,
+                             U32 pose_idx,
+                             U32 frame_idx,
                              F32** vbuf,
-                             Sz*   vbuf_size,
+                             Sz* vbuf_size,
                              U32** ibuf,
-                             Sz*   ibuf_size);
+                             Sz* ibuf_size);
 Md1Error md1_unload(Md1* md1);
 
 /* ===================================================== */
@@ -218,9 +219,11 @@ Md1Error md1_unload(Md1* md1);
 
 #include "data.h"
 
+extern TracyCZoneCtx trcyctx;
+
 static Nothing
 md1_load_image(CBuf ptr, CStr pixels, Sz sz) {
-  Dbg("md1_load_image() ...");
+  TracyCZoneN(trcyctx, "md1_load_image", 1);
 
   Assert(pixels != 0);
   Assert(sz > 0);
@@ -233,23 +236,25 @@ md1_load_image(CBuf ptr, CStr pixels, Sz sz) {
     pixels[j + 2] = quake1_palette[index][2];  // blue
     pixels[j + 3] = 255;                       // alpha, always opaque
   }
+
+  TracyCZoneEnd(trcyctx);
 }
 
 internal Md1Error
 md1_load_skins(Md1* md1, NDBuffer* ndb) {
-  Dbg("md1_load_skins() ...");
+  TracyCZoneN(trcyctx, "md1_load_skins", 1);
 
   Assert(md1 != 0);
   Assert(ndb != 0);
 
   const Md1Details* details = &md1->details;
-  const U32         channels = 4;
-  Arena*            a = md1->arena;
-  U32               sw = details->skin_width;
-  U32               sh = details->skin_height;
-  Sz                skin_sz = sw * sh;
-  Md1Skin*          skins = arena_push_array(a, Md1Skin, details->skins_count);
-  Md1Error          err = MD1_ERR_SUCCESS;
+  const U32 channels = 4;
+  Arena* a = md1->arena;
+  U32 sw = details->skin_width;
+  U32 sh = details->skin_height;
+  Sz skin_sz = sw * sh;
+  Md1Skin* skins = arena_push_array(a, Md1Skin, details->skins_count);
+  Md1Error err = MD1_ERR_SUCCESS;
 
   AssertAlways(skins != 0);
 
@@ -260,7 +265,7 @@ md1_load_skins(Md1* md1, NDBuffer* ndb) {
     ND_MOVE(ndb, sizeof(MD1SkinType));
 
     if (MD1_SKIN_SINGLE == *st) {
-      Sz   data_sz = sizeof(U8) * skin_sz * channels;
+      Sz data_sz = sizeof(U8) * skin_sz * channels;
       CStr data = (CStr)arena_push(a, data_sz, AlignOf(U8), TRUE);
       Assert(data != 0);
 
@@ -306,21 +311,23 @@ md1_load_skins(Md1* md1, NDBuffer* ndb) {
   }
 
   md1->skins = skins;
+
+  TracyCZoneEnd(trcyctx);
   return err;
 }
 
 internal Md1Error
 md1_load_uvs(const Md1* md1, NDBuffer* ndb, Md1UV** uvs) {
-  Dbg("md1_load_uvs() ...");
+  TracyCZoneN(trcyctx, "md1_load_uvs", 1);
 
   Assert(md1 != 0);
   Assert(ndb != 0);
   Assert(uvs != 0);
 
   const Md1Details* details = &md1->details;
-  Arena*            a = md1->arena;
-  Sz                uvs_sz = sizeof(Md1UV) * details->vertices_count;
-  Md1Error          err = MD1_ERR_SUCCESS;
+  Arena* a = md1->arena;
+  Sz uvs_sz = sizeof(Md1UV) * details->vertices_count;
+  Md1Error err = MD1_ERR_SUCCESS;
 
   *uvs = arena_push(a, uvs_sz, AlignOf(Md1UV), TRUE);
   AssertAlways(*uvs != 0);
@@ -331,22 +338,23 @@ md1_load_uvs(const Md1* md1, NDBuffer* ndb, Md1UV** uvs) {
     ND_I32(ndb, &(*uvs)[i].v);
   }
 
+  TracyCZoneEnd(trcyctx);
   return err;
 }
 
 internal Md1Error
 md1_load_triangles(Md1* md1, NDBuffer* ndb, Md1FacedTriangle** fts) {
-  Dbg("md1_load_triangles() ...");
+  TracyCZoneN(trcyctx, "md1_load_triangles", 1);
 
   Assert(md1 != 0);
   Assert(ndb != 0);
   Assert(fts != 0);
 
   Md1Details* details = &md1->details;
-  Arena*      a = md1->arena;
-  Sz          fts_sz = sizeof(Md1FacedTriangle) * details->triangles_count;
-  Sz          idices_sz = sizeof(U32) * details->triangles_count * 3;
-  Md1Error    err = MD1_ERR_SUCCESS;
+  Arena* a = md1->arena;
+  Sz fts_sz = sizeof(Md1FacedTriangle) * details->triangles_count;
+  Sz idices_sz = sizeof(U32) * details->triangles_count * 3;
+  Md1Error err = MD1_ERR_SUCCESS;
 
   *fts = arena_push(a, fts_sz, AlignOf(Md1FacedTriangle), TRUE);
   AssertAlways(*fts != 0);
@@ -365,11 +373,14 @@ md1_load_triangles(Md1* md1, NDBuffer* ndb, Md1FacedTriangle** fts) {
     (*fts)[i].vertices_idx[2] = c;
   }
 
+  TracyCZoneEnd(trcyctx);
   return err;
 }
 
 internal Bool
 md1_has_pose_name_changed(CStr new, CBuf old) {
+  TracyCZoneN(trcyctx, "md1_has_pose_name_changed", 1);
+
   for (U32 i = 0; i < MD1_MAX_FRAME_NAME_LEN - 1; i++) {
     if (isdigit(new[i])) {
       new[i] = 0;
@@ -377,32 +388,35 @@ md1_has_pose_name_changed(CStr new, CBuf old) {
   }
 
   if (strlen(old) <= 0) {
+    TracyCZoneEnd(trcyctx);
     return TRUE;
   }
 
   if (strcmp(new, old) != 0) {
+    TracyCZoneEnd(trcyctx);
     return TRUE;
   }
 
+  TracyCZoneEnd(trcyctx);
   return FALSE;
 }
 
 internal Md1Error
-md1_load_single_frame(Md1*      md1,
+md1_load_single_frame(Md1* md1,
                       NDBuffer* ndb,
-                      U32       frame_idx,
-                      CStr      frame_name,
-                      Bool*     is_bbox_loaded) {
-  Dbg("md1_load_single_frame() ...");
+                      U32 frame_idx,
+                      CStr frame_name,
+                      Bool* is_bbox_loaded) {
+  TracyCZoneN(trcyctx, "md1_load_single_frame", 1);
 
   Assert(md1 != 0);
   Assert(ndb != 0);
   Assert(frame_name != 0);
   Assert(is_bbox_loaded != 0);
 
-  Md1Details*    details = &md1->details;
-  Md1Error       err = MD1_ERR_SUCCESS;
-  Sz             frame_single_size = sizeof(MD1FrameSingle);
+  Md1Details* details = &md1->details;
+  Md1Error err = MD1_ERR_SUCCESS;
+  Sz frame_single_size = sizeof(MD1FrameSingle);
   MD1FrameSingle frame_single = {0};
 
   memcpy(&frame_single, ND_ADDR(ndb), frame_single_size);
@@ -454,14 +468,14 @@ md1_load_single_frame(Md1*      md1,
 
     // bounding box vertex array
 
-    F32      x0 = Min(md1->bbox.min.X, md1->bbox.max.X);
-    F32      x1 = Max(md1->bbox.min.X, md1->bbox.max.X);
+    F32 x0 = Min(md1->bbox.min.X, md1->bbox.max.X);
+    F32 x1 = Max(md1->bbox.min.X, md1->bbox.max.X);
 
-    F32      y0 = Min(md1->bbox.min.Y, md1->bbox.max.Y);
-    F32      y1 = Max(md1->bbox.min.Y, md1->bbox.max.Y);
+    F32 y0 = Min(md1->bbox.min.Y, md1->bbox.max.Y);
+    F32 y1 = Max(md1->bbox.min.Y, md1->bbox.max.Y);
 
-    F32      z0 = Min(md1->bbox.min.Z, md1->bbox.max.Z);
-    F32      z1 = Max(md1->bbox.min.Z, md1->bbox.max.Z);
+    F32 z0 = Min(md1->bbox.min.Z, md1->bbox.max.Z);
+    F32 z1 = Max(md1->bbox.min.Z, md1->bbox.max.Z);
 
     // corners
 
@@ -476,7 +490,7 @@ md1_load_single_frame(Md1*      md1,
     hmm_vec3 v7 = HMM_Vec3(x0, y1, z1);  // front-top-left
 
     // 12 edges, each as (from, to)
-    F32      verts[MD1_BBOX_VERTEX_COUNT][3] = {
+    F32 verts[MD1_BBOX_VERTEX_COUNT][3] = {
         // back face
         {v0.X, v0.Y, v0.Z},
         {v1.X, v1.Y, v1.Z},
@@ -514,8 +528,8 @@ md1_load_single_frame(Md1*      md1,
   }
 
   Md1NormalVertex* nv = (Md1NormalVertex*)ND_ADDR(ndb);
-  Sz               nv_size = sizeof(Md1NormalVertex);
-  Md1Vertex*       frame_verts =
+  Sz nv_size = sizeof(Md1NormalVertex);
+  Md1Vertex* frame_verts =
       md1->vertices + (details->vertices_count * frame_idx);
 
   for (U32 i = 0; i < details->vertices_count; i++) {
@@ -538,24 +552,25 @@ md1_load_single_frame(Md1*      md1,
     ND_MOVE(ndb, sizeof(Md1NormalVertex));
   }
 
+  TracyCZoneEnd(trcyctx);
   return err;
 }
 
 internal Md1Error
 md1_load_frames(Md1* md1, NDBuffer* ndb) {
-  Dbg("md1_load_frames() ...");
+  TracyCZoneN(trcyctx, "md1_load_frames", 1);
 
   Assert(md1 != 0);
   Assert(ndb != 0);
 
   Md1Details* details = &md1->details;
-  Arena*      a = md1->arena;
-  U32         pose_frames = 0;
-  char        frame_name[MD1_MAX_FRAME_NAME_LEN] = {0};
-  Bool        is_bbox_loaded = FALSE;
-  Md1Error    err = MD1_ERR_SUCCESS;
+  Arena* a = md1->arena;
+  U32 pose_frames = 0;
+  char frame_name[MD1_MAX_FRAME_NAME_LEN] = {0};
+  Bool is_bbox_loaded = FALSE;
+  Md1Error err = MD1_ERR_SUCCESS;
 
-  Sz          vertices_sz =
+  Sz vertices_sz =
       sizeof(Md1Vertex) * details->vertices_count * details->frames_count;
   md1->vertices = arena_push(a, vertices_sz, AlignOf(Md1Vertex), TRUE);
   AssertAlways(md1->vertices != 0);
@@ -582,21 +597,22 @@ md1_load_frames(Md1* md1, NDBuffer* ndb) {
     }
   }
 
+  TracyCZoneEnd(trcyctx);
   return err;
 }
 
 Md1Error
 md1_make_display_list(Md1* md1, Md1UV* uvs, Md1FacedTriangle* faced_triangles) {
-  Dbg("md1_make_display_list() ...");
+  TracyCZoneN(trcyctx, "md1_make_display_list", 1);
 
   Assert(md1 != 0);
   Assert(uvs != 0);
   Assert(faced_triangles != 0);
 
-  Md1Error    err = MD1_ERR_SUCCESS;
+  Md1Error err = MD1_ERR_SUCCESS;
   Md1Details* details = &md1->details;
-  Arena*      a = md1->arena;
-  Sz          elems_count = 3 * (3 + 2);  // a->b->c * x,y,z, u,v
+  Arena* a = md1->arena;
+  Sz elems_count = 3 * (3 + 2);  // a->b->c * x,y,z, u,v
   Sz vbuf_sz = sizeof(F32) * details->frames_count * details->triangles_count *
                elems_count;
 
@@ -638,25 +654,28 @@ md1_make_display_list(Md1* md1, Md1UV* uvs, Md1FacedTriangle* faced_triangles) {
     }
   }
 
+  TracyCZoneEnd(trcyctx);
   return err;
 }
 
 internal Md1Error
-md1_make_display_list_v2(Md1*              md1,
-                         Md1UV*            uvs,
+md1_make_display_list_v2(Md1* md1,
+                         Md1UV* uvs,
                          Md1FacedTriangle* faced_triangles) {
-  Md1Error         err = MD1_ERR_SUCCESS;
-  Md1Details*      details = &md1->details;
-  Arena*           a = md1->arena;
-  U32              mesh_indices_count = 0;
-  U32              mesh_vertices_count = 0;
+  TracyCZoneN(trcyctx, "md1_make_display_list_v2", 1);
+
+  Md1Error err = MD1_ERR_SUCCESS;
+  Md1Details* details = &md1->details;
+  Arena* a = md1->arena;
+  U32 mesh_indices_count = 0;
+  U32 mesh_vertices_count = 0;
 
   // TODO: use scratch buffwe for this
   Md1MeshVertices* mesh_vertices =
       arena_push(a, details->triangles_count * 3 * sizeof(Md1MeshVertices),
                  AlignOf(Md1MeshVertices), TRUE);
 
-  Sz   index_buffer_size = details->triangles_count * 3 * sizeof(U32);
+  Sz index_buffer_size = details->triangles_count * 3 * sizeof(U32);
   U32* index_buffer = arena_push(a, index_buffer_size, AlignOf(U32), TRUE);
 
   for (U32 triangle_index = 0; triangle_index < details->triangles_count;
@@ -698,8 +717,8 @@ md1_make_display_list_v2(Md1*              md1,
   }
 
   U32 vbuf_vert_idx = 0;
-  Sz  elems_count = (3 + 2);
-  Sz  vbuf_sz =
+  Sz elems_count = (3 + 2);
+  Sz vbuf_sz =
       details->frames_count * mesh_vertices_count * elems_count * sizeof(F32);
 
   md1->gpu.frames_vertex_buffer_v2 = arena_push(a, vbuf_sz, AlignOf(F32), TRUE);
@@ -733,12 +752,13 @@ md1_make_display_list_v2(Md1*              md1,
   md1->gpu.index_buffer_size = index_buffer_size;
   md1->gpu.index_buffer = index_buffer;
 
+  TracyCZoneEnd(trcyctx);
   return err;
 }
 
 Md1Error
 md1_load(Md1* md1, NDBuffer* ndb) {
-  Dbg("mdl_load() ...");
+  TracyCZoneN(trcyctx, "md1_load", 1);
 
   Assert(md1 != 0);
   Assert(ndb != 0);
@@ -801,28 +821,38 @@ md1_load(Md1* md1, NDBuffer* ndb) {
   md1->arena = arena_create();
 
   err = md1_load_skins(md1, ndb);
-  if (err != MD1_ERR_SUCCESS)
+  if (err != MD1_ERR_SUCCESS) {
+    TracyCZoneEnd(trcyctx);
     return err;
+  }
 
   Md1UV* uvs = 0;
   err = md1_load_uvs(md1, ndb, &uvs);
-  if (err != MD1_ERR_SUCCESS)
+  if (err != MD1_ERR_SUCCESS) {
+    TracyCZoneEnd(trcyctx);
     return err;
+  }
   Assert(uvs != 0);
 
   Md1FacedTriangle* faced_triangles = NULL;
   err = md1_load_triangles(md1, ndb, &faced_triangles);
-  if (err != MD1_ERR_SUCCESS)
+  if (err != MD1_ERR_SUCCESS) {
+    TracyCZoneEnd(trcyctx);
     return err;
+  }
   Assert(faced_triangles != 0);
 
   err = md1_load_frames(md1, ndb);
-  if (err != MD1_ERR_SUCCESS)
+  if (err != MD1_ERR_SUCCESS) {
+    TracyCZoneEnd(trcyctx);
     return err;
+  }
 
   err = md1_make_display_list(md1, uvs, faced_triangles);
-  if (err != MD1_ERR_SUCCESS)
+  if (err != MD1_ERR_SUCCESS) {
+    TracyCZoneEnd(trcyctx);
     return err;
+  }
 
   // NOTE: this has some bugs!
   // err = md1_make_display_list_v2(md1, uvs, faced_triangles);
@@ -835,15 +865,18 @@ md1_load(Md1* md1, NDBuffer* ndb) {
   Dbg("details.skins: %d", details->skins_count);
   Dbg("details.skin size: %d x %d", details->skin_width, details->skin_height);
 
+  TracyCZoneEnd(trcyctx);
   return err;
 }
 
 Md1Error
 md1_get_vertices(const Md1* md1,
-                 U32        pose_idx,
-                 U32        pose_frame_idx,
-                 F32**      frame_vbuf,
-                 Sz*        frame_vertex_buffer_size) {
+                 U32 pose_idx,
+                 U32 pose_frame_idx,
+                 F32** frame_vbuf,
+                 Sz* frame_vertex_buffer_size) {
+  TracyCZoneN(trcyctx, "md1_get_vertices", 1);
+
   Assert(md1 != 0);
   Assert(frame_vbuf != 0);
   Assert(frame_vertex_buffer_size != 0);
@@ -856,17 +889,21 @@ md1_get_vertices(const Md1* md1,
       &md1->gpu.frames_vertex_buffer[(pose->first_frame + pose_frame_idx) *
                                      md1->gpu.frame_vertex_buffer_size];
   *frame_vertex_buffer_size = md1->gpu.frame_vertex_buffer_size * sizeof(F32);
+
+  TracyCZoneEnd(trcyctx);
   return err;
 }
 
 Md1Error
-md1_get_vertices_v2(Md1*  md1,
-                    U32   pose_idx,
-                    U32   frame_idx,
+md1_get_vertices_v2(Md1* md1,
+                    U32 pose_idx,
+                    U32 frame_idx,
                     F32** vbuf,
-                    Sz*   vbuf_size,
+                    Sz* vbuf_size,
                     U32** ibuf,
-                    Sz*   ibuf_size) {
+                    Sz* ibuf_size) {
+  TracyCZoneN(trcyctx, "md1_get_vertices_v2", 1);
+
   Assert(md1 != 0);
   Assert(vbuf != 0);
   Assert(vbuf_size != 0);
@@ -875,10 +912,10 @@ md1_get_vertices_v2(Md1*  md1,
   Assert(pose_idx < md1->details.poses_count);
   Assert(frame_idx < md1->poses[pose_idx].frames_count);
 
-  Md1Error    err = MD1_ERR_SUCCESS;
+  Md1Error err = MD1_ERR_SUCCESS;
   Md1Details* details = &md1->details;
-  Md1Pose*    pose = &md1->poses[pose_idx];
-  U32         vbuf_loc =
+  Md1Pose* pose = &md1->poses[pose_idx];
+  U32 vbuf_loc =
       (pose->first_frame + frame_idx) * md1->gpu.frame_vertex_buffer_size;
 
   *vbuf = &md1->gpu.frames_vertex_buffer_v2[vbuf_loc];
@@ -886,14 +923,19 @@ md1_get_vertices_v2(Md1*  md1,
   *ibuf = md1->gpu.index_buffer;
   *ibuf_size = md1->gpu.index_buffer_size;
 
+  TracyCZoneEnd(trcyctx);
   return err;
 }
 
 Md1Error
 md1_unload(Md1* md1) {
+  TracyCZoneN(trcyctx, "md1_unload", 1);
+
   Assert(md1 != 0);
   Assert(md1->arena != 0);
   arena_destroy(md1->arena);
+
+  TracyCZoneEnd(trcyctx);
   return MD1_ERR_SUCCESS;
 }
 

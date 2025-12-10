@@ -14,11 +14,7 @@
 #include <ctype.h>
 #include <string.h>
 
-#if defined(PROFILING)
 #include "deps/tracy/tracy.h"
-extern TracyCZoneCtx trcyctx;
-#endif
-
 #include "deps/sepi/base.h"
 
 /* ===================================================== */
@@ -100,6 +96,8 @@ KindError kind_guess_entry(CStr, U32, Kind*);
 /* ===================================================== */
 
 #ifdef MODULE_KIND_IMPLEMENTATION
+
+extern TracyCZoneCtx trcyctx;
 
 internal KindError
 guess_file_type(CStr buf, Kind* kind) {
