@@ -5,6 +5,7 @@
 /*                     DEPENDENCIES                      */
 /* ===================================================== */
 
+#include "../tracy/tracy.h"
 #include "../rapidhash/rapidhash.h"
 
 #include "base.h"
@@ -86,8 +87,12 @@ HashMapKV* hashmap_key_at(HashMap* hm, U32 index);
 
 #ifdef SEPI_HASHMAP_IMPLEMENTATION
 
+extern TracyCZoneCtx trcyctx;
+
 internal Nothing
 hashmap_list_concat_in_place(HashMapList* to, HashMapList* from) {
+  TracyCZoneN(trcyctx, "hashmap_list_concat_in_place", 1);
+
   if (from->first) {
     if (to->first) {
       to->last->next = from->first;
@@ -98,10 +103,14 @@ hashmap_list_concat_in_place(HashMapList* to, HashMapList* from) {
     }
     MemZeroStruct(from);
   }
+
+  TracyCZoneEnd(trcyctx);
 }
 
 internal HashMapNode*
 hashmap_list_pop(HashMapList* hml) {
+  TracyCZoneN(trcyctx, "hashmap_list_pop", 1);
+
   HashMapNode* hmn = hml->first;
 
   if (hml->first == hml->last) {
@@ -111,34 +120,44 @@ hashmap_list_pop(HashMapList* hml) {
     hml->first = hml->first->next;
   }
 
+  TracyCZoneEnd(trcyctx);
   return hmn;
 }
 
 internal U64
 hashmap_hasher(Str8 str) {
   return rapidhash_withSeed(str.cstr, str.size, 1987);
-  // return rapidhash(str.cstr, str.size);
 }
 
 HashMap*
 hashmap_init(Arena* a, U64 capacity) {
+  TracyCZoneN(trcyctx, "hashmap_init", 1);
+
   HashMap* hm = arena_push_array(a, HashMap, 1);
   hm->capacity = capacity;
   hm->list = arena_push_array(a, HashMapList, capacity);
+
+  TracyCZoneEnd(trcyctx);
   return hm;
 }
 
 Nothing
 hashmap_purge(HashMap* hm) {
+  TracyCZoneN(trcyctx, "hashmap_purge", 1);
+
   hm->count = 0;
 
   for (U64 i = 0; i < hm->capacity; ++i) {
     hashmap_list_concat_in_place(&hm->free_list, &hm->list[i]);
   }
+
+  TracyCZoneEnd(trcyctx);
 }
 
 HashMapNode*
 hashmap_push(Arena* a, HashMap* hm, U64 hash, HashMapKV kv) {
+  TracyCZoneN(trcyctx, "hashmap_push", 1);
+
   HashMapNode* hmn;
 
   if (hm->free_list.first != 0) {
@@ -163,6 +182,7 @@ hashmap_push(Arena* a, HashMap* hm, U64 hash, HashMapKV kv) {
 
   hm->count += 1;
 
+  TracyCZoneEnd(trcyctx);
   return hmn;
 }
 
@@ -200,19 +220,26 @@ hashmap_push_u32_str8(Arena* a, HashMap* hm, U32 key, Str8 value) {
 
 HashMapKV*
 hashmap_find(HashMap* hm, Str8 key) {
+  TracyCZoneN(trcyctx, "hashmap_find", 1);
+
   U64 hash = hashmap_hasher(key);
   U64 i = hash % hm->capacity;
   HashMapList* list = hm->list + i;
   for (HashMapNode* hmn = list->first; hmn != 0; hmn = hmn->next) {
     if (str8_cmp(hmn->kv.k_str, key, 0)) {
+      TracyCZoneEnd(trcyctx);
       return &hmn->kv;
     }
   }
+
+  TracyCZoneEnd(trcyctx);
   return 0;
 }
 
 HashMapKV
 hashmap_pop(HashMap* hm, Str8 key) {
+  TracyCZoneN(trcyctx, "hashmap_pop", 1);
+
   HashMapKV kv = {0};
   U64 hash = hashmap_hasher(key);
   U64 i = hash % hm->capacity;
@@ -229,14 +256,20 @@ hashmap_pop(HashMap* hm, Str8 key) {
         MemZeroStruct(list);
       }
       hm->count--;
+
+      TracyCZoneEnd(trcyctx);
       return kv;
     }
   }
+
+  TracyCZoneEnd(trcyctx);
   return kv;
 }
 
 Str8*
 hashmap_keys(Arena* a, HashMap* hm) {
+  TracyCZoneN(trcyctx, "hashmap_keys", 1);
+
   Str8* keys = arena_push_array_no_zero(a, Str8, hm->count);
   for (U64 listidx = 0, cursor = 0; listidx < hm->capacity; ++listidx) {
     for (HashMapNode* node = hm->list[listidx].first; node != 0;
@@ -245,21 +278,28 @@ hashmap_keys(Arena* a, HashMap* hm) {
       keys[cursor++] = node->kv.k_str;
     }
   }
+
+  TracyCZoneEnd(trcyctx);
   return keys;
 }
 
 HashMapKV*
 hashmap_key_at(HashMap* hm, U32 index) {
+  TracyCZoneN(trcyctx, "hashmap_key_at", 1);
+
   for (U64 listidx = 0, cursor = 0; listidx < hm->capacity; ++listidx) {
     for (HashMapNode* node = hm->list[listidx].first; node != 0;
          node = node->next) {
       if (cursor == index) {
+        TracyCZoneEnd(trcyctx);
         return &node->kv;
       }
       Assert(cursor < hm->count);
       cursor++;
     }
   }
+
+  TracyCZoneEnd(trcyctx);
 }
 
 /* ===================================================== */

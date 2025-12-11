@@ -41,7 +41,7 @@ endif
 
 PROJECTS := lib_log lib_sokol lib_hmm lib_stb lib_sepi app_playground app_pak
 
-.PHONY: all clean help $(PROJECTS) 
+.PHONY: all clean help $(PROJECTS)
 
 all: $(PROJECTS)
 

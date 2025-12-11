@@ -5,6 +5,8 @@
 /*                     DEPENDENCIES                      */
 /* ===================================================== */
 
+#include "../tracy/tracy.h"
+
 #include "base.h"
 #include "string.h"
 #include "arena.h"
@@ -55,9 +57,11 @@ ListError list_get(List* hm, U32 index, RawPtr* data);
 
 #ifdef SEPI_LIST_IMPLEMENTATION
 
+extern TracyCZoneCtx trcyctx;
+
 ListError
 list_purge(List* l) {
-  Dbg("list_purge() ...");
+  TracyCZoneN(trcyctx, "list_purge", 1);
 
   Assert(l != 0);
 
@@ -70,16 +74,18 @@ list_purge(List* l) {
   l->tail = 0;
   l->count = 0;
 
+  TracyCZoneEnd(trcyctx);
   return LIST_ERR_SUCCESS;
 }
 
 ListError
 list_remove(List* l, U32 index) {
-  Dbg("list_remove() ...");
+  TracyCZoneN(trcyctx, "list_remove", 1);
 
   Assert(l != 0);
 
   if (index >= l->count) {
+    TracyCZoneEnd(trcyctx);
     return LIST_INDEX_ERROR;
   }
 
@@ -89,17 +95,20 @@ list_remove(List* l, U32 index) {
       iter->previous->next = iter->next;
       iter->next->previous = iter->previous;
       l->count--;
+
+      TracyCZoneEnd(trcyctx);
       return LIST_ERR_SUCCESS;
     }
     step++;
   }
 
+  TracyCZoneEnd(trcyctx);
   return LIST_NOTE_FOUND;
 }
 
 ListError
 list_push(Arena* a, List* l, RawPtr data) {
-  Dbg("list_push() ...");
+  TracyCZoneN(trcyctx, "list_push", 1);
 
   Assert(a != 0);
   Assert(l != 0);
@@ -118,12 +127,13 @@ list_push(Arena* a, List* l, RawPtr data) {
     l->count++;
   }
 
+  TracyCZoneEnd(trcyctx);
   return LIST_ERR_SUCCESS;
 }
 
 ListError
 list_pop(List* l, RawPtr data) {
-  Dbg("list_pop() ...");
+  TracyCZoneN(trcyctx, "list_pop", 1);
 
   Assert(l != 0);
   Assert(data != 0);
@@ -132,17 +142,19 @@ list_pop(List* l, RawPtr data) {
   l->tail->next = 0;
   l->count--;
 
+  TracyCZoneEnd(trcyctx);
   return LIST_ERR_SUCCESS;
 }
 
 ListError
 list_get(List* l, U32 index, RawPtr* data) {
-  Dbg("list_get() ...");
+  TracyCZoneN(trcyctx, "list_get", 1);
 
   Assert(l != 0);
   Assert(data != 0);
 
   if (index >= l->count) {
+    TracyCZoneEnd(trcyctx);
     return LIST_INDEX_ERROR;
   }
 
@@ -152,11 +164,14 @@ list_get(List* l, U32 index, RawPtr* data) {
       iter->previous->next = iter->next;
       iter->next->previous = iter->previous;
       *data = iter->data;
+
+      TracyCZoneEnd(trcyctx);
       return LIST_ERR_SUCCESS;
     }
     step++;
   }
 
+  TracyCZoneEnd(trcyctx);
   return LIST_NOTE_FOUND;
 }
 
