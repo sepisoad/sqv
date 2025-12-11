@@ -28,6 +28,7 @@
 
 #define PAK_MAGIC_CODE_LEN 4
 #define PAK_ENTRY_NAME_LEN 56
+#define PAK_MAX_ERROR_LENGTH 512
 
 /* ===================================================== */
 /*                         TYPES                         */
@@ -74,6 +75,7 @@ typedef struct {
   PakDetails details;
   PakEntry* entries;
   PakTree tree;
+  char error_text[PAK_MAX_ERROR_LENGTH];
   Arena* arena;
 } Pak;
 
@@ -186,6 +188,8 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
   Assert(pak != 0);
   Assert(ndb != 0);
 
+  PakError err = PAK_ERR_SUCCESS;
+
   Arena* arena = pak->arena;
   Sz sz = sizeof(PakEntry) * pak->details.entries_count;
   PakEntry* entries = (PakEntry*)arena_push(arena, sz, AlignOf(PakEntry), TRUE);
@@ -196,13 +200,14 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
     PakEntry* entry = entries + index;
     U32 offset = 0;
 
-    // NOTE: i was under impression the the name buffer is filled with zeros
-    //       after the last character, but i was proven wrong when i tested
-    //       https://www.slipseer.com/index.php?resources/dwell.21/
-    //       unfortunately using memcpy here is not that safe
-    //       so i had to compromise and use strncpy instead!
-    //       ---
-    //       memcpy(entry->name, ND_ADDR(ndb), PAK_ENTRY_NAME_LEN);
+    // NOTE:
+    // i was under impression the the name buffer is filled with zeros
+    // after the last character, but i was proven wrong when i tested
+    // https://www.slipseer.com/index.php?resources/dwell.21/
+    // unfortunately using memcpy here is not that safe
+    // so i had to compromise and use strncpy instead which is slower!
+    // ---
+    // memcpy(entry->name, ND_ADDR(ndb), PAK_ENTRY_NAME_LEN);
 
     strncpy(entry->name, ND_ADDR(ndb), PAK_ENTRY_NAME_LEN);
     ND_MOVE(ndb, PAK_ENTRY_NAME_LEN);
@@ -212,13 +217,16 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
     KindError kerr =
         kind_guess_entry(entry->name, PAK_ENTRY_NAME_LEN, &entry->kind);
     if (kerr != KIND_ERR_SUCCESS) {
-      return PAK_ERR_MALFORMED;
+      err = PAK_ERR_MALFORMED;
+      snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH, "failed to guess item '%s' kind", entry->name);
+      goto cleanup;
     }
 
     U32 depth = 0;
-    PakError perr = pak_get_path_depth(entry->name, PAK_ENTRY_NAME_LEN, &depth);
-    if (perr != PAK_ERR_SUCCESS) {
-      return perr;
+    err = pak_get_path_depth(entry->name, PAK_ENTRY_NAME_LEN, &depth);
+    if (err != PAK_ERR_SUCCESS) {
+      snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH, "failed to get path '%s' depth", entry->name);
+      goto cleanup;
     }
 
     PakTreeNode* node = &pak->tree.root;
@@ -226,16 +234,18 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
       char name[PAK_ENTRY_NAME_LEN] = {0};
       char item_name[PAK_ENTRY_NAME_LEN] = {0};
 
-      PakError perr = pak_get_path_at_depth(entry->name, PAK_ENTRY_NAME_LEN,
+      err = pak_get_path_at_depth(entry->name, PAK_ENTRY_NAME_LEN,
                                             depth_index + 1, &name[0]);
-      if (perr != PAK_ERR_SUCCESS) {
-        return perr;
+      if (err != PAK_ERR_SUCCESS) {
+        snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH, "failed to get path '%s' at depth '%d'", entry->name, depth_index);
+        goto cleanup;
       }
 
-      perr = pak_get_item_name_at_depth(name, strlen(name), depth_index,
+      err = pak_get_item_name_at_depth(name, strlen(name), depth_index,
                                         &item_name[0]);
-      if (perr != PAK_ERR_SUCCESS) {
-        return perr;
+      if (err != PAK_ERR_SUCCESS) {
+        snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH, "failed to get item '%s' name at depth '%d'", name, depth_index);
+        goto cleanup;
       }
 
       HashMapKV* kv = hashmap_find(node->children, str8(name));
@@ -266,8 +276,9 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
     }
   }
 
+cleanup:
   TracyCZoneEnd(trcyctx);
-  return PAK_ERR_SUCCESS;
+  return err;
 }
 
 /* ===================================================== */
@@ -276,11 +287,12 @@ PakError
 pak_load(Pak* pak, NDBuffer* ndb) {
   TracyCZoneN(trcyctx, "pak_load", 1);
 
+  PakError err = PAK_ERR_SUCCESS;
+
   Assert(pak != 0);
   Assert(ndb != 0);
   Assert(pak->arena == 0);
 
-  PakError err;
   U8 magic_code[PAK_MAGIC_CODE_LEN] = {0};
   I32 offset = 0;
   I32 size = 0;
@@ -312,11 +324,12 @@ pak_load(Pak* pak, NDBuffer* ndb) {
 
   err = pak_read_entries(pak, ndb);
   if (err != PAK_ERR_SUCCESS) {
-    return err;
+    goto cleanup;
   }
 
+cleanup:
   TracyCZoneEnd(trcyctx);
-  return PAK_ERR_SUCCESS;
+  return err;
 }
 
 /* ===================================================== */
