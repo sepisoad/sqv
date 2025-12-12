@@ -121,6 +121,7 @@ internal AppPakError app_pak_init_icon(AppPakImage* app_icon,
                                        CBuf buffer,
                                        Sz size);
 internal Nothing app_pak_cleanup();
+internal Nothing app_pak_cleanup_reload();
 internal AppPakError app_pak_cleanup_icons();
 internal AppPakError app_pak_cleanup_icon(AppPakImage* app_icon);
 
@@ -389,6 +390,28 @@ app_pak_cleanup() {
   TracyCZoneEnd(trcyctx);
 }
 
+internal Nothing
+app_pak_cleanup_reload() {
+  TracyCZoneN(trcyctx, "app_pak_cleanup_reload", 1);
+
+  if (S.input_file) {
+    fclose(S.input_file);
+    S.input_file = 0;
+    S.input_file_path = 0;
+  }
+
+  S.is_extracting_requested = FALSE;
+  S.mode = APP_PAK_MODE_EMPTY;
+  MemZeroArray(S.error_text);
+
+  pak_unload(&S.pak);
+  arena_destroy(S.arena);
+  S.arena = 0;
+  S.arena = arena_create();
+
+  TracyCZoneEnd(trcyctx);
+}
+
 internal AppPakError
 app_pak_cleanup_icons() {
   TracyCZoneN(trcyctx, "app_pak_cleanup_icons", 1);
@@ -473,37 +496,11 @@ app_pak_handle_file_drop(CBuf path) {
   // we may want to allow this to happen, so the user does not have to
   // re-run the app for a new .PAK file! but this has to reset all the
   // states and wipe the arenas!
-  if (S.mode == APP_PAK_MODE_LOADED)
-    goto cleanup;
+  if (S.mode == APP_PAK_MODE_LOADED){
+    // goto cleanup;
+    app_pak_cleanup_reload();
+  }
 
-  // NOTE:
-  // in the future we want to expand the support to other asset file types as
-  // well suck as quake 2 and quake 3, etc, so we need to first figure out the
-  // file type here and then call into the corresponding handler, for now we
-  // just focus on quake 1 '.PAK' files
-
-  // ArenaScratch scratch = arena_scratch_begin(S.arena);
-
-  // NDBuffer ndb = {0};
-  // IOError ioerr = io_load_file(scratch.arena, path, &ndb);
-  // if (ioerr != IO_ERR_SUCCESS) {
-  //   S.mode = APP_PAK_MODE_FAILED;
-  //   goto cleanup;
-  // }
-
-  // PakError pakerr = pak_load_from_memory(&S.pak, &ndb);
-  // if (pakerr != PAK_ERR_SUCCESS) {
-  //   S.mode = APP_PAK_MODE_FAILED;
-  //   goto cleanup;
-  // }
-
-  // S.mode = APP_PAK_MODE_LOADED;
-  // S.input_file_path = path;
-  // S.current_pak_tree_node = &S.pak.tree.root;
-
-  // arena_scratch_end(scratch);
-
-  //=========================
   S.input_file = fopen(path, "rb");
   if (0 == S.input_file) {
     snprintf(S.error_text, APP_PAK_MAX_ERROR_LENGTH, "failed to open '%s'",
@@ -525,7 +522,6 @@ app_pak_handle_file_drop(CBuf path) {
   S.mode = APP_PAK_MODE_LOADED;
   S.input_file_path = path;
   S.current_pak_tree_node = &S.pak.tree.root;
-  //=========================
 
 cleanup:
   TracyCZoneEnd(trcyctx);
