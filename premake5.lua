@@ -197,22 +197,24 @@ newaction {
   trigger = "app-pak",
   description = "run pak app",
   execute = function()
-    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak")
+    -- SUCCESSFULL:
+    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/id1/pak0.pak")
+    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/sprawl/pak0.pak")
+    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/copper/pak0.pak")
+    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/immortal/pak0.pak")
+    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/libre/pak0.pak")
+    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/PE1_landing/pak0.pak")
+    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/sacrilege/pak0.pak")
+    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/smej2_1.1/pak0.pak")
+    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/sprawl/pak0.pak")
+    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/tf/pak0.pak")
+    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/alkaline/pak0.pak")
+    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/bni/pak0.pak")
+    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/st_full/pak0.pak")
+    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/peril3.0/pak0.pak")
 
-    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/id1/pak0.pak") -- OK
-    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/sprawl/pak0.pak") -- OK
-    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/copper/pak0.pak") -- OK
-    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/immortal/pak0.pak") -- OK
-    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/libre/pak0.pak") -- OK
-    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/PE1_landing/pak0.pak") -- OK
-    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/sacrilege/pak0.pak") -- OK
-    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/smej2_1.1/pak0.pak") -- OK
-    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/sprawl/pak0.pak") -- OK
-    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/tf/pak0.pak") -- OK
-    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/alkaline/pak0.pak") -- OK
-    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/bni/pak0.pak") -- OK
-    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/st_full/pak0.pak") -- OK
-    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/peril3.0/pak0.pak") -- OK
-    os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/dwellv1p2/pak0.pak") -- CRASHED
+    -- FAILED:
+    -- os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/peril3.0/pak2.pak")
+    os.execute("LSAN_OPTIONS=suppressions=lsan.supp .build/app_pak --input=/home/sepi/Games/pc/quake1/MALICE/PAK0.PAK")
   end
 }

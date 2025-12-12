@@ -149,7 +149,7 @@ kind_guess_entry(CStr path, U32 len, Kind* kind) {
   start = ridx + 1;
 
   extlen = end - start;
-  strncpy(ext, path + start, extlen);
+  strncpy(ext, path + start, extlen); // <== this mother fucker is driving me mad!
 
   for (I32 i = 0; i < extlen; i++)
     ext[i] = toupper(ext[i]);

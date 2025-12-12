@@ -336,6 +336,7 @@ app_pak_init_icon(AppPakImage* app_icon, CBuf buffer, Sz size) {
              "failed to load icon image from memory");
     goto cleanup;
   }
+  TracyCAlloc(data, size);
 
   app_icon->image = sg_make_image(&(sg_image_desc){
       .width = w,
@@ -363,8 +364,10 @@ app_pak_init_icon(AppPakImage* app_icon, CBuf buffer, Sz size) {
   app_icon->icon_image = nk_image_handle(app_icon->handle);
 
 cleanup:
-  if (data)
+  if (data) {
     free(data);
+    TracyCFree(data);
+  }
 
   TracyCZoneEnd(trcyctx);
   return err;

@@ -64,7 +64,7 @@ platform_reserve_large_pages(Sz size) {
   TracyCZoneN(trcyctx, "platform_reserve_large_pages", 1);
 
   U32 flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB;
-  void* result = mmap(0, size, PROT_NONE, flags, -1, 0);
+  RawPtr result = mmap(0, size, PROT_NONE, flags, -1, 0);
   if (result == MAP_FAILED) {
     flags = MAP_PRIVATE | MAP_ANONYMOUS;
     result = mmap(0, size, PROT_NONE, flags, -1, 0);
@@ -73,6 +73,7 @@ platform_reserve_large_pages(Sz size) {
     }
   }
 
+  TracyCSecureAllocN(result, size, "platform_reserve_large_pages");
   TracyCZoneEnd(trcyctx);
   return result;
 }
@@ -93,6 +94,7 @@ platform_release(RawPtr ptr, Sz size) {
 
   munmap(ptr, size);
 
+  TracyCSecureFree(ptr);
   TracyCZoneEnd(trcyctx);
 }
 
@@ -127,6 +129,7 @@ platform_reserve_large_pages(Sz size) {
   RawPtr result = VirtualAlloc(
       0, size, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
 
+  TracyCSecureAllocN(result, size, "platform_reserve_large_pages");
   TracyCZoneEnd(trcyctx);
   return result;
 }
@@ -143,6 +146,7 @@ platform_release(RawPtr ptr, Sz size) {
   Ignore(size);
   VirtualFree(ptr, 0, MEM_RELEASE);
 
+  TracyCSecureFree(ptr);
   TracyCZoneEnd(trcyctx);
 }
 
