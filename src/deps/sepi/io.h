@@ -39,6 +39,9 @@ IOError io_load_file(Arena*, CBuf, NDBuffer*);
 #define IO_SET(f, ofs) fseek((f), (ofs), SEEK_SET)
 #define IO_MOVE(f, sz) fseek((f), (sz), SEEK_CUR)
 
+#define IO_BUF(f /* FILE* */, len /* U32 */, buf /* CBuf */) \
+  fread((buf), 1, (len), (f))
+
 #define IO_I16(f /* FILE* */, num /* I16* */) \
   {                                           \
     I16 tmp;                                  \

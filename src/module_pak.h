@@ -54,7 +54,6 @@ typedef struct {
 typedef struct {
   char name[PAK_ENTRY_NAME_LEN];
   Kind kind;
-  // Sz size;
 } PakEntry;
 
 typedef struct PakTreeNode PakTreeNode;
@@ -373,7 +372,7 @@ pak_read_entries_from_file(Pak* pak, FILE* file) {
     U32 size = 0;
     U32 offset = 0;
 
-    fread(entry->name, 1, PAK_ENTRY_NAME_LEN, file);
+    IO_BUF(file, PAK_ENTRY_NAME_LEN, entry->name);
     IO_I32(file, &offset);
     IO_I32(file, &size);
 
@@ -470,7 +469,7 @@ pak_load_from_file(Pak* pak, FILE* file) {
 
   pak->arena = arena_create();
 
-  fread(magic_code, 1, PAK_MAGIC_CODE_LEN, file);
+  IO_BUF(file, PAK_MAGIC_CODE_LEN, magic_code);
   IO_I32(file, &offset);
   IO_I32(file, &size);
   IO_SET(file, offset);
