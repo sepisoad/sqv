@@ -54,7 +54,7 @@ typedef struct {
 typedef struct {
   char name[PAK_ENTRY_NAME_LEN];
   Kind kind;
-  Sz size;
+  // Sz size;
 } PakEntry;
 
 typedef struct PakTreeNode PakTreeNode;
@@ -62,6 +62,8 @@ typedef struct PakTreeNode PakTreeNode;
 struct PakTreeNode {
   char name[PAK_ENTRY_NAME_LEN];
   char item_name[PAK_ENTRY_NAME_LEN];
+  Sz size;
+  U32 offset;
   Bool is_dir;
   HashMap* children;
   PakTreeNode* parent;
@@ -199,6 +201,7 @@ pak_read_entries_from_memory(Pak* pak, NDBuffer* ndb) {
 
   for (U32 index = 0; index < pak->details.entries_count; index++) {
     PakEntry* entry = entries + index;
+    U32 size = 0;
     U32 offset = 0;
 
     // NOTE:
@@ -213,7 +216,7 @@ pak_read_entries_from_memory(Pak* pak, NDBuffer* ndb) {
     strncpy(entry->name, ND_ADDR(ndb), PAK_ENTRY_NAME_LEN);
     ND_MOVE(ndb, PAK_ENTRY_NAME_LEN);
     ND_I32(ndb, &offset);
-    ND_I32(ndb, &entry->size);
+    ND_I32(ndb, &size);
 
     KindError kerr =
         kind_guess_entry(entry->name, PAK_ENTRY_NAME_LEN, &entry->kind);
@@ -274,6 +277,8 @@ pak_read_entries_from_memory(Pak* pak, NDBuffer* ndb) {
 
       if (depth_index >= depth) {
         child->is_dir = FALSE;
+        child->size = size;
+        child->offset = offset;
         continue;
       }
 
@@ -365,11 +370,12 @@ pak_read_entries_from_file(Pak* pak, FILE* file) {
 
   for (U32 index = 0; index < pak->details.entries_count; index++) {
     PakEntry* entry = entries + index;
+    U32 size = 0;
     U32 offset = 0;
 
     fread(entry->name, 1, PAK_ENTRY_NAME_LEN, file);
     IO_I32(file, &offset);
-    IO_I32(file, &entry->size);
+    IO_I32(file, &size);
 
     KindError kerr =
         kind_guess_entry(entry->name, PAK_ENTRY_NAME_LEN, &entry->kind);
@@ -430,6 +436,8 @@ pak_read_entries_from_file(Pak* pak, FILE* file) {
 
       if (depth_index >= depth) {
         child->is_dir = FALSE;
+        child->size = size;
+        child->offset = offset;
         continue;
       }
 
