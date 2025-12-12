@@ -35,6 +35,50 @@ typedef enum {
 
 IOError io_load_file(Arena*, CBuf, NDBuffer*);
 
+#define IO_POS(f) ftell((f))
+#define IO_SET(f, ofs) fseek((f), (ofs), SEEK_SET)
+#define IO_MOVE(f, sz) fseek((f), (sz), SEEK_CUR)
+
+#define IO_I16(f /* FILE* */, num /* I16* */) \
+  {                                           \
+    I16 tmp;                                  \
+    fread(&tmp, 1, sizeof(I16), (f));         \
+    tmp = nd_i16(tmp);                        \
+    *(num) = tmp;                             \
+  }
+
+#define IO_I32(f /* FILE* */, num /* I32* */) \
+  {                                           \
+    I32 tmp;                                  \
+    fread(&tmp, 1, sizeof(I32), (f));         \
+    tmp = nd_i32(tmp);                        \
+    *(num) = tmp;                             \
+  }
+
+#define IO_I64(f /* FILE* */, num /* I64* */) \
+  {                                           \
+    I64 tmp;                                  \
+    fread(&tmp, 1, sizeof(I64), (f));         \
+    tmp = nd_i64(tmp);                        \
+    *(num) = tmp;                             \
+  }
+
+#define IO_F32(f /* FILE* */, num /* F32* */) \
+  {                                           \
+    F32 tmp;                                  \
+    fread(&tmp, 1, sizeof(F32), (f));         \
+    tmp = nd_f32(tmp);                        \
+    *(num) = tmp;                             \
+  }
+
+#define IO_F64(f /* FILE* */, num /* F64* */) \
+  {                                           \
+    F64 tmp;                                  \
+    fread(&tmp, 1, sizeof(F64), (f));         \
+    tmp = nd_f64(tmp);                        \
+    *(num) = tmp;                             \
+  }
+
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
 /* ===================================================== */
@@ -62,7 +106,6 @@ io_load_file(Arena* arena, CBuf path, NDBuffer* ndb) {
 
   {
     TracyCZoneN(trcyctx, "io_load_file::fseek", 2);
-    fseek(f, 0, SEEK_END);
     TracyCZoneEnd(trcyctx);
   }
 

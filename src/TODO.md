@@ -6,7 +6,7 @@
 - [X] not load file content
 - [X] show proper node name, instead of 'foo/bar/baz.txt' show 'baz.txt'
 - [X] add a profiling build using tracy!
-- [ ] maybe open the file and read from it as like a stream and keep the file open until the end!
+- [X] maybe open the file and read from it as like a stream and keep the file open until the end!
 - [ ] lazy load file contents when needed! if ever!
 - [ ] extract file/foler
 - [ ] add folder drag into an existing loaded pak to create new .PAK file

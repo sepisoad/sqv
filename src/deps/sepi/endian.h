@@ -83,56 +83,20 @@ F64 nd_f64(F64 num);
     ND_MOVE((ndb), sizeof(F64));                    \
   }
 
-#define ND_I16_OLD(num /* I16* */, buf /* CBuf */, ofs /* U32 */) \
-  {                                                               \
-    I16 tmp;                                                      \
-    memcpy(&tmp, buf + ofs, sizeof(I16));                         \
-    tmp = nd_i16(tmp);                                            \
-    *(num) = tmp;                                                 \
-    ofs += sizeof(I16);                                           \
-  }
-
-#define ND_I32_OLD(num /* I32* */, buf /* CBuf */, ofs /* U32 */) \
-  {                                                               \
-    I32 tmp;                                                      \
-    memcpy(&tmp, buf + ofs, sizeof(I32));                         \
-    tmp = nd_i32(tmp);                                            \
-    *(num) = tmp;                                                 \
-    ofs += sizeof(I32);                                           \
-  }
-
-#define ND_I64_OLD(num /* I64* */, buf /* CBuf */, ofs /* U32 */) \
-  {                                                               \
-    I64 tmp;                                                      \
-    memcpy(&tmp, buf + ofs, sizeof(I64));                         \
-    tmp = nd_i64(tmp);                                            \
-    *(num) = tmp;                                                 \
-    ofs += sizeof(I64);                                           \
-  }
-
-#define ND_F32_OLD(num /* F32* */, buf /* CBuf */, ofs /* U32 */) \
-  {                                                               \
-    F32 tmp;                                                      \
-    memcpy(&tmp, buf + ofs, sizeof(F32));                         \
-    tmp = nd_f32(tmp);                                            \
-    *(num) = tmp;                                                 \
-    ofs += sizeof(F32);                                           \
-  }
-
-#define ND_F64_OLD(num /* F64* */, buf /* CBuf */, ofs /* U32 */) \
-  {                                                               \
-    F64 tmp;                                                      \
-    memcpy(&tmp, buf + ofs, sizeof(F64));                         \
-    tmp = nd_f64(tmp);                                            \
-    *(num) = tmp;                                                 \
-    ofs += sizeof(F64);                                           \
-  }
-
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
 /* ===================================================== */
 
 #ifdef SEPI_ENDIAN_IMPLEMENTATION
+
+// TODO:
+// we should evaluate this at compile time and not waste cpu
+// cycles on run time, after all when we build the code for
+// a specific cpu architecture we cannot run it on another
+// one, so why keep checking this on run-time?
+//
+// technically we can convert all these functions into macros!
+//
 
 internal inline Bool
 isle() {

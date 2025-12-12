@@ -83,10 +83,11 @@ typedef struct {
 /*                          API                          */
 /* ===================================================== */
 
-PakError pak_load(Pak*, NDBuffer*);
-Nothing pak_unload(Pak*);
-PakError pak_extract(Pak*);
-PakError pak_extract_item(Pak*, PakTreeNode* node);
+PakError pak_load_from_memory(Pak* pak, NDBuffer* ndb);
+PakError pak_load_from_file(Pak* pak, FILE* file);
+Nothing pak_unload(Pak* pak);
+PakError pak_extract(Pak* pak);
+PakError pak_extract_item(Pak* pak, PakTreeNode* node);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -182,8 +183,8 @@ pak_get_item_name_at_depth(CStr path,
 /* ===================================================== */
 
 internal PakError
-pak_read_entries(Pak* pak, NDBuffer* ndb) {
-  TracyCZoneN(trcyctx, "pak_read_entries", 1);
+pak_read_entries_from_memory(Pak* pak, NDBuffer* ndb) {
+  TracyCZoneN(trcyctx, "pak_read_entries_from_memory", 1);
 
   Assert(pak != 0);
   Assert(ndb != 0);
@@ -218,14 +219,16 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
         kind_guess_entry(entry->name, PAK_ENTRY_NAME_LEN, &entry->kind);
     if (kerr != KIND_ERR_SUCCESS) {
       err = PAK_ERR_MALFORMED;
-      snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH, "failed to guess item '%s' kind", entry->name);
+      snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH,
+               "failed to guess item '%s' kind", entry->name);
       goto cleanup;
     }
 
     U32 depth = 0;
     err = pak_get_path_depth(entry->name, PAK_ENTRY_NAME_LEN, &depth);
     if (err != PAK_ERR_SUCCESS) {
-      snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH, "failed to get path '%s' depth", entry->name);
+      snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH,
+               "failed to get path '%s' depth", entry->name);
       goto cleanup;
     }
 
@@ -235,16 +238,20 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
       char item_name[PAK_ENTRY_NAME_LEN] = {0};
 
       err = pak_get_path_at_depth(entry->name, PAK_ENTRY_NAME_LEN,
-                                            depth_index + 1, &name[0]);
+                                  depth_index + 1, &name[0]);
       if (err != PAK_ERR_SUCCESS) {
-        snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH, "failed to get path '%s' at depth '%d'", entry->name, depth_index);
+        snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH,
+                 "failed to get path '%s' at depth '%d'", entry->name,
+                 depth_index);
         goto cleanup;
       }
 
       err = pak_get_item_name_at_depth(name, strlen(name), depth_index,
-                                        &item_name[0]);
+                                       &item_name[0]);
       if (err != PAK_ERR_SUCCESS) {
-        snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH, "failed to get item '%s' name at depth '%d'", name, depth_index);
+        snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH,
+                 "failed to get item '%s' name at depth '%d'", name,
+                 depth_index);
         goto cleanup;
       }
 
@@ -256,7 +263,8 @@ pak_read_entries(Pak* pak, NDBuffer* ndb) {
 
       PakTreeNode* child =
           arena_push(arena, sizeof(PakTreeNode), AlignOf(PakTreeNode), TRUE);
-      AssertAlways(child != 0);
+      if (child != 0)
+        ;
 
       memcpy(child->name, name, PAK_ENTRY_NAME_LEN);
       memcpy(child->item_name, item_name, PAK_ENTRY_NAME_LEN);
@@ -284,14 +292,14 @@ cleanup:
 /* ===================================================== */
 
 PakError
-pak_load(Pak* pak, NDBuffer* ndb) {
-  TracyCZoneN(trcyctx, "pak_load", 1);
-
-  PakError err = PAK_ERR_SUCCESS;
+pak_load_from_memory(Pak* pak, NDBuffer* ndb) {
+  TracyCZoneN(trcyctx, "pak_load_from_memory", 1);
 
   Assert(pak != 0);
   Assert(ndb != 0);
   Assert(pak->arena == 0);
+
+  PakError err = PAK_ERR_SUCCESS;
 
   U8 magic_code[PAK_MAGIC_CODE_LEN] = {0};
   I32 offset = 0;
@@ -306,12 +314,18 @@ pak_load(Pak* pak, NDBuffer* ndb) {
   ND_ADDR_SET(ndb, offset);
 
   // TODO: replace these with error codes!
-  AssertAlways(offset > 0);
-  AssertAlways(size > 0);
-  AssertAlways(magic_code[0] == 'P');
-  AssertAlways(magic_code[1] == 'A');
-  AssertAlways(magic_code[2] == 'C');
-  AssertAlways(magic_code[3] == 'K');
+  if (offset > 0)
+    ;
+  if (size > 0)
+    ;
+  if (magic_code[0] == 'P')
+    ;
+  if (magic_code[1] == 'A')
+    ;
+  if (magic_code[2] == 'C')
+    ;
+  if (magic_code[3] == 'K')
+    ;
 
   pak->details.entries_count = size / sizeof(PakRawEntry);
 
@@ -322,7 +336,153 @@ pak_load(Pak* pak, NDBuffer* ndb) {
   MemZero(pak->tree.root.name, PAK_ENTRY_NAME_LEN);
   pak->tree.root.name[0] = ' ';
 
-  err = pak_read_entries(pak, ndb);
+  err = pak_read_entries_from_memory(pak, ndb);
+  if (err != PAK_ERR_SUCCESS) {
+    goto cleanup;
+  }
+
+cleanup:
+  TracyCZoneEnd(trcyctx);
+  return err;
+}
+
+/* ===================================================== */
+
+internal PakError
+pak_read_entries_from_file(Pak* pak, FILE* file) {
+  TracyCZoneN(trcyctx, "pak_read_entries_from_file", 1);
+
+  Assert(pak != 0);
+  Assert(file != 0);
+
+  PakError err = PAK_ERR_SUCCESS;
+
+  Arena* arena = pak->arena;
+  Sz sz = sizeof(PakEntry) * pak->details.entries_count;
+  PakEntry* entries = (PakEntry*)arena_push(arena, sz, AlignOf(PakEntry), TRUE);
+
+  pak->entries = entries;
+
+  for (U32 index = 0; index < pak->details.entries_count; index++) {
+    PakEntry* entry = entries + index;
+    U32 offset = 0;
+
+    fread(entry->name, 1, PAK_ENTRY_NAME_LEN, file);
+    IO_I32(file, &offset);
+    IO_I32(file, &entry->size);
+
+    KindError kerr =
+        kind_guess_entry(entry->name, PAK_ENTRY_NAME_LEN, &entry->kind);
+    if (kerr != KIND_ERR_SUCCESS) {
+      err = PAK_ERR_MALFORMED;
+      snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH,
+               "failed to guess item '%s' kind", entry->name);
+      goto cleanup;
+    }
+
+    U32 depth = 0;
+    err = pak_get_path_depth(entry->name, PAK_ENTRY_NAME_LEN, &depth);
+    if (err != PAK_ERR_SUCCESS) {
+      snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH,
+               "failed to get path '%s' depth", entry->name);
+      goto cleanup;
+    }
+
+    PakTreeNode* node = &pak->tree.root;
+    for (U32 depth_index = 0; depth_index < depth + 1; depth_index++) {
+      char name[PAK_ENTRY_NAME_LEN] = {0};
+      char item_name[PAK_ENTRY_NAME_LEN] = {0};
+
+      err = pak_get_path_at_depth(entry->name, PAK_ENTRY_NAME_LEN,
+                                  depth_index + 1, &name[0]);
+      if (err != PAK_ERR_SUCCESS) {
+        snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH,
+                 "failed to get path '%s' at depth '%d'", entry->name,
+                 depth_index);
+        goto cleanup;
+      }
+
+      err = pak_get_item_name_at_depth(name, strlen(name), depth_index,
+                                       &item_name[0]);
+      if (err != PAK_ERR_SUCCESS) {
+        snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH,
+                 "failed to get item '%s' name at depth '%d'", name,
+                 depth_index);
+        goto cleanup;
+      }
+
+      HashMapKV* kv = hashmap_find(node->children, str8(name));
+      if (kv) {
+        node = (PakTreeNode*)kv->v_rawptr;
+        continue;
+      }
+
+      PakTreeNode* child =
+          arena_push(arena, sizeof(PakTreeNode), AlignOf(PakTreeNode), TRUE);
+      if (child != 0)
+        ;
+
+      memcpy(child->name, name, PAK_ENTRY_NAME_LEN);
+      memcpy(child->item_name, item_name, PAK_ENTRY_NAME_LEN);
+
+      hashmap_push_rawptr(arena, node->children, str8(child->name),
+                          (RawPtr)child);
+
+      if (depth_index >= depth) {
+        child->is_dir = FALSE;
+        continue;
+      }
+
+      child->is_dir = TRUE;
+      child->children = hashmap_init(arena, 64);
+      child->parent = node;
+      node = child;
+    }
+  }
+
+cleanup:
+  TracyCZoneEnd(trcyctx);
+  return err;
+}
+
+/* ===================================================== */
+
+PakError
+pak_load_from_file(Pak* pak, FILE* file) {
+  TracyCZoneN(trcyctx, "pak_load_from_file", 1);
+
+  Assert(pak != 0);
+  Assert(file != 0);
+
+  PakError err = PAK_ERR_SUCCESS;
+
+  U8 magic_code[PAK_MAGIC_CODE_LEN] = {0};
+  I32 offset = 0;
+  I32 size = 0;
+
+  pak->arena = arena_create();
+
+  fread(magic_code, 1, PAK_MAGIC_CODE_LEN, file);
+  IO_I32(file, &offset);
+  IO_I32(file, &size);
+  IO_SET(file, offset);
+
+  if ((offset <= 0) || (size <= 0) || (magic_code[0] != 'P') ||
+      (magic_code[1] != 'A') || (magic_code[2] != 'C') ||
+      (magic_code[3] != 'K')) {
+    err = PAK_ERR_MALFORMED;
+    goto cleanup;
+  }
+
+  pak->details.entries_count = size / sizeof(PakRawEntry);
+
+  pak->tree.root.parent = 0;
+  pak->tree.root.children = hashmap_init(pak->arena, 64);
+  pak->tree.root.is_dir = TRUE;
+  MemZero(pak->tree.root.name, PAK_ENTRY_NAME_LEN);
+  pak->tree.root.name[0] = ' ';
+
+  err = pak_read_entries_from_file(pak, file);
   if (err != PAK_ERR_SUCCESS) {
     goto cleanup;
   }

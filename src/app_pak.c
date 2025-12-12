@@ -129,27 +129,31 @@ internal AppPakError app_pak_handle_file_drop(CBuf path);
 internal Nothing app_pak_frame();
 internal U32 app_pak_draw(struct nk_context* ctx);
 internal Nothing app_pak_draw_mode_empty(struct nk_context* ctx,
-                                        nk_flags window_flags,
-                                        U32 window_width,
-                                        U32 window_height);
-internal Nothing app_pak_draw_mode_loaded(struct nk_context* ctx,
                                          nk_flags window_flags,
                                          U32 window_width,
                                          U32 window_height);
+internal Nothing app_pak_draw_mode_failed(struct nk_context* ctx,
+                                          nk_flags window_flags,
+                                          U32 window_width,
+                                          U32 window_height);
 internal Nothing app_pak_draw_mode_loaded(struct nk_context* ctx,
-                                         nk_flags window_flags,
-                                         U32 window_width,
-                                         U32 window_height);
+                                          nk_flags window_flags,
+                                          U32 window_width,
+                                          U32 window_height);
+internal Nothing app_pak_draw_mode_loaded(struct nk_context* ctx,
+                                          nk_flags window_flags,
+                                          U32 window_width,
+                                          U32 window_height);
 internal Nothing app_pak_draw_widget_explorer_area(struct nk_context* ctx,
-                                                  U32 window_width,
-                                                  U32 window_height);
+                                                   U32 window_width,
+                                                   U32 window_height);
 internal Nothing app_pak_draw_widget_explorer_item(struct nk_context* ctx,
-                                                  PakTreeNode* node);
+                                                   PakTreeNode* node);
 internal Nothing app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
-                                                  PakTreeNode* node,
-                                                  Bool is_dir,
-                                                  struct nk_image* image,
-                                                  CStr text);
+                                                   PakTreeNode* node,
+                                                   Bool is_dir,
+                                                   struct nk_image* image,
+                                                   CStr text);
 
 /* ===================================================== */
 /*                       FUNCTIONS                       */
@@ -371,6 +375,11 @@ internal Nothing
 app_pak_cleanup() {
   TracyCZoneN(trcyctx, "app_pak_cleanup", 1);
 
+  if (S.input_file) {
+    fclose(S.input_file);
+    S.input_file = 0;
+  }
+
   app_pak_cleanup_icons();
   snk_shutdown();
   sg_shutdown();
@@ -422,10 +431,6 @@ app_pak_cleanup_icon(AppPakImage* app_icon) {
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
-  if (S.input_file) {
-    fclose(S.input_file);
-    S.input_file = 0;
-  }
   sg_destroy_view(app_icon->view);
   sg_destroy_sampler(app_icon->sampler);
   sg_destroy_image(app_icon->image);
@@ -477,20 +482,42 @@ app_pak_handle_file_drop(CBuf path) {
   // file type here and then call into the corresponding handler, for now we
   // just focus on quake 1 '.PAK' files
 
-  ArenaScratch scratch = arena_scratch_begin(S.arena);
+  // ArenaScratch scratch = arena_scratch_begin(S.arena);
 
-  NDBuffer ndb = {0};
-  IOError ioerr = io_load_file(scratch.arena, path, &ndb);
-  if (ioerr != IO_ERR_SUCCESS) {
+  // NDBuffer ndb = {0};
+  // IOError ioerr = io_load_file(scratch.arena, path, &ndb);
+  // if (ioerr != IO_ERR_SUCCESS) {
+  //   S.mode = APP_PAK_MODE_FAILED;
+  //   goto cleanup;
+  // }
+
+  // PakError pakerr = pak_load_from_memory(&S.pak, &ndb);
+  // if (pakerr != PAK_ERR_SUCCESS) {
+  //   S.mode = APP_PAK_MODE_FAILED;
+  //   goto cleanup;
+  // }
+
+  // S.mode = APP_PAK_MODE_LOADED;
+  // S.input_file_path = path;
+  // S.current_pak_tree_node = &S.pak.tree.root;
+
+  // arena_scratch_end(scratch);
+
+  //=========================
+  S.input_file = fopen(path, "rb");
+  if (0 == S.input_file) {
+    snprintf(S.error_text, APP_PAK_MAX_ERROR_LENGTH, "failed to open '%s'",
+             path);
+    err = APP_PAK_ERR_FILE_OPEN;
     S.mode = APP_PAK_MODE_FAILED;
     goto cleanup;
   }
 
-  // S.input_file = fopen(path, "rb");
-  // if (S
-
-  PakError pakerr = pak_load(&S.pak, &ndb);
-  if (pakerr != PAK_ERR_SUCCESS) {
+  PakError perr = pak_load_from_file(&S.pak, S.input_file);
+  if (perr != PAK_ERR_SUCCESS) {
+    snprintf(S.error_text, APP_PAK_MAX_ERROR_LENGTH,
+             "failed to load '%s' items", path);
+    err = APP_PAK_ERR_MODULE_PAK;
     S.mode = APP_PAK_MODE_FAILED;
     goto cleanup;
   }
@@ -498,8 +525,7 @@ app_pak_handle_file_drop(CBuf path) {
   S.mode = APP_PAK_MODE_LOADED;
   S.input_file_path = path;
   S.current_pak_tree_node = &S.pak.tree.root;
-
-  arena_scratch_end(scratch);
+  //=========================
 
 cleanup:
   TracyCZoneEnd(trcyctx);
@@ -555,6 +581,8 @@ app_pak_draw(struct nk_context* ctx) {
     app_pak_draw_mode_empty(ctx, window_flags, window_width, window_height);
   } else if (S.mode == APP_PAK_MODE_LOADED) {
     app_pak_draw_mode_loaded(ctx, window_flags, window_width, window_height);
+  } else if (S.mode == APP_PAK_MODE_FAILED) {
+    app_pak_draw_mode_failed(ctx, window_flags, window_width, window_height);
   }
 
   TracyCZoneEnd(trcyctx);
@@ -595,6 +623,45 @@ app_pak_draw_mode_empty(struct nk_context* ctx,
     nk_layout_space_begin(ctx, NK_STATIC, content_region.h, 1);
     nk_layout_space_push(ctx, r);
     nk_label(ctx, label, NK_TEXT_CENTERED);
+    nk_layout_space_end(ctx);
+  }
+  nk_end(ctx);
+
+  TracyCZoneEnd(trcyctx);
+}
+
+/* ===================================================== */
+
+internal Nothing
+app_pak_draw_mode_failed(struct nk_context* ctx,
+                         nk_flags window_flags,
+                         U32 window_width,
+                         U32 window_height) {
+  TracyCZoneN(trcyctx, "app_pak_draw_mode_failed", 1);
+
+  if (nk_begin(ctx, "", nk_rect(0, 0, window_width, window_height),
+               window_flags)) {
+    struct nk_rect content_region = nk_window_get_content_region(ctx);
+    const struct nk_user_font* font = ctx->style.font;
+
+    F32 text_width =
+        font->width(font->userdata, font->height, S.error_text, (int)strlen(S.error_text));
+    F32 text_height = font->height;
+    F32 text_pad_x = ctx->style.text.padding.x;
+    F32 text_pad_y = ctx->style.text.padding.y;
+    F32 element_width = text_width + 2.0f * text_pad_x;
+    F32 element_height = text_height + 2.0f * text_pad_y;
+
+    struct nk_rect r = {
+        .x = content_region.x + (content_region.w - element_width) * 0.5f,
+        .y = content_region.y + (content_region.h - element_height) * 0.5f,
+        .w = element_width,
+        .h = element_height,
+    };
+
+    nk_layout_space_begin(ctx, NK_STATIC, content_region.h, 1);
+    nk_layout_space_push(ctx, r);
+    nk_label(ctx, S.error_text, NK_TEXT_CENTERED);
     nk_layout_space_end(ctx);
   }
   nk_end(ctx);
