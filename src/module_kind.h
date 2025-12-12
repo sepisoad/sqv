@@ -132,24 +132,14 @@ kind_guess_entry(CStr path, U32 len, Kind* kind) {
   Assert(len > 0);
   Assert(kind != 0);
 
-  char ext[32] = {0};
-  I32 ridx = len;
-  I32 end = 0;
-  I32 start = 0;
-  I32 extlen = 0;
+  CStr ext_base = path;
+  CStr ext = path;
+  for (; *ext_base != 0; ext_base++)
+    if ('.' == *ext_base)
+      ext = ext_base;
 
-  for (; ridx >= 0; ridx--)
-    if (path[ridx] != 0)
-      break;
-  end = ridx + 1;
-
-  for (; ridx >= 0; ridx--)
-    if (path[ridx] == '.')
-      break;
-  start = ridx + 1;
-
-  extlen = end - start;
-  strncpy(ext, path + start, extlen); // <== this mother fucker is driving me mad!
+  ext++;
+  U32 extlen = ext_base - ext;
 
   for (I32 i = 0; i < extlen; i++)
     ext[i] = toupper(ext[i]);
