@@ -608,7 +608,82 @@ cleanup:
 PakError
 pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
   TracyCZoneN(trcyctx, "pak_extract_item", 1);
+  PakError err = PAK_ERR_SUCCESS;
+  ListNode* list_node;
+  List nodes = {0};
+  ArenaScratch scratch = arena_scratch_begin(pak->arena);
+
+  if (FALSE == node->is_dir) {
+    char full_path_buf[PAK_ENTRY_MAX_EXTRACT_PATH_LEN] = {0};
+    Str8 full_path_str =
+        str8_raw(full_path_buf, PAK_ENTRY_MAX_EXTRACT_PATH_LEN);
+    Str8 node_str = str8(node->item_name);
+    pak_join_path(out_dir, node_str, full_path_str);
+
+    CStr src_buffer = arena_push(scratch.arena, node->size, AlignOf(U8), TRUE);
+
+    IO_SET(file, node->offset);
+    IO_BUF(file, node->size, src_buffer);
+    io_dump(full_path_str, str8_raw(src_buffer, node->size));
+    goto cleanup;
+  }
+
+  list_push(scratch.arena, &nodes, node);
+
+  while (nodes.count > 0) {
+    ListError lerr = list_pop(&nodes, &list_node);
+    if (LIST_ERR_SUCCESS != lerr) {
+      if (LIST_EMPTY == lerr || 0 == list_node) {
+        goto cleanup;
+      }
+      err = PAK_ERR_EXTRACT;
+      goto cleanup;
+    }
+    node = (PakTreeNode*)list_node->data;
+
+    for (U32 index = 0; index < node->children->count; index++) {
+      HashMapKV* kv = hashmap_key_at(node->children, index);
+      if (0 == kv) {
+        err = PAK_ERR_EXTRACT;
+        goto cleanup;
+      }
+
+      PakTreeNode* new_node = (PakTreeNode*)kv->v_rawptr;
+
+      char full_path_buf[PAK_ENTRY_MAX_EXTRACT_PATH_LEN] = {0};
+      Str8 full_path_str =
+          str8_raw(full_path_buf, PAK_ENTRY_MAX_EXTRACT_PATH_LEN);
+      Str8 new_node_str = str8(new_node->name);
+
+      pak_join_path(out_dir, new_node_str, full_path_str);
+
+      if (TRUE == new_node->is_dir) {
+        ListError lerr = list_push(scratch.arena, &nodes, new_node);
+        if (LIST_ERR_SUCCESS != lerr) {
+          err = PAK_ERR_EXTRACT;
+          goto cleanup;
+        }
+
+        IOError ioerr = io_make_directory(full_path_str);
+        if (IO_ERR_SUCCESS != ioerr) {
+          err = PAK_ERR_EXTRACT;
+          goto cleanup;
+        }
+      } else {
+        CStr src_buffer =
+            arena_push(scratch.arena, new_node->size, AlignOf(U8), TRUE);
+
+        IO_SET(file, new_node->offset);
+        IO_BUF(file, new_node->size, src_buffer);
+        io_dump(full_path_str, str8_raw(src_buffer, new_node->size));
+      }
+    }
+  }
+
+cleanup:
+  arena_scratch_end(scratch);
   TracyCZoneEnd(trcyctx);
+  return err;
 }
 
 /* ===================================================== */

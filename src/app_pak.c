@@ -103,6 +103,7 @@ internal struct {
   Pak pak;
   AppPakMode mode;
   PakTreeNode* current_pak_tree_node;
+  PakTreeNode* requested_extracting_item;
   FILE* input_file;
   CBuf input_file_path;
   char export_path_buffer[APP_PAK_MAX_EXPORT_PATH_LENGTH];
@@ -404,6 +405,7 @@ app_pak_cleanup_reload() {
   }
 
   S.is_extracting_requested = FALSE;
+  S.requested_extracting_item = 0;
   S.mode = APP_PAK_MODE_EMPTY;
   MemZeroArray(S.error_text);
 
@@ -660,8 +662,9 @@ app_pak_draw_mode_failed(struct nk_context* ctx,
 
     nk_layout_space_begin(ctx, NK_STATIC, content_region.h, 1);
     nk_layout_space_push(ctx, r);
-    // nk_text_wrap(ctx, S.error_text, strlen(S.error_text));//, NK_TEXT_CENTERED);
-    nk_text(ctx, S.error_text, strlen(S.error_text) , NK_TEXT_CENTERED);
+    // nk_text_wrap(ctx, S.error_text, strlen(S.error_text));//,
+    // NK_TEXT_CENTERED);
+    nk_text(ctx, S.error_text, strlen(S.error_text), NK_TEXT_CENTERED);
     nk_layout_space_end(ctx);
   }
   nk_end(ctx);
@@ -740,24 +743,41 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
                                      nk_filter_default);
       nk_layout_row_dynamic(ctx, 0, 3);
       if (nk_button_label(ctx, "ok")) {
-        PakError perr =
-            pak_extract(&S.pak, S.input_file, str8(S.export_path_buffer));
-        if (PAK_ERR_SUCCESS != perr) {
-          snprintf(S.error_text, APP_PAK_MAX_ERROR_LENGTH,
-                   "failed to extract pak file into '%s'", S.export_path_buffer);
-          S.mode = APP_PAK_MODE_FAILED;
+        if (0 == S.requested_extracting_item) {
+          PakError perr =
+              pak_extract(&S.pak, S.input_file, str8(S.export_path_buffer));
+          if (PAK_ERR_SUCCESS != perr) {
+            snprintf(S.error_text, APP_PAK_MAX_ERROR_LENGTH,
+                     "failed to extract pak file into '%s'",
+                     S.export_path_buffer);
+            S.mode = APP_PAK_MODE_FAILED;
+          }
+        } else {
+          PakError perr =
+              pak_extract_item(&S.pak, S.requested_extracting_item,
+                               S.input_file, str8(S.export_path_buffer));
+          if (PAK_ERR_SUCCESS != perr) {
+            snprintf(S.error_text, APP_PAK_MAX_ERROR_LENGTH,
+                     "failed to extract item '%s' into '%s'",
+                     S.requested_extracting_item->name, S.export_path_buffer);
+            S.mode = APP_PAK_MODE_FAILED;
+          }
         }
 
         S.is_extracting_requested = FALSE;
+        S.requested_extracting_item = 0;
       }
       nk_label(ctx, "", 0);
       if (nk_button_label(ctx, "cancel")) {
         S.is_extracting_requested = FALSE;
+        S.requested_extracting_item = 0;
       }
 
       nk_popup_end(ctx);
-    } else
+    } else {
       S.is_extracting_requested = FALSE;
+      S.requested_extracting_item = 0;
+    }
   }
 
   nk_end(ctx);
@@ -866,6 +886,8 @@ app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
   if (nk_contextual_begin(ctx, 0, nk_vec2(150, 230), bounds)) {
     nk_layout_row_dynamic(ctx, 20, 1);
     if (nk_contextual_item_label(ctx, "extract this item", NK_TEXT_CENTERED)) {
+      S.is_extracting_requested = TRUE;
+      S.requested_extracting_item = node;
     }
     nk_contextual_end(ctx);
   }
