@@ -613,19 +613,29 @@ pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
   List nodes = {0};
   ArenaScratch scratch = arena_scratch_begin(pak->arena);
 
-  if (FALSE == node->is_dir) {
-    char full_path_buf[PAK_ENTRY_MAX_EXTRACT_PATH_LEN] = {0};
-    Str8 full_path_str =
-        str8_raw(full_path_buf, PAK_ENTRY_MAX_EXTRACT_PATH_LEN);
-    Str8 node_str = str8(node->item_name);
-    pak_join_path(out_dir, node_str, full_path_str);
+  char full_path_buf[PAK_ENTRY_MAX_EXTRACT_PATH_LEN] = {0};
+  Str8 full_path_str = str8_raw(full_path_buf, PAK_ENTRY_MAX_EXTRACT_PATH_LEN);
+  Str8 node_str = str8(node->item_name);
+  pak_join_path(out_dir, node_str, full_path_str);
 
+  if (FALSE == node->is_dir) {
     CStr src_buffer = arena_push(scratch.arena, node->size, AlignOf(U8), TRUE);
 
     IO_SET(file, node->offset);
     IO_BUF(file, node->size, src_buffer);
     io_dump(full_path_str, str8_raw(src_buffer, node->size));
     goto cleanup;
+  }
+
+  IOError ioerr = io_make_directory(full_path_str);
+  if (IO_ERR_SUCCESS != ioerr) {
+    err = PAK_ERR_EXTRACT;
+    goto cleanup;
+  }
+
+  U32 start_index = 0;
+  if(node->parent != &pak->tree.root){
+    start_index = strlen(node->parent->name);
   }
 
   list_push(scratch.arena, &nodes, node);
@@ -653,7 +663,7 @@ pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
       char full_path_buf[PAK_ENTRY_MAX_EXTRACT_PATH_LEN] = {0};
       Str8 full_path_str =
           str8_raw(full_path_buf, PAK_ENTRY_MAX_EXTRACT_PATH_LEN);
-      Str8 new_node_str = str8(new_node->name);
+      Str8 new_node_str = str8(new_node->name + start_index);
 
       pak_join_path(out_dir, new_node_str, full_path_str);
 
