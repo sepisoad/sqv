@@ -41,6 +41,7 @@ typedef enum {
   IO_ERR_SUCCESS = 1,
   IO_ERR_MKFILE,
   IO_ERR_MKDIR,
+  IO_ERR_STAT,
   IO_ERR__COUNT,
 } IOError;
 
@@ -51,6 +52,7 @@ typedef enum {
 IOError io_load_file(Arena*, CBuf, NDBuffer*);
 IOError io_dump(Str8 path, Str8 data);
 IOError io_make_directory(Str8 path);
+IOError io_is_directory(Str8 path, Bool *is_dir);
 
 #define IO_POS(f) ftell((f))
 #define IO_SET(f, ofs) fseek((f), (ofs), SEEK_SET)
@@ -221,6 +223,30 @@ cleanup:
   return err;
 }
 
+IOError io_is_directory(Str8 path, Bool *is_dir) {
+  TracyCZoneN(trcyctx, "io_is_directory", 1);
+
+  IOError err = IO_ERR_SUCCESS;
+
+  struct stat info = {0};
+  if(-1 == stat(path.cstr, &info)) {
+    err = IO_ERR_STAT;
+    goto cleanup;
+  }
+
+
+  if(info.st_mode & S_IFMT == S_IFDIR) {
+    *is_dir = TRUE;
+  } else {
+    *is_dir = FALSE;
+  }
+
+
+cleanup:
+  TracyCZoneEnd(trcyctx);
+  return err;
+}
+
 #else /* OS_WINDOWS */
 
 IOError
@@ -242,6 +268,11 @@ io_make_directory(Str8 path) {
 cleanup:
   TracyCZoneEnd(trcyctx);
   return err;
+}
+
+IOError io_is_directory(Str8 path, Bool *is_dir) {
+  // NOT IMPLEMENTED
+  AssertAlways(0);
 }
 
 #endif

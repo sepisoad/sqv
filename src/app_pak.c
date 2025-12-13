@@ -69,6 +69,7 @@ typedef enum {
 
 typedef enum {
   APP_PAK_ERR_SUCCESS = 1,
+  APP_PAK_ERR_DROP,
   APP_PAK_ERR_FILE_OPEN,
   APP_PAK_ERR_ICON_INIT,
   APP_PAK_ERR_MODULE_PAK,
@@ -91,7 +92,7 @@ typedef struct {
 internal struct {
   AppPakImage home;
   AppPakImage back;
-  AppPakImage save;
+  AppPakImage package;
   AppPakImage extract;
   AppPakImage folder;
   AppPakImage text;
@@ -128,6 +129,9 @@ internal AppPakError app_pak_cleanup_icon(AppPakImage* app_icon);
 
 internal Nothing app_pak_input(const sapp_event* event);
 internal AppPakError app_pak_handle_file_drop(CBuf path);
+internal AppPakError app_pak_handle_file_drop_pak(CBuf path);
+internal AppPakError app_pak_handle_file_drop_dir(CBuf path);
+
 internal Nothing app_pak_frame();
 internal U32 app_pak_draw(struct nk_context* ctx);
 internal Nothing app_pak_draw_mode_empty(struct nk_context* ctx,
@@ -294,7 +298,8 @@ app_pak_init_icons() {
     goto cleanup;
   }
 
-  err = app_pak_init_icon(&ICONS.save, icon_save_png, sizeof(icon_save_png));
+  err = app_pak_init_icon(&ICONS.package, icon_package_png,
+                          sizeof(icon_package_png));
   if (err != APP_PAK_ERR_SUCCESS) {
     goto cleanup;
   }
@@ -431,7 +436,7 @@ app_pak_cleanup_icons() {
   if (err != APP_PAK_ERR_SUCCESS) {
     goto cleanup;
   }
-  err = app_pak_cleanup_icon(&ICONS.save);
+  err = app_pak_cleanup_icon(&ICONS.package);
   if (err != APP_PAK_ERR_SUCCESS) {
     goto cleanup;
   }
@@ -497,6 +502,33 @@ app_pak_handle_file_drop(CBuf path) {
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
+  Bool is_dir = FALSE;
+  IOError ioerr = io_is_directory(str8((CStr)path), &is_dir);
+  if (IO_ERR_SUCCESS != ioerr) {
+    S.mode = APP_PAK_MODE_FAILED;
+    err = APP_PAK_ERR_DROP;
+    goto cleanup;
+  }
+
+  if (is_dir) {
+    app_pak_handle_file_drop_dir(path);
+  } else {
+    app_pak_handle_file_drop_pak(path);
+  }
+
+cleanup:
+  TracyCZoneEnd(trcyctx);
+  return err;
+}
+
+/* ===================================================== */
+
+internal AppPakError
+app_pak_handle_file_drop_pak(CBuf path) {
+  TracyCZoneN(trcyctx, "app_pak_handle_file_drop_pak", 1);
+
+  AppPakError err = APP_PAK_ERR_SUCCESS;
+
   // NOTE:
   // we may want to allow this to happen, so the user does not have to
   // re-run the app for a new .PAK file! but this has to reset all the
@@ -527,6 +559,19 @@ app_pak_handle_file_drop(CBuf path) {
   S.mode = APP_PAK_MODE_LOADED;
   S.input_file_path = path;
   S.current_pak_tree_node = &S.pak.tree.root;
+
+cleanup:
+  TracyCZoneEnd(trcyctx);
+  return err;
+}
+
+/* ===================================================== */
+
+internal AppPakError
+app_pak_handle_file_drop_dir(CBuf path) {
+  TracyCZoneN(trcyctx, "app_pak_handle_file_drop_dir", 1);
+
+  AppPakError err = APP_PAK_ERR_SUCCESS;
 
 cleanup:
   TracyCZoneEnd(trcyctx);
