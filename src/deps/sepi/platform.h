@@ -73,7 +73,7 @@ platform_reserve_large_pages(Sz size) {
     }
   }
 
-  TracyCSecureAllocN(result, size, "platform_reserve_large_pages");
+  TracyCAlloc(result, size);
   TracyCZoneEnd(trcyctx);
   return result;
 }
@@ -94,7 +94,7 @@ platform_release(RawPtr ptr, Sz size) {
 
   munmap(ptr, size);
 
-  TracyCSecureFree(ptr);
+  TracyCFree(ptr);
   TracyCZoneEnd(trcyctx);
 }
 
@@ -129,7 +129,7 @@ platform_reserve_large_pages(Sz size) {
   RawPtr result = VirtualAlloc(
       0, size, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
 
-  TracyCSecureAllocN(result, size, "platform_reserve_large_pages");
+  TracyCAlloc(result, size);
   TracyCZoneEnd(trcyctx);
   return result;
 }
@@ -146,7 +146,7 @@ platform_release(RawPtr ptr, Sz size) {
   Ignore(size);
   VirtualFree(ptr, 0, MEM_RELEASE);
 
-  TracyCSecureFree(ptr);
+  TracyCFree(ptr);
   TracyCZoneEnd(trcyctx);
 }
 

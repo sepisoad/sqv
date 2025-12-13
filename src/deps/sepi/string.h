@@ -11,7 +11,6 @@
 /*                       CONSTANTS                       */
 /* ===================================================== */
 
-
 /* ===================================================== */
 /*                         TYPES                         */
 /* ===================================================== */
@@ -22,7 +21,6 @@ enum {
   StringCompareFlag_RightSideSloppy = (1 << 1),
   StringCompareFlag_SlashInsensitive = (1 << 2),
 };
-
 
 typedef struct {
   CStr cstr;
@@ -36,6 +34,7 @@ typedef struct {
 Str8 str8(CStr cstr);
 Str8 str8_raw(RawPtr rptr, Sz size);
 Str8 str8_zero(void);
+Bool str8_join(Str8 a, Str8 b, Str8 c, char separator);
 Bool is_space_char(U8 c);
 Bool is_upper_char(U8 c);
 Bool is_lower_char(U8 c);
@@ -53,16 +52,18 @@ U8 correct_slash_from_char(U8 c);
 #ifdef SEPI_STRING_IMPLEMENTATION
 
 internal U8 integer_symbol_reverse[128] = {
-  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-  0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-  0xFF, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-  0xFF, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 };
-
 
 Str8
 str8(CStr cstr) {
@@ -83,9 +84,28 @@ str8_zero(void) {
 }
 
 Bool
+str8_join(Str8 a, Str8 b, Str8 c, char separator) {
+  if (separator) {
+    Assert(a.size + b.size + 1 <= c.size);
+  } else {
+    Assert(a.size + b.size <= c.size);
+  }
+
+  memcpy(c.cstr, a.cstr, a.size);
+  c.size = a.size;
+  if (separator) {
+    c.cstr[a.size] = separator;
+    c.size++;
+  }
+
+  memcpy(c.cstr+(c.size), b.cstr, b.size);
+  c.size += b.size;
+}
+
+Bool
 is_space_char(U8 c) {
-  return (c == ' ' || c == '\n' || c == '\t' || c == '\r' || c == '\f'
-          || c == '\v');
+  return (c == ' ' || c == '\n' || c == '\t' || c == '\r' || c == '\f' ||
+          c == '\v');
 }
 
 Bool
@@ -111,9 +131,9 @@ is_slash_char(U8 c) {
 Bool
 is_digit_char(U8 c, U32 base) {
   Bool result = FALSE;
-  if(0 < base && base <= 16) {
+  if (0 < base && base <= 16) {
     U8 val = integer_symbol_reverse[c];
-    if(val < base) {
+    if (val < base) {
       result = 1;
     }
   }
@@ -122,7 +142,7 @@ is_digit_char(U8 c, U32 base) {
 
 U8
 to_lower_char(U8 c) {
-  if(is_upper_char(c)) {
+  if (is_upper_char(c)) {
     c += ('a' - 'A');
   }
   return c;
@@ -130,7 +150,7 @@ to_lower_char(U8 c) {
 
 U8
 to_upper_char(U8 c) {
-  if(is_lower_char(c)) {
+  if (is_lower_char(c)) {
     c += ('A' - 'a');
   }
   return c;
@@ -138,7 +158,7 @@ to_upper_char(U8 c) {
 
 U8
 correct_slash_from_char(U8 c) {
-  if(is_slash_char(c)) {
+  if (is_slash_char(c)) {
     c = '/';
   }
   return c;
@@ -147,25 +167,25 @@ correct_slash_from_char(U8 c) {
 Bool
 str8_cmp(Str8 a, Str8 b, StringCompareFlags flags) {
   Bool result = FALSE;
-  if(a.size == b.size && flags == 0) {
+  if (a.size == b.size && flags == 0) {
     result = IsMemoryEq(a.cstr, b.cstr, b.size);
-  } else if(a.size == b.size || (flags & StringCompareFlag_RightSideSloppy)) {
+  } else if (a.size == b.size || (flags & StringCompareFlag_RightSideSloppy)) {
     Bool case_insensitive = (flags & StringCompareFlag_CaseInsensitive);
     Bool slash_insensitive = (flags & StringCompareFlag_SlashInsensitive);
     U64 size = Min(a.size, b.size);
     result = 1;
-    for(U64 i = 0; i < size; i += 1) {
+    for (U64 i = 0; i < size; i += 1) {
       U8 at = a.cstr[i];
       U8 bt = b.cstr[i];
-      if(case_insensitive) {
+      if (case_insensitive) {
         at = to_upper_char(at);
         bt = to_upper_char(bt);
       }
-      if(slash_insensitive) {
+      if (slash_insensitive) {
         at = correct_slash_from_char(at);
         bt = correct_slash_from_char(bt);
       }
-      if(at != bt) {
+      if (at != bt) {
         result = 0;
         break;
       }
@@ -173,7 +193,6 @@ str8_cmp(Str8 a, Str8 b, StringCompareFlags flags) {
   }
   return result;
 }
-
 
 /* ===================================================== */
 /*                          END                          */

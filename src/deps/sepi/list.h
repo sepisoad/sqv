@@ -24,7 +24,8 @@
 typedef enum {
   LIST_ERR_SUCCESS = 1,
   LIST_INDEX_ERROR,
-  LIST_NOTE_FOUND,
+  LIST_NOT_FOUND,
+  LIST_EMPTY,
   LIST_ERR__COUNT,
 } ListError;
 
@@ -48,7 +49,7 @@ typedef struct {
 ListError list_purge(List* l);
 ListError list_remove(List* l, U32 index);
 ListError list_push(Arena* a, List* l, RawPtr data);
-ListError list_pop(List* l, RawPtr data);
+ListError list_pop(List* l, ListNode** node);
 ListError list_get(List* hm, U32 index, RawPtr* data);
 
 /* ===================================================== */
@@ -103,7 +104,7 @@ list_remove(List* l, U32 index) {
   }
 
   TracyCZoneEnd(trcyctx);
-  return LIST_NOTE_FOUND;
+  return LIST_NOT_FOUND;
 }
 
 ListError
@@ -118,32 +119,49 @@ list_push(Arena* a, List* l, RawPtr data) {
       (ListNode*)arena_push(a, sizeof(ListNode), AlignOf(ListNode), TRUE);
 
   node->data = data;
-  if (l->tail == l->head) {
+  if (l->count == 0) {
     l->head = l->tail = node;
   } else {
     node->previous = l->tail;
     l->tail->next = node;
     l->tail = node;
-    l->count++;
   }
+
+  l->count++;
 
   TracyCZoneEnd(trcyctx);
   return LIST_ERR_SUCCESS;
 }
 
 ListError
-list_pop(List* l, RawPtr data) {
+list_pop(List* l, ListNode** node) {
   TracyCZoneN(trcyctx, "list_pop", 1);
 
   Assert(l != 0);
-  Assert(data != 0);
+  Assert(node != 0);
 
-  l->tail = l->tail->previous;
-  l->tail->next = 0;
+  ListError err = LIST_ERR_SUCCESS;
+
+  if (l->count == 0) {
+    err = LIST_EMPTY;
+    *node = 0;
+    goto cleanup;
+  }
+
+  if (l->count == 1) {
+    *node = l->tail;
+    l->head = l->tail = 0;
+  } else {
+    *node = l->tail;
+    l->tail = l->tail->previous;
+    l->tail->next = 0;
+  }
+
   l->count--;
 
+cleanup:
   TracyCZoneEnd(trcyctx);
-  return LIST_ERR_SUCCESS;
+  return err;
 }
 
 ListError
@@ -172,7 +190,7 @@ list_get(List* l, U32 index, RawPtr* data) {
   }
 
   TracyCZoneEnd(trcyctx);
-  return LIST_NOTE_FOUND;
+  return LIST_NOT_FOUND;
 }
 
 /* ===================================================== */

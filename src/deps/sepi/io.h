@@ -9,9 +9,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#if defined(OS_LINUX) || defined(OS_MAC)
+#include <sys/stat.h>
+#include <errno.h>
+#else
+#include <Windows.h>
+#endif
+
 #include "../tracy/tracy.h"
 
 #include "base.h"
+#include "string.h"
 #include "endian.h"
 #include "arena.h"
 
@@ -19,13 +27,20 @@
 /*                       CONSTANTS                       */
 /* ===================================================== */
 
+#if defined(OS_LINUX) || defined(OS_MAC)
+#define IO_PATH_SEPARATOR '/'
+#else
+#define IO_PATH_SEPARATOR '\\'
+#endif
+
 /* ===================================================== */
 /*                         TYPES                         */
 /* ===================================================== */
 
 typedef enum {
   IO_ERR_SUCCESS = 1,
-  IO_ERR_FAILED,
+  IO_ERR_MKFILE,
+  IO_ERR_MKDIR,
   IO_ERR__COUNT,
 } IOError;
 
@@ -34,6 +49,8 @@ typedef enum {
 /* ===================================================== */
 
 IOError io_load_file(Arena*, CBuf, NDBuffer*);
+IOError io_dump(Str8 path, Str8 data);
+IOError io_make_directory(Str8 path);
 
 #define IO_POS(f) ftell((f))
 #define IO_SET(f, ofs) fseek((f), (ofs), SEEK_SET)
@@ -90,6 +107,9 @@ IOError io_load_file(Arena*, CBuf, NDBuffer*);
 
 extern TracyCZoneCtx trcyctx;
 
+// TODO:
+// refactor this function, in fact i don't use this function
+// maybe eve delete this function
 IOError
 io_load_file(Arena* arena, CBuf path, NDBuffer* ndb) {
   TracyCZoneN(trcyctx, "io_load_file", 1);
@@ -145,6 +165,86 @@ io_load_file(Arena* arena, CBuf path, NDBuffer* ndb) {
   TracyCZoneEnd(trcyctx);
   return IO_ERR_SUCCESS;
 }
+
+IOError
+io_dump(Str8 path, Str8 data) {
+  TracyCZoneN(trcyctx, "io_dump", 1);
+
+  Assert(path.cstr != 0);
+  Assert(path.size > 0);
+  Assert(data.cstr != 0);
+  Assert(data.size > 0);
+
+  IOError err = IO_ERR_SUCCESS;
+
+  FILE* f = fopen(path.cstr, "wb");
+  if (0 == f) {
+    err=IO_ERR_MKFILE;
+    goto cleanup;
+  }
+
+  Sz write_size = fwrite(data.cstr, 1, data.size, f);
+  if (write_size != data.size) {
+    err=IO_ERR_MKFILE;
+    goto cleanup;
+  }
+
+  fflush(f);
+
+cleanup:
+  if (f) {
+    fclose(f);
+  }
+  TracyCZoneEnd(trcyctx);
+  return IO_ERR_SUCCESS;
+}
+
+#if defined(OS_LINUX) || defined(OS_MAC)
+
+#define IO_PATH_SEPARATOR '/'
+
+IOError
+io_make_directory(Str8 path) {
+  TracyCZoneN(trcyctx, "io_make_directory", 1);
+
+  IOError err = IO_ERR_SUCCESS;
+
+  if (mkdir((char*)path.cstr, 0755) == -1) {
+    if (EEXIST != errno) {
+      err = IO_ERR_MKDIR;
+      goto cleanup;
+    }
+  }
+
+cleanup:
+  TracyCZoneEnd(trcyctx);
+  return err;
+}
+
+#else /* OS_WINDOWS */
+
+IOError
+io_make_directory(Str8 path) {
+  TracyCZoneN(trcyctx, "io_make_directory", 1);
+
+  IOError err = IO_ERR_SUCCESS;
+
+  WIN32_FILE_ATTRIBUTE_DATA attributes = {0};
+  GetFileAttributesExW((WCHAR*)path.cstr, GetFileExInfoStandard, &attributes);
+  if (attributes.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+    err = IO_ERR_MKDIR;
+    goto cleanup;
+  } else if (CreateDirectoryW((WCHAR*)path.cstr, 0)) {
+    err = IO_ERR_MKDIR;
+    goto cleanup;
+  }
+
+cleanup:
+  TracyCZoneEnd(trcyctx);
+  return err;
+}
+
+#endif
 
 /* ===================================================== */
 /*                          END                          */

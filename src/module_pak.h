@@ -19,6 +19,7 @@
 #include "deps/sepi/list.h"
 #include "deps/sepi/hashmap.h"
 #include "deps/sepi/string.h"
+#include "deps/sepi/io.h"
 
 #include "module_kind.h"
 
@@ -28,6 +29,7 @@
 
 #define PAK_MAGIC_CODE_LEN 4
 #define PAK_ENTRY_NAME_LEN 56
+#define PAK_ENTRY_MAX_EXTRACT_PATH_LEN 2048
 #define PAK_MAX_ERROR_LENGTH 512
 
 /* ===================================================== */
@@ -38,6 +40,8 @@ typedef enum {
   PAK_ERR_SUCCESS,
   PAK_ERR_MALFORMED,
   PAK_ERR_INVALID_ENTRY_PATH,
+  PAK_ERR_OUT_DIR_NOT_FOUND,
+  PAK_ERR_EXTRACT,
   PAK_ERR__COUNT,
 } PakError;
 
@@ -87,8 +91,11 @@ typedef struct {
 PakError pak_load_from_memory(Pak* pak, NDBuffer* ndb);
 PakError pak_load_from_file(Pak* pak, FILE* file);
 Nothing pak_unload(Pak* pak);
-PakError pak_extract(Pak* pak);
-PakError pak_extract_item(Pak* pak, PakTreeNode* node);
+PakError pak_extract(Pak* pak, FILE* file, Str8 out_dir);
+PakError pak_extract_item(Pak* pak,
+                          PakTreeNode* node,
+                          FILE* file,
+                          Str8 out_dir);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -514,16 +521,92 @@ pak_unload(Pak* pak) {
 
 /* ===================================================== */
 
-PakError
-pak_extract(Pak*) {
-  TracyCZoneN(trcyctx, "pak_extract", 1);
+internal PakError
+pak_join_path(Str8 a, Str8 b, Str8 c) {
+  TracyCZoneN(trcyctx, "pak_join_path", 1);
+  PakError err = PAK_ERR_SUCCESS;
+
+  str8_join(a, b, c, IO_PATH_SEPARATOR);
+
+cleanup:
   TracyCZoneEnd(trcyctx);
+  return err;
 }
 
 /* ===================================================== */
 
 PakError
-pak_extract_item(Pak*, PakTreeNode* node) {
+pak_extract(Pak* pak, FILE* file, Str8 out_dir) {
+  TracyCZoneN(trcyctx, "pak_extract", 1);
+
+  PakError err = PAK_ERR_SUCCESS;
+  PakTreeNode* node = &pak->tree.root;
+  ListNode* list_node;
+  List nodes = {0};
+  ArenaScratch scratch = arena_scratch_begin(pak->arena);
+
+  list_push(scratch.arena, &nodes, &pak->tree.root);
+
+  while (nodes.count > 0) {
+    ListError lerr = list_pop(&nodes, &list_node);
+    if (LIST_ERR_SUCCESS != lerr) {
+      if (LIST_EMPTY == lerr || 0 == list_node) {
+        goto cleanup;
+      }
+      err = PAK_ERR_EXTRACT;
+      goto cleanup;
+    }
+    node = (PakTreeNode*)list_node->data;
+
+    for (U32 index = 0; index < node->children->count; index++) {
+      HashMapKV* kv = hashmap_key_at(node->children, index);
+      if (0 == kv) {
+        err = PAK_ERR_EXTRACT;
+        goto cleanup;
+      }
+
+      PakTreeNode* new_node = (PakTreeNode*)kv->v_rawptr;
+
+      char full_path_buf[PAK_ENTRY_MAX_EXTRACT_PATH_LEN] = {0};
+      Str8 full_path_str =
+          str8_raw(full_path_buf, PAK_ENTRY_MAX_EXTRACT_PATH_LEN);
+      Str8 new_node_str = str8(new_node->name);
+
+      pak_join_path(out_dir, new_node_str, full_path_str);
+
+      if (TRUE == new_node->is_dir) {
+        ListError lerr = list_push(scratch.arena, &nodes, new_node);
+        if (LIST_ERR_SUCCESS != lerr) {
+          err = PAK_ERR_EXTRACT;
+          goto cleanup;
+        }
+
+        IOError ioerr = io_make_directory(full_path_str);
+        if (IO_ERR_SUCCESS != ioerr) {
+          err = PAK_ERR_EXTRACT;
+          goto cleanup;
+        }
+      } else {
+        CStr src_buffer =
+            arena_push(scratch.arena, new_node->size, AlignOf(U8), TRUE);
+
+        IO_SET(file, new_node->offset);
+        IO_BUF(file, new_node->size, src_buffer);
+        io_dump(full_path_str, str8_raw(src_buffer, new_node->size));
+      }
+    }
+  }
+
+cleanup:
+  arena_scratch_end(scratch);
+  TracyCZoneEnd(trcyctx);
+  return err;
+}
+
+/* ===================================================== */
+
+PakError
+pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
   TracyCZoneN(trcyctx, "pak_extract_item", 1);
   TracyCZoneEnd(trcyctx);
 }

@@ -499,7 +499,7 @@ app_pak_handle_file_drop(CBuf path) {
   // we may want to allow this to happen, so the user does not have to
   // re-run the app for a new .PAK file! but this has to reset all the
   // states and wipe the arenas!
-  if (S.mode == APP_PAK_MODE_LOADED){
+  if (S.mode == APP_PAK_MODE_LOADED) {
     // goto cleanup;
     app_pak_cleanup_reload();
   }
@@ -643,8 +643,8 @@ app_pak_draw_mode_failed(struct nk_context* ctx,
     struct nk_rect content_region = nk_window_get_content_region(ctx);
     const struct nk_user_font* font = ctx->style.font;
 
-    F32 text_width =
-        font->width(font->userdata, font->height, S.error_text, (int)strlen(S.error_text));
+    F32 text_width = font->width(font->userdata, font->height, S.error_text,
+                                 (int)strlen(S.error_text));
     F32 text_height = font->height;
     F32 text_pad_x = ctx->style.text.padding.x;
     F32 text_pad_y = ctx->style.text.padding.y;
@@ -660,7 +660,8 @@ app_pak_draw_mode_failed(struct nk_context* ctx,
 
     nk_layout_space_begin(ctx, NK_STATIC, content_region.h, 1);
     nk_layout_space_push(ctx, r);
-    nk_label(ctx, S.error_text, NK_TEXT_CENTERED);
+    // nk_text_wrap(ctx, S.error_text, strlen(S.error_text));//, NK_TEXT_CENTERED);
+    nk_text(ctx, S.error_text, strlen(S.error_text) , NK_TEXT_CENTERED);
     nk_layout_space_end(ctx);
   }
   nk_end(ctx);
@@ -691,7 +692,6 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
     nk_layout_row_template_end(ctx);
 
     if (nk_button_image(ctx, ICONS.extract.icon_image)) {
-      // S.current_pak_tree_node = &S.pak.tree.root;
       S.is_extracting_requested = TRUE;
     }
 
@@ -731,13 +731,30 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
 
   if (S.is_extracting_requested) {
     struct nk_rect s = {.x = 50, .y = 50, .w = window_width - 100, .h = 190};
-    if (nk_popup_begin(ctx, NK_POPUP_STATIC, "Export",
+    if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, "Extract",
                        NK_WINDOW_CLOSABLE | NK_WINDOW_NO_SCROLLBAR, s)) {
       nk_layout_row_dynamic(ctx, 20, 1);
       nk_label(ctx, "output path:", NK_TEXT_LEFT);
       nk_edit_string_zero_terminated(ctx, NK_EDIT_FIELD, S.export_path_buffer,
                                      APP_PAK_MAX_EXPORT_PATH_LENGTH,
                                      nk_filter_default);
+      nk_layout_row_dynamic(ctx, 0, 3);
+      if (nk_button_label(ctx, "ok")) {
+        PakError perr =
+            pak_extract(&S.pak, S.input_file, str8(S.export_path_buffer));
+        if (PAK_ERR_SUCCESS != perr) {
+          snprintf(S.error_text, APP_PAK_MAX_ERROR_LENGTH,
+                   "failed to extract pak file into '%s'", S.export_path_buffer);
+          S.mode = APP_PAK_MODE_FAILED;
+        }
+
+        S.is_extracting_requested = FALSE;
+      }
+      nk_label(ctx, "", 0);
+      if (nk_button_label(ctx, "cancel")) {
+        S.is_extracting_requested = FALSE;
+      }
+
       nk_popup_end(ctx);
     } else
       S.is_extracting_requested = FALSE;
