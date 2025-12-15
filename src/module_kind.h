@@ -89,7 +89,7 @@ typedef enum {
 
 KindError kind_guess_file(CStr, Kind*);
 KindError kind_guess_buffer(CStr, Kind*);
-KindError kind_guess_entry(CStr, U32, Kind*);
+KindError kind_guess_entry(Str, U32, Kind*);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -99,7 +99,7 @@ KindError kind_guess_entry(CStr, U32, Kind*);
 
 extern TracyCZoneCtx trcyctx;
 
-internal KindError
+static KindError
 guess_file_type(CStr buf, Kind* kind) {
   TracyCZoneN(trcyctx, "guess_file_type", 1);
 
@@ -125,15 +125,15 @@ guess_file_type(CStr buf, Kind* kind) {
 }
 
 KindError
-kind_guess_entry(CStr path, U32 len, Kind* kind) {
+kind_guess_entry(Str path, U32 len, Kind* kind) {
   TracyCZoneN(trcyctx, "kind_guess_entry", 1);
 
   Assert(path != 0);
   Assert(len > 0);
   Assert(kind != 0);
 
-  CStr ext_base = path;
-  CStr ext = path;
+  Str ext_base = path;
+  Str ext = path;
   for (; *ext_base != 0; ext_base++)
     if ('.' == *ext_base)
       ext = ext_base;

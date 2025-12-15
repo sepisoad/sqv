@@ -89,7 +89,7 @@ HashMapKV* hashmap_key_at(HashMap* hm, U32 index);
 
 extern TracyCZoneCtx trcyctx;
 
-internal Nothing
+static Nothing
 hashmap_list_concat_in_place(HashMapList* to, HashMapList* from) {
   TracyCZoneN(trcyctx, "hashmap_list_concat_in_place", 1);
 
@@ -107,7 +107,7 @@ hashmap_list_concat_in_place(HashMapList* to, HashMapList* from) {
   TracyCZoneEnd(trcyctx);
 }
 
-internal HashMapNode*
+static HashMapNode*
 hashmap_list_pop(HashMapList* hml) {
   TracyCZoneN(trcyctx, "hashmap_list_pop", 1);
 
@@ -124,7 +124,7 @@ hashmap_list_pop(HashMapList* hml) {
   return hmn;
 }
 
-internal U64
+static U64
 hashmap_hasher(Str8 str) {
   return rapidhash_withSeed(str.cstr, str.size, 1987);
 }
@@ -300,6 +300,7 @@ hashmap_key_at(HashMap* hm, U32 index) {
   }
 
   TracyCZoneEnd(trcyctx);
+  return 0;
 }
 
 /* ===================================================== */

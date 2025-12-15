@@ -105,7 +105,7 @@ PakError pak_extract_item(Pak* pak,
 
 extern TracyCZoneCtx trcyctx;
 
-internal PakError
+static PakError
 pak_get_path_depth(CStr path, U32 length, U32* depth) {
   TracyCZoneN(trcyctx, "pak_get_path_depth", 1);
 
@@ -129,7 +129,7 @@ pak_get_path_depth(CStr path, U32 length, U32* depth) {
 
 /* ===================================================== */
 
-internal PakError
+static PakError
 pak_get_path_at_depth(CStr path,
                       U32 length,
                       U32 depth,
@@ -157,7 +157,7 @@ pak_get_path_at_depth(CStr path,
   return PAK_ERR_SUCCESS;
 }
 
-internal PakError
+static PakError
 pak_get_item_name_at_depth(CStr path,
                            U32 length,
                            U32 depth,
@@ -190,7 +190,7 @@ pak_get_item_name_at_depth(CStr path,
 
 /* ===================================================== */
 
-internal PakError
+static PakError
 pak_read_entries_from_memory(Pak* pak, NDBuffer* ndb) {
   TracyCZoneN(trcyctx, "pak_read_entries_from_memory", 1);
 
@@ -219,7 +219,7 @@ pak_read_entries_from_memory(Pak* pak, NDBuffer* ndb) {
     // ---
     // memcpy(entry->name, ND_ADDR(ndb), PAK_ENTRY_NAME_LEN);
 
-    strncpy(entry->name, ND_ADDR(ndb), PAK_ENTRY_NAME_LEN);
+    strncpy(entry->name, (CStr)ND_ADDR(ndb), PAK_ENTRY_NAME_LEN);
     ND_MOVE(ndb, PAK_ENTRY_NAME_LEN);
     ND_I32(ndb, &offset);
     ND_I32(ndb, &size);
@@ -359,7 +359,7 @@ cleanup:
 
 /* ===================================================== */
 
-internal PakError
+static PakError
 pak_read_entries_from_file(Pak* pak, FILE* file) {
   TracyCZoneN(trcyctx, "pak_read_entries_from_file", 1);
 
@@ -521,7 +521,7 @@ pak_unload(Pak* pak) {
 
 /* ===================================================== */
 
-internal PakError
+static PakError
 pak_join_path(Str8 a, Str8 b, Str8 c) {
   TracyCZoneN(trcyctx, "pak_join_path", 1);
   PakError err = PAK_ERR_SUCCESS;
@@ -592,7 +592,7 @@ pak_extract(Pak* pak, FILE* file, Str8 out_dir) {
 
         IO_SET(file, new_node->offset);
         IO_BUF(file, new_node->size, src_buffer);
-        io_dump(full_path_str, str8_raw(src_buffer, new_node->size));
+        io_dump(full_path_str, str8_size((Str)src_buffer, new_node->size));
       }
     }
   }
@@ -623,7 +623,7 @@ pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
 
     IO_SET(file, node->offset);
     IO_BUF(file, node->size, src_buffer);
-    io_dump(full_path_str, str8_raw(src_buffer, node->size));
+    io_dump(full_path_str, str8_size((Str)src_buffer, node->size));
     goto cleanup;
   }
 
@@ -685,7 +685,7 @@ pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
 
         IO_SET(file, new_node->offset);
         IO_BUF(file, new_node->size, src_buffer);
-        io_dump(full_path_str, str8_raw(src_buffer, new_node->size));
+        io_dump(full_path_str, str8_size((Str)src_buffer, new_node->size));
       }
     }
   }

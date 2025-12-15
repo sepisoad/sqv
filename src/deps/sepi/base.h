@@ -35,14 +35,16 @@ typedef const intptr_t CIPtr;
 typedef const uintptr_t CPtr;
 typedef ptrdiff_t PtrDiff;
 
-typedef U8* CStr;
-typedef const U8* CBuf;
+typedef U8*         Buf;
+typedef const U8*   CBuf;
+typedef char*       Str;
+typedef const char* CStr;
+
 
 /* ===================================================== */
 /*                       KEYWORDS                        */
 /* ===================================================== */
 
-#define internal static
 
 /* ===================================================== */
 /*                       PLATFOTM                        */

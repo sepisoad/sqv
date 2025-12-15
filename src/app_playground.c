@@ -25,7 +25,7 @@
 
 #include "module_md1.h"
 
-internal struct {
+static struct {
   Arena*         arena;
   Md1            md1;
   U32            zoom;
@@ -45,7 +45,7 @@ internal struct {
   } bbox;
 } S;
 
-internal Nothing
+static Nothing
 init(void) {
   log_info("initializing gpu ...");
 
@@ -59,7 +59,7 @@ init(void) {
   S.arena = arena_create();
 
   // load default Md1 file
-  CStr path = (CStr)sapp_userdata();
+  Str path = sapp_userdata();
 
   NDBuffer ndb = {0};
   CBuf  buf = 0;
@@ -142,7 +142,7 @@ init(void) {
   });
 }
 
-internal Nothing
+static Nothing
 cleanup(void) {
   log_info("shutting down");
 

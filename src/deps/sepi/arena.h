@@ -169,7 +169,7 @@ arena_push(Arena* a, U64 size, U64 align, Bool with_zero) {
       }
       new_block = arena_create(.requested_reserve_size = requested_reserve_size,
                               .requested_commit_size = requested_commit_size,
-                              .caller_file_name = current_block->caller_file_name,
+                              .caller_file_name = (CStr) current_block->caller_file_name,
                               .caller_file_line = current_block->caller_file_line);
     }
 

@@ -11,12 +11,23 @@ workspace "ProjectWorkspace"
     defines { "DEBUG" }
     symbols "On"
     optimize "Off"
-    buildoptions { "-fsanitize=address,undefined,leak", "-fno-omit-frame-pointer", "-static-libasan" }
-    linkoptions { "-fsanitize=address,undefined,leak", "-fno-omit-frame-pointer", "-static-libasan" }
+
+    filter "system:macosx"
+      buildoptions { "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
+      linkoptions { "-fsanitize=address,undefined", "-fno-omit-frame-pointer",  "-Wno-initializer-overrides" }
+
+    filter "system:linux"
+      buildoptions { "-fsanitize=address,undefined,leak", "-fno-omit-frame-pointer", "-static-libasan" }
+      linkoptions { "-fsanitize=address,undefined,leak", "-fno-omit-frame-pointer", "-static-libasan" }
 
   filter "configurations:Release"
     defines { "NDEBUG" }
     optimize "Speed"
+
+    filter "system:macosx"
+      buildoptions { "-Wno-initializer-overrides" }
+      linkoptions { "-Wno-initializer-overrides" }
+
 
   filter "configurations:Profiling"
     defines { "DEBUG", "PROFILING", "TRACY_ENABLE" }
@@ -24,6 +35,11 @@ workspace "ProjectWorkspace"
     optimize "On"
     buildoptions { "-lTracyClient", "-lstdc++", "-pthread", "-ldl"  }
     linkoptions { "-lTracyClient", "-lstdc++", "-pthread", "-ldl" }
+
+    filter "system:macosx"
+      buildoptions { "-Wno-initializer-overrides" }
+      linkoptions { "-Wno-initializer-overrides" }
+
 
 
 --
@@ -100,7 +116,7 @@ project "lib_sepi"
 
 -- APP::playground (testing ideas)
 project "app_playground"
-  kind "WindowedApp"
+  kind "ConsoleApp"
   language "C"
   location ".build"
   targetdir ".build/"
@@ -122,7 +138,7 @@ project "app_playground"
 
 -- APP::pak
 project "app_pak"
-  kind "WindowedApp"
+  kind "ConsoleApp"
   language "C"
   location ".build"
   targetdir ".build/"

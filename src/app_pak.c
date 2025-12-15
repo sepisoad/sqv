@@ -89,7 +89,7 @@ typedef struct {
 /*                        GLOBALS                        */
 /* ===================================================== */
 
-internal struct {
+static struct {
   AppPakImage home;
   AppPakImage back;
   AppPakImage package;
@@ -98,7 +98,7 @@ internal struct {
   AppPakImage text;
 } ICONS;
 
-internal struct {
+static struct {
   Bool is_app_styled;
   Bool is_extracting_requested;
   Pak pak;
@@ -106,7 +106,7 @@ internal struct {
   PakTreeNode* current_pak_tree_node;
   PakTreeNode* requested_extracting_item;
   FILE* input_file;
-  CBuf input_file_path;
+  CStr input_file_path;
   char export_path_buffer[APP_PAK_MAX_EXPORT_PATH_LENGTH];
   char error_text[APP_PAK_MAX_ERROR_LENGTH];
   Arena* arena;
@@ -116,46 +116,46 @@ internal struct {
 /*                      DECLERATIONS                     */
 /* ===================================================== */
 
-internal Nothing app_pak_init();
-internal AppPakError app_pak_init_style(struct nk_style* s);
-internal AppPakError app_pak_init_icons();
-internal AppPakError app_pak_init_icon(AppPakImage* app_icon,
+static Nothing app_pak_init();
+static AppPakError app_pak_init_style(struct nk_style* s);
+static AppPakError app_pak_init_icons();
+static AppPakError app_pak_init_icon(AppPakImage* app_icon,
                                        CBuf buffer,
                                        Sz size);
-internal Nothing app_pak_cleanup();
-internal Nothing app_pak_cleanup_reload();
-internal AppPakError app_pak_cleanup_icons();
-internal AppPakError app_pak_cleanup_icon(AppPakImage* app_icon);
+static Nothing app_pak_cleanup();
+static Nothing app_pak_cleanup_reload();
+static AppPakError app_pak_cleanup_icons();
+static AppPakError app_pak_cleanup_icon(AppPakImage* app_icon);
 
-internal Nothing app_pak_input(const sapp_event* event);
-internal AppPakError app_pak_handle_file_drop(CBuf path);
-internal AppPakError app_pak_handle_file_drop_pak(CBuf path);
-internal AppPakError app_pak_handle_file_drop_dir(CBuf path);
+static Nothing app_pak_input(const sapp_event* event);
+static AppPakError app_pak_handle_file_drop(CStr path);
+static AppPakError app_pak_handle_file_drop_pak(CStr path);
+static AppPakError app_pak_handle_file_drop_dir(CStr path);
 
-internal Nothing app_pak_frame();
-internal U32 app_pak_draw(struct nk_context* ctx);
-internal Nothing app_pak_draw_mode_empty(struct nk_context* ctx,
+static Nothing app_pak_frame();
+static U32 app_pak_draw(struct nk_context* ctx);
+static Nothing app_pak_draw_mode_empty(struct nk_context* ctx,
                                          nk_flags window_flags,
                                          U32 window_width,
                                          U32 window_height);
-internal Nothing app_pak_draw_mode_failed(struct nk_context* ctx,
+static Nothing app_pak_draw_mode_failed(struct nk_context* ctx,
                                           nk_flags window_flags,
                                           U32 window_width,
                                           U32 window_height);
-internal Nothing app_pak_draw_mode_loaded(struct nk_context* ctx,
+static Nothing app_pak_draw_mode_loaded(struct nk_context* ctx,
                                           nk_flags window_flags,
                                           U32 window_width,
                                           U32 window_height);
-internal Nothing app_pak_draw_mode_loaded(struct nk_context* ctx,
+static Nothing app_pak_draw_mode_loaded(struct nk_context* ctx,
                                           nk_flags window_flags,
                                           U32 window_width,
                                           U32 window_height);
-internal Nothing app_pak_draw_widget_explorer_area(struct nk_context* ctx,
+static Nothing app_pak_draw_widget_explorer_area(struct nk_context* ctx,
                                                    U32 window_width,
                                                    U32 window_height);
-internal Nothing app_pak_draw_widget_explorer_item(struct nk_context* ctx,
+static Nothing app_pak_draw_widget_explorer_item(struct nk_context* ctx,
                                                    PakTreeNode* node);
-internal Nothing app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
+static Nothing app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
                                                    PakTreeNode* node,
                                                    Bool is_dir,
                                                    struct nk_image* image,
@@ -202,8 +202,8 @@ sokol_main(int argc, char* argv[]) {
 
 /* ===================================================== */
 
-internal Nothing
-app_pak_init() {
+void
+app_pak_init(void) {
   TracyCZoneN(trcyctx, "app_pak_init", 1);
 
   S.arena = arena_create();
@@ -233,7 +233,7 @@ app_pak_init() {
 
 /* ===================================================== */
 
-internal AppPakError
+static AppPakError
 app_pak_init_style(struct nk_style* s) {
   TracyCZoneN(trcyctx, "app_pak_init_style", 1);
 
@@ -282,7 +282,7 @@ cleanup:
 
 /* ===================================================== */
 
-internal AppPakError
+static AppPakError
 app_pak_init_icons() {
   TracyCZoneN(trcyctx, "app_pak_init_icons", 1);
 
@@ -328,14 +328,14 @@ cleanup:
 
 /* ===================================================== */
 
-internal AppPakError
+static AppPakError
 app_pak_init_icon(AppPakImage* app_icon, CBuf buffer, Sz size) {
   TracyCZoneN(trcyctx, "app_pak_init_icon", 1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
-  U32 w, h, c = 0;
-  CStr data = stbi_load_from_memory(buffer, size, &w, &h, &c, 4);
+  I32 w, h, c = 0;
+  CBuf data = stbi_load_from_memory(buffer, size, &w, &h, &c, 4);
   if (0 == data) {
     err = APP_PAK_ERR_ICON_INIT;
     snprintf(S.error_text, APP_PAK_MAX_ERROR_LENGTH,
@@ -371,7 +371,7 @@ app_pak_init_icon(AppPakImage* app_icon, CBuf buffer, Sz size) {
 
 cleanup:
   if (data) {
-    free(data);
+    free((RawPtr)data);
     TracyCFree(data);
   }
 
@@ -381,7 +381,7 @@ cleanup:
 
 /* ===================================================== */
 
-internal Nothing
+static Nothing
 app_pak_cleanup() {
   TracyCZoneN(trcyctx, "app_pak_cleanup", 1);
 
@@ -399,7 +399,7 @@ app_pak_cleanup() {
   TracyCZoneEnd(trcyctx);
 }
 
-internal Nothing
+static Nothing
 app_pak_cleanup_reload() {
   TracyCZoneN(trcyctx, "app_pak_cleanup_reload", 1);
 
@@ -422,7 +422,7 @@ app_pak_cleanup_reload() {
   TracyCZoneEnd(trcyctx);
 }
 
-internal AppPakError
+static AppPakError
 app_pak_cleanup_icons() {
   TracyCZoneN(trcyctx, "app_pak_cleanup_icons", 1);
 
@@ -458,7 +458,7 @@ cleanup:
   return err;
 }
 
-internal AppPakError
+static AppPakError
 app_pak_cleanup_icon(AppPakImage* app_icon) {
   TracyCZoneN(trcyctx, "app_pak_cleanup_icon", 1);
 
@@ -476,7 +476,7 @@ cleanup:
 
 /* ===================================================== */
 
-internal Nothing
+static Nothing
 app_pak_input(const sapp_event* event) {
   TracyCZoneN(trcyctx, "app_pak_input", 1);
 
@@ -496,14 +496,14 @@ app_pak_input(const sapp_event* event) {
 
 /* ===================================================== */
 
-internal AppPakError
-app_pak_handle_file_drop(CBuf path) {
+static AppPakError
+app_pak_handle_file_drop(CStr path) {
   TracyCZoneN(trcyctx, "app_pak_handle_file_drop", 1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
   Bool is_dir = FALSE;
-  IOError ioerr = io_is_directory(str8((CStr)path), &is_dir);
+  IOError ioerr = io_is_directory(str8((Str)path), &is_dir);
   if (IO_ERR_SUCCESS != ioerr) {
     S.mode = APP_PAK_MODE_FAILED;
     err = APP_PAK_ERR_DROP;
@@ -523,8 +523,8 @@ cleanup:
 
 /* ===================================================== */
 
-internal AppPakError
-app_pak_handle_file_drop_pak(CBuf path) {
+static AppPakError
+app_pak_handle_file_drop_pak(CStr path) {
   TracyCZoneN(trcyctx, "app_pak_handle_file_drop_pak", 1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
@@ -567,8 +567,8 @@ cleanup:
 
 /* ===================================================== */
 
-internal AppPakError
-app_pak_handle_file_drop_dir(CBuf path) {
+static AppPakError
+app_pak_handle_file_drop_dir(CStr path) {
   TracyCZoneN(trcyctx, "app_pak_handle_file_drop_dir", 1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
@@ -580,7 +580,7 @@ cleanup:
 
 /* ===================================================== */
 
-internal Nothing
+static Nothing
 app_pak_frame() {
   TracyCZoneN(trcyctx, "app_pak_frame", 1);
   TracyCFrameMarkStart(0);
@@ -610,14 +610,14 @@ app_pak_frame() {
 
 /* ===================================================== */
 
-internal U32
+static U32
 app_pak_draw(struct nk_context* ctx) {
   TracyCZoneN(trcyctx, "app_pak_draw", 1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
-  internal CBuf window_title = "SQV::Pak Explorer";
-  internal nk_flags window_flags = 0;
+  static char window_title[] = "SQV::Pak Explorer";
+  static nk_flags window_flags = 0;
 
   U32 window_width = sapp_width();
   U32 window_height = sapp_height();
@@ -637,14 +637,14 @@ app_pak_draw(struct nk_context* ctx) {
 
 /* ===================================================== */
 
-internal Nothing
+static Nothing
 app_pak_draw_mode_empty(struct nk_context* ctx,
                         nk_flags window_flags,
                         U32 window_width,
                         U32 window_height) {
   TracyCZoneN(trcyctx, "app_pak_draw_mode_empty", 1);
 
-  internal CBuf label = "Please drop a .PAK file here, I'm hungry!";
+  static char label[] = "Please drop a .PAK file here, I'm hungry!";
 
   if (nk_begin(ctx, "", nk_rect(0, 0, window_width, window_height),
                window_flags)) {
@@ -678,7 +678,7 @@ app_pak_draw_mode_empty(struct nk_context* ctx,
 
 /* ===================================================== */
 
-internal Nothing
+static Nothing
 app_pak_draw_mode_failed(struct nk_context* ctx,
                          nk_flags window_flags,
                          U32 window_width,
@@ -719,7 +719,7 @@ app_pak_draw_mode_failed(struct nk_context* ctx,
 
 /* ===================================================== */
 
-internal Nothing
+static Nothing
 app_pak_draw_mode_loaded(struct nk_context* ctx,
                          nk_flags window_flags,
                          U32 window_width,
@@ -843,7 +843,7 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
 
 /* ===================================================== */
 
-internal Nothing
+static Nothing
 app_pak_draw_widget_explorer_area(struct nk_context* ctx,
                                   U32 window_width,
                                   U32 window_height) {
@@ -895,7 +895,7 @@ app_pak_draw_widget_explorer_area(struct nk_context* ctx,
 
 /* ===================================================== */
 
-internal Nothing
+static Nothing
 app_pak_draw_widget_explorer_item(struct nk_context* ctx, PakTreeNode* node) {
   TracyCZoneN(trcyctx, "app_pak_draw_widget_explorer_item", 1);
 
@@ -913,7 +913,7 @@ app_pak_draw_widget_explorer_item(struct nk_context* ctx, PakTreeNode* node) {
   TracyCZoneEnd(trcyctx);
 }
 
-internal Nothing
+static Nothing
 app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
                                   PakTreeNode* node,
                                   Bool is_dir,

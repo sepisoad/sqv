@@ -222,13 +222,13 @@ Md1Error md1_unload(Md1* md1);
 extern TracyCZoneCtx trcyctx;
 
 static Nothing
-md1_load_image(CBuf ptr, CStr pixels, Sz sz) {
+md1_load_image(CBuf ptr, Buf pixels, Sz sz) {
   TracyCZoneN(trcyctx, "md1_load_image", 1);
 
   Assert(pixels != 0);
   Assert(sz > 0);
 
-  U8* indices = (U8*)ptr;
+  Buf indices = (Buf)ptr;
   for (U32 i = 0, j = 0; i < sz; i++, j += 4) {
     U32 index = indices[i];
     pixels[j + 0] = quake1_palette[index][0];  // red
@@ -240,7 +240,7 @@ md1_load_image(CBuf ptr, CStr pixels, Sz sz) {
   TracyCZoneEnd(trcyctx);
 }
 
-internal Md1Error
+static Md1Error
 md1_load_skins(Md1* md1, NDBuffer* ndb) {
   TracyCZoneN(trcyctx, "md1_load_skins", 1);
 
@@ -266,7 +266,7 @@ md1_load_skins(Md1* md1, NDBuffer* ndb) {
 
     if (MD1_SKIN_SINGLE == *st) {
       Sz data_sz = sizeof(U8) * skin_sz * channels;
-      CStr data = (CStr)arena_push(a, data_sz, AlignOf(U8), TRUE);
+      Buf data = (Buf)arena_push(a, data_sz, AlignOf(U8), TRUE);
       Assert(data != 0);
 
       // constructing pixel data
@@ -316,7 +316,7 @@ md1_load_skins(Md1* md1, NDBuffer* ndb) {
   return err;
 }
 
-internal Md1Error
+static Md1Error
 md1_load_uvs(const Md1* md1, NDBuffer* ndb, Md1UV** uvs) {
   TracyCZoneN(trcyctx, "md1_load_uvs", 1);
 
@@ -342,7 +342,7 @@ md1_load_uvs(const Md1* md1, NDBuffer* ndb, Md1UV** uvs) {
   return err;
 }
 
-internal Md1Error
+static Md1Error
 md1_load_triangles(Md1* md1, NDBuffer* ndb, Md1FacedTriangle** fts) {
   TracyCZoneN(trcyctx, "md1_load_triangles", 1);
 
@@ -377,8 +377,8 @@ md1_load_triangles(Md1* md1, NDBuffer* ndb, Md1FacedTriangle** fts) {
   return err;
 }
 
-internal Bool
-md1_has_pose_name_changed(CStr new, CBuf old) {
+static Bool
+md1_has_pose_name_changed(Str new, CStr old) {
   TracyCZoneN(trcyctx, "md1_has_pose_name_changed", 1);
 
   for (U32 i = 0; i < MD1_MAX_FRAME_NAME_LEN - 1; i++) {
@@ -401,11 +401,11 @@ md1_has_pose_name_changed(CStr new, CBuf old) {
   return FALSE;
 }
 
-internal Md1Error
+static Md1Error
 md1_load_single_frame(Md1* md1,
                       NDBuffer* ndb,
                       U32 frame_idx,
-                      CStr frame_name,
+                      Str frame_name,
                       Bool* is_bbox_loaded) {
   TracyCZoneN(trcyctx, "md1_load_single_frame", 1);
 
@@ -431,7 +431,7 @@ md1_load_single_frame(Md1* md1,
   }
 
   md1->poses[details->poses_count - 1].frames_count++;
-  memcpy(frame_name, frame_single.name, MD1_MAX_FRAME_NAME_LEN);
+  memcpy((RawPtr)frame_name, frame_single.name, MD1_MAX_FRAME_NAME_LEN);
   frame_name[MD1_MAX_FRAME_NAME_LEN - 1] = 0;
 
   if (*is_bbox_loaded != TRUE) {
@@ -556,7 +556,7 @@ md1_load_single_frame(Md1* md1,
   return err;
 }
 
-internal Md1Error
+static Md1Error
 md1_load_frames(Md1* md1, NDBuffer* ndb) {
   TracyCZoneN(trcyctx, "md1_load_frames", 1);
 
@@ -658,7 +658,7 @@ md1_make_display_list(Md1* md1, Md1UV* uvs, Md1FacedTriangle* faced_triangles) {
   return err;
 }
 
-internal Md1Error
+static Md1Error
 md1_make_display_list_v2(Md1* md1,
                          Md1UV* uvs,
                          Md1FacedTriangle* faced_triangles) {

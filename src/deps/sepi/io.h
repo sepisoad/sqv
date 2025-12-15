@@ -49,7 +49,7 @@ typedef enum {
 /*                          API                          */
 /* ===================================================== */
 
-IOError io_load_file(Arena*, CBuf, NDBuffer*);
+IOError io_load_file(Arena*, CStr, NDBuffer*);
 IOError io_dump(Str8 path, Str8 data);
 IOError io_make_directory(Str8 path);
 IOError io_is_directory(Str8 path, Bool *is_dir);
@@ -59,12 +59,12 @@ IOError io_is_directory(Str8 path, Bool *is_dir);
 #define IO_MOVE(f, sz) fseek((f), (sz), SEEK_CUR)
 
 #define IO_BUF(f /* FILE* */, len /* U32 */, buf /* CBuf */) \
-  fread((buf), 1, (len), (f))
+  fread((RawPtr)(buf), 1, (len), (f))
 
 #define IO_I16(f /* FILE* */, num /* I16* */) \
   {                                           \
     I16 tmp;                                  \
-    fread(&tmp, 1, sizeof(I16), (f));         \
+    fread((RawPtr)&tmp, 1, sizeof(I16), (f));         \
     tmp = nd_i16(tmp);                        \
     *(num) = tmp;                             \
   }
@@ -72,7 +72,7 @@ IOError io_is_directory(Str8 path, Bool *is_dir);
 #define IO_I32(f /* FILE* */, num /* I32* */) \
   {                                           \
     I32 tmp;                                  \
-    fread(&tmp, 1, sizeof(I32), (f));         \
+    fread((RawPtr)&tmp, 1, sizeof(I32), (f));         \
     tmp = nd_i32(tmp);                        \
     *(num) = tmp;                             \
   }
@@ -80,7 +80,7 @@ IOError io_is_directory(Str8 path, Bool *is_dir);
 #define IO_I64(f /* FILE* */, num /* I64* */) \
   {                                           \
     I64 tmp;                                  \
-    fread(&tmp, 1, sizeof(I64), (f));         \
+    fread((RawPtr)&tmp, 1, sizeof(I64), (f));         \
     tmp = nd_i64(tmp);                        \
     *(num) = tmp;                             \
   }
@@ -88,7 +88,7 @@ IOError io_is_directory(Str8 path, Bool *is_dir);
 #define IO_F32(f /* FILE* */, num /* F32* */) \
   {                                           \
     F32 tmp;                                  \
-    fread(&tmp, 1, sizeof(F32), (f));         \
+    fread((RawPtr)&tmp, 1, sizeof(F32), (f));         \
     tmp = nd_f32(tmp);                        \
     *(num) = tmp;                             \
   }
@@ -96,7 +96,7 @@ IOError io_is_directory(Str8 path, Bool *is_dir);
 #define IO_F64(f /* FILE* */, num /* F64* */) \
   {                                           \
     F64 tmp;                                  \
-    fread(&tmp, 1, sizeof(F64), (f));         \
+    fread((RawPtr)&tmp, 1, sizeof(F64), (f));         \
     tmp = nd_f64(tmp);                        \
     *(num) = tmp;                             \
   }
@@ -113,7 +113,7 @@ extern TracyCZoneCtx trcyctx;
 // refactor this function, in fact i don't use this function
 // maybe eve delete this function
 IOError
-io_load_file(Arena* arena, CBuf path, NDBuffer* ndb) {
+io_load_file(Arena* arena, CStr path, NDBuffer* ndb) {
   TracyCZoneN(trcyctx, "io_load_file", 1);
 
   Assert(arena != 0);
@@ -235,7 +235,7 @@ IOError io_is_directory(Str8 path, Bool *is_dir) {
   }
 
 
-  if(info.st_mode & S_IFMT == S_IFDIR) {
+  if((info.st_mode & S_IFMT) == S_IFDIR) {
     *is_dir = TRUE;
   } else {
     *is_dir = FALSE;

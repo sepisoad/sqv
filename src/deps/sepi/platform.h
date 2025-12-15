@@ -40,13 +40,23 @@ extern TracyCZoneCtx trcyctx;
 
 #if defined(OS_LINUX) || defined(OS_MAC)
 
+#if defined(OS_LINUX)
 #include <sys/sysinfo.h> /* get_nprocs */
+#else
+#include <mach/mach_vm.h>
+#endif
+
 #include <unistd.h>      /* getpagesize */
 #include <sys/mman.h>    /* mmap */
 
 MODULE U32
 platform_get_cpu_cores() {
+#if defined(OS_LINUX)
   return (U32)get_nprocs();
+#else
+  long n = sysconf(_SC_NPROCESSORS_ONLN);
+  return (n > 0) ? (U32)n : 1;
+#endif
 }
 
 MODULE Sz
@@ -63,8 +73,10 @@ MODULE RawPtr
 platform_reserve_large_pages(Sz size) {
   TracyCZoneN(trcyctx, "platform_reserve_large_pages", 1);
 
+#if defined(OS_LINUX)
   U32 flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB;
   RawPtr result = mmap(0, size, PROT_NONE, flags, -1, 0);
+
   if (result == MAP_FAILED) {
     flags = MAP_PRIVATE | MAP_ANONYMOUS;
     result = mmap(0, size, PROT_NONE, flags, -1, 0);
@@ -72,6 +84,20 @@ platform_reserve_large_pages(Sz size) {
       result = 0;
     }
   }
+#else
+  U32 flags = MAP_PRIVATE | MAP_ANON;
+  RawPtr result = mmap(0, size, PROT_NONE, flags, VM_FLAGS_SUPERPAGE_SIZE_2MB, 0);
+  if (result == MAP_FAILED) {
+    Sz page_size = (Sz)sysconf(_SC_PAGESIZE);
+    size = (size + (page_size - 1)) & ~(page_size - 1);
+    result = mmap(0, size, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
+
+    if (result == MAP_FAILED) {
+      result = 0;
+    }
+  }
+#endif
+
 
   TracyCAlloc(result, size);
   TracyCZoneEnd(trcyctx);

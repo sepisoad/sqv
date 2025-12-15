@@ -23,7 +23,7 @@ enum {
 };
 
 typedef struct {
-  CStr cstr;
+  Str cstr;
   Sz size;
 } Str8;
 
@@ -31,7 +31,8 @@ typedef struct {
 /*                          API                          */
 /* ===================================================== */
 
-Str8 str8(CStr cstr);
+Str8 str8(Str cstr);
+Str8 str8_size(Str cstr, Sz size);
 Str8 str8_raw(RawPtr rptr, Sz size);
 Str8 str8_zero(void);
 Bool str8_join(Str8 a, Str8 b, Str8 c, char separator);
@@ -51,7 +52,7 @@ U8 correct_slash_from_char(U8 c);
 
 #ifdef SEPI_STRING_IMPLEMENTATION
 
-internal U8 integer_symbol_reverse[128] = {
+static U8 integer_symbol_reverse[128] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -66,14 +67,20 @@ internal U8 integer_symbol_reverse[128] = {
 };
 
 Str8
-str8(CStr cstr) {
-  Str8 result = {cstr, strlen(cstr)};
+str8(Str cstr) {
+  Str8 result = {cstr, strlen((CStr)cstr)};
+  return result;
+}
+
+Str8
+str8_size(Str cstr, Sz size) {
+  Str8 result = {cstr, size};
   return result;
 }
 
 Str8
 str8_raw(RawPtr rptr, Sz size) {
-  Str8 result = {(CStr)rptr, size};
+  Str8 result = {(Str)rptr, size};
   return result;
 }
 
@@ -100,6 +107,8 @@ str8_join(Str8 a, Str8 b, Str8 c, char separator) {
 
   memcpy(c.cstr+(c.size), b.cstr, b.size);
   c.size += b.size;
+
+  return TRUE;
 }
 
 Bool

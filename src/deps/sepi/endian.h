@@ -98,10 +98,10 @@ F64 nd_f64(F64 num);
 // technically we can convert all these functions into macros!
 //
 
-internal inline Bool
+static inline Bool
 isle() {
   U16 num = 0x1;
-  return (*(U8*)&num == 1);
+  return (*(Buf)&num == 1);
 }
 
 I16
@@ -134,8 +134,8 @@ nd_f32(F32 num) {
   }
 
   F32  result;
-  CStr src = (CStr)&num;
-  CStr dst = (CStr)&result;
+  Str src = (Str)&num;
+  Str dst = (Str)&result;
   dst[0] = src[3];
   dst[1] = src[2];
   dst[2] = src[1];
@@ -149,8 +149,8 @@ nd_f64(F64 num) {
     return num;
   }
   F64  result;
-  CStr src = (CStr)&num;
-  CStr dst = (CStr)&result;
+  Str src = (Str)&num;
+  Str dst = (Str)&result;
   dst[0] = src[7];
   dst[1] = src[6];
   dst[2] = src[5];
