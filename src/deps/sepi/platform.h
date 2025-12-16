@@ -124,6 +124,56 @@ platform_release(RawPtr ptr, Sz size) {
   TracyCZoneEnd(trcyctx);
 }
 
+#elif defined(OS_MAC)
+
+#include <mach/vm_statistics.h>
+#include <unistd.h> /* getpagesize */
+#include <sys/mman.h> /* mmap */
+
+MODULE U32
+platform_get_cpu_cores() {
+  return sysconf(_SC_NPROCESSORS_ONLN);
+}
+
+MODULE Sz
+platform_get_page_size() {
+  return (Sz) sysconf(_SC_PAGESIZE);
+}
+
+MODULE Sz
+platform_get_large_page_size() {
+  return MB(2);
+}
+
+MODULE RawPtr
+platform_reserve_large_pages(Sz size) {
+  I32 vmflags = (I32)VM_MAKE_TAG(240U);
+  vmflags |= VM_FLAGS_SUPERPAGE_SIZE_2MB;
+
+  U32 flags = MAP_PRIVATE | MAP_ANONYMOUS;
+  void* result = mmap(0, size, PROT_NONE, flags, vmflags, 0);
+
+  if(result == MAP_FAILED) {
+    flags = MAP_PRIVATE | MAP_ANONYMOUS;
+    result = mmap(0, size, PROT_NONE, flags, -1, 0);
+    if(result == MAP_FAILED) {
+      result = 0;
+    }
+  }
+  return result;
+}
+
+MODULE U32
+platform_commit_large_pages(RawPtr ptr, Sz size) {
+  mprotect(ptr, size, PROT_READ | PROT_WRITE);
+  return 1;
+}
+
+MODULE Nothing
+platform_release(RawPtr ptr, Sz size) {
+  munmap(ptr, size);
+}
+
 #else /* OS_WINDOWS */
 
 #include <sysinfoapi.h>

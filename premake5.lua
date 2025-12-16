@@ -4,42 +4,47 @@
 
 workspace "ProjectWorkspace"
   configurations { "Debug", "Release", "Profiling" }
-    location "."
-    toolset "gcc"
+  location "."
+  toolset "gcc"
 
+  -- Debug (common)
   filter "configurations:Debug"
     defines { "DEBUG" }
     symbols "On"
     optimize "Off"
 
-    filter "system:macosx"
-      buildoptions { "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
-      linkoptions { "-fsanitize=address,undefined", "-fno-omit-frame-pointer",  "-Wno-initializer-overrides" }
+  -- Debug + macOS
+  filter { "configurations:Debug", "system:macosx" }
+    buildoptions { "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
+    linkoptions  { "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
 
-    filter "system:linux"
-      buildoptions { "-fsanitize=address,undefined,leak", "-fno-omit-frame-pointer", "-static-libasan" }
-      linkoptions { "-fsanitize=address,undefined,leak", "-fno-omit-frame-pointer", "-static-libasan" }
+  -- Debug + Linux
+  filter { "configurations:Debug", "system:linux" }
+    buildoptions { "-fsanitize=address,undefined,leak", "-fno-omit-frame-pointer", "-static-libasan" }
+    linkoptions  { "-fsanitize=address,undefined,leak", "-fno-omit-frame-pointer", "-static-libasan" }
 
+  -- Release (common)
   filter "configurations:Release"
     defines { "NDEBUG" }
     optimize "Speed"
 
-    filter "system:macosx"
-      buildoptions { "-Wno-initializer-overrides" }
-      linkoptions { "-Wno-initializer-overrides" }
+  -- Release + macOS
+  filter { "configurations:Release", "system:macosx" }
+    buildoptions { "-Wno-initializer-overrides" }
+    linkoptions  { "-Wno-initializer-overrides" }
 
-
+  -- Profiling (common)
   filter "configurations:Profiling"
     defines { "DEBUG", "PROFILING", "TRACY_ENABLE" }
     symbols "On"
     optimize "On"
-    buildoptions { "-lTracyClient", "-lstdc++", "-pthread", "-ldl"  }
-    linkoptions { "-lTracyClient", "-lstdc++", "-pthread", "-ldl" }
 
-    filter "system:macosx"
-      buildoptions { "-Wno-initializer-overrides" }
-      linkoptions { "-Wno-initializer-overrides" }
+  -- Profiling + macOS
+  filter { "configurations:Profiling", "system:macosx" }
+    buildoptions { "-Wno-initializer-overrides" }
+    linkoptions  { "-Wno-initializer-overrides" }
 
+  filter {} -- reset at end (good hygiene)
 
 
 --
@@ -70,10 +75,12 @@ project "lib_sokol"
     defines { "SOKOL_GLCORE" }
     links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
     buildoptions { "-x objective-c" }
+  filter {}
 
   filter "system:linux"
     defines { "SOKOL_GLCORE" }
     links { "X11", "Xi", "Xcursor", "GL", "m" }
+  filter {}
 
 -- LIBRARY::hmm
 project "lib_hmm"
@@ -132,9 +139,11 @@ project "app_playground"
 
   filter "system:macosx"
     links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
+  filter {}
 
   filter "system:linux"
     links { "X11", "Xi", "Xcursor", "GL", "m" }
+  filter {}
 
 -- APP::pak
 project "app_pak"
@@ -153,9 +162,11 @@ project "app_pak"
 
   filter "system:macosx"
     links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
+  filter {}
 
   filter "system:linux"
     links { "X11", "Xi", "Xcursor", "GL", "m" }
+  filter {}
 
 --
 -- ACTIONS -----------------------

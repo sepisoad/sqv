@@ -142,231 +142,231 @@ kind_guess_entry(Str path, U32 len, Kind* kind) {
   U32 extlen = ext_base - ext;
 
   for (I32 i = 0; i < extlen; i++)
-    ext[i] = toupper(ext[i]);
+    ext[i] = tolower(ext[i]);
 
-  if (!strncmp(ext, "PAK", 3)) {
+  if (!strncmp(ext, "pak", 3)) {
     *kind = KIND_PAK;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "PA3", 3)) {
+  if (!strncmp(ext, "pa3", 3)) {
     *kind = KIND_PK3;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "BIN", 3)) {
+  if (!strncmp(ext, "bin", 3)) {
     *kind = KIND_BIN;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "DAT", 3)) {
+  if (!strncmp(ext, "dat", 3)) {
     *kind = KIND_DAT;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "MDL", 3)) {
+  if (!strncmp(ext, "mdl", 3)) {
     *kind = KIND_MD1;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "MD2", 3)) {
+  if (!strncmp(ext, "md2", 3)) {
     *kind = KIND_MD2;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "MD3", 3)) {
+  if (!strncmp(ext, "md3", 3)) {
     *kind = KIND_MD3;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "MS2", 3)) {
+  if (!strncmp(ext, "ms2", 3)) {
     *kind = KIND_MS2;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "SMD", 3)) {
+  if (!strncmp(ext, "smd", 3)) {
     *kind = KIND_SMD;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "BSP", 3)) {
+  if (!strncmp(ext, "bsp", 3)) {
     *kind = KIND_BSP;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "ENT", 3)) {
+  if (!strncmp(ext, "ent", 3)) {
     *kind = KIND_ENT;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "MD5MESH", 7)) {
+  if (!strncmp(ext, "md5mesh", 7)) {
     *kind = KIND_MD5MESH;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "MD5ANIM", 7)) {
+  if (!strncmp(ext, "md5anim", 7)) {
     *kind = KIND_MD5ANIM;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "MDANIM", 6)) {
+  if (!strncmp(ext, "mdanim", 6)) {
     *kind = KIND_MDANIM;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "BNVIB", 5)) {
+  if (!strncmp(ext, "bnvib", 5)) {
     *kind = KIND_BNVIB;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "NAV", 3)) {
+  if (!strncmp(ext, "nav", 3)) {
     *kind = KIND_NAV;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "MAP", 3)) {
+  if (!strncmp(ext, "map", 3)) {
     *kind = KIND_MAP;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "RAW", 3)) {
+  if (!strncmp(ext, "raw", 3)) {
     *kind = KIND_RAW;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "DEM", 3)) {
+  if (!strncmp(ext, "dem", 3)) {
     *kind = KIND_DEM;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "LIT", 3)) {
+  if (!strncmp(ext, "lit", 3)) {
     *kind = KIND_LIT;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "LIGHTS", 6)) {
+  if (!strncmp(ext, "lights", 6)) {
     *kind = KIND_LIGHTS;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "RTLIGHTS", 8)) {
+  if (!strncmp(ext, "rtlights", 8)) {
     *kind = KIND_RTLIGHTS;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "WAD", 3)) {
+  if (!strncmp(ext, "wad", 3)) {
     *kind = KIND_WAD;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "LMP", 3)) {
+  if (!strncmp(ext, "lmp", 3)) {
     *kind = KIND_LMP;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "PCX", 3)) {
+  if (!strncmp(ext, "pcx", 3)) {
     *kind = KIND_PCX;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "JPG", 3)) {
+  if (!strncmp(ext, "jpg", 3)) {
     *kind = KIND_JPG;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "PNG", 3)) {
+  if (!strncmp(ext, "png", 3)) {
     *kind = KIND_PNG;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "TGA", 3)) {
+  if (!strncmp(ext, "tga", 3)) {
     *kind = KIND_TGA;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "SPR", 3)) {
+  if (!strncmp(ext, "spr", 3)) {
     *kind = KIND_SPR;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "SPR32", 5)) {
+  if (!strncmp(ext, "spr32", 5)) {
     *kind = KIND_SPR32;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "SKIN", 4)) {
+  if (!strncmp(ext, "skin", 4)) {
     *kind = KIND_SKIN;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "WAV", 3)) {
+  if (!strncmp(ext, "wav", 3)) {
     *kind = KIND_WAV;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "OGG", 3)) {
+  if (!strncmp(ext, "ogg", 3)) {
     *kind = KIND_OGG;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "MP3", 3)) {
+  if (!strncmp(ext, "mp3", 3)) {
     *kind = KIND_MP3;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "RC", 3)) {
+  if (!strncmp(ext, "rc", 3)) {
     *kind = KIND_RC;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "CFG", 3)) {
+  if (!strncmp(ext, "cfg", 3)) {
     *kind = KIND_CFG;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "TXT", 3)) {
+  if (!strncmp(ext, "txt", 3)) {
     *kind = KIND_TXT;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
   }
 
-  if (!strncmp(ext, "JSON", 3)) {
+  if (!strncmp(ext, "json", 3)) {
     *kind = KIND_JSON;
     TracyCZoneEnd(trcyctx);
     return KIND_ERR_SUCCESS;
