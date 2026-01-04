@@ -183,14 +183,14 @@ MODULE U32
 platform_get_cpu_cores() {
   SYSTEM_INFO si = {0};
   GetSystemInfo(&si);
-  return (U32)si->dwNumberOfProcessors;
+  return (U32)si.dwNumberOfProcessors;
 }
 
 MODULE Sz
 platform_get_page_size() {
   SYSTEM_INFO si = {0};
   GetSystemInfo(&si);
-  return (Sz)si->dwPageSize;
+  return (Sz)si.dwPageSize;
 }
 
 MODULE Sz
@@ -202,8 +202,15 @@ MODULE RawPtr
 platform_reserve_large_pages(Sz size) {
   TracyCZoneN(trcyctx, "platform_reserve_large_pages", 1);
 
-  RawPtr result = VirtualAlloc(
-      0, size, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
+  DWORD flags = MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES;
+  RawPtr result = VirtualAlloc(0, size, flags, PAGE_READWRITE);
+  if (!result) {
+    flags = MEM_RESERVE | MEM_COMMIT;
+    result = VirtualAlloc(0, size, flags, PAGE_READWRITE);
+    if (!result) {
+      return 0;
+    }
+  }
 
   TracyCAlloc(result, size);
   TracyCZoneEnd(trcyctx);

@@ -1,5 +1,6 @@
 # TODO
-
+- [ ] refactor sepi module
+- [ ] enumerate file system to get list of files and directory
 - [ ] add folder drag into an existing loaded pak to create new .PAK file
 - [ ] iterate through directory and create the same hash tree from items in directory for packaging
 

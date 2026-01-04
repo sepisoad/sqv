@@ -67,9 +67,9 @@ struct PakTreeNode {
   char item_name[PAK_ENTRY_NAME_LEN];
   Sz size;
   U32 offset;
-  Bool is_dir;
-  HashMap* children;
+  Bool is_directory;
   PakTreeNode* parent;
+  HashMap* children;
 };
 
 typedef struct {
@@ -282,13 +282,13 @@ pak_read_entries_from_memory(Pak* pak, NDBuffer* ndb) {
                           (RawPtr)child);
 
       if (depth_index >= depth) {
-        child->is_dir = FALSE;
+        child->is_directory = FALSE;
         child->size = size;
         child->offset = offset;
         continue;
       }
 
-      child->is_dir = TRUE;
+      child->is_directory = TRUE;
       child->children = hashmap_init(arena, 64);
       child->parent = node;
       node = child;
@@ -343,7 +343,7 @@ pak_load_from_memory(Pak* pak, NDBuffer* ndb) {
   // TODO: find a proper default 'cap'
   pak->tree.root.parent = 0;
   pak->tree.root.children = hashmap_init(pak->arena, 64);
-  pak->tree.root.is_dir = TRUE;
+  pak->tree.root.is_directory = TRUE;
   MemZero(pak->tree.root.name, PAK_ENTRY_NAME_LEN);
   pak->tree.root.name[0] = ' ';
 
@@ -441,13 +441,13 @@ pak_read_entries_from_file(Pak* pak, FILE* file) {
                           (RawPtr)child);
 
       if (depth_index >= depth) {
-        child->is_dir = FALSE;
+        child->is_directory = FALSE;
         child->size = size;
         child->offset = offset;
         continue;
       }
 
-      child->is_dir = TRUE;
+      child->is_directory = TRUE;
       child->children = hashmap_init(arena, 64);
       child->parent = node;
       node = child;
@@ -492,7 +492,7 @@ pak_load_from_file(Pak* pak, FILE* file) {
 
   pak->tree.root.parent = 0;
   pak->tree.root.children = hashmap_init(pak->arena, 64);
-  pak->tree.root.is_dir = TRUE;
+  pak->tree.root.is_directory = TRUE;
   MemZero(pak->tree.root.name, PAK_ENTRY_NAME_LEN);
   pak->tree.root.name[0] = ' ';
 
@@ -574,7 +574,7 @@ pak_extract(Pak* pak, FILE* file, Str8 out_dir) {
 
       pak_join_path(out_dir, new_node_str, full_path_str);
 
-      if (TRUE == new_node->is_dir) {
+      if (TRUE == new_node->is_directory) {
         ListError lerr = list_push(scratch.arena, &nodes, new_node);
         if (LIST_ERR_SUCCESS != lerr) {
           err = PAK_ERR_EXTRACT;
@@ -618,7 +618,7 @@ pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
   Str8 node_str = str8(node->item_name);
   pak_join_path(out_dir, node_str, full_path_str);
 
-  if (FALSE == node->is_dir) {
+  if (FALSE == node->is_directory) {
     CStr src_buffer = arena_push(scratch.arena, node->size, AlignOf(U8), TRUE);
 
     IO_SET(file, node->offset);
@@ -667,7 +667,7 @@ pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
 
       pak_join_path(out_dir, new_node_str, full_path_str);
 
-      if (TRUE == new_node->is_dir) {
+      if (TRUE == new_node->is_directory) {
         ListError lerr = list_push(scratch.arena, &nodes, new_node);
         if (LIST_ERR_SUCCESS != lerr) {
           err = PAK_ERR_EXTRACT;

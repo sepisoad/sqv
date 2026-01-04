@@ -218,6 +218,7 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 #endif
 
 #define Abort(msg) AssertAlways(!#msg)
+#define NotImplemented() Abort("NOT IMPLEMENTED!")
 
 /* ===================================================== */
 /*                     DEBUG LOGGER                      */

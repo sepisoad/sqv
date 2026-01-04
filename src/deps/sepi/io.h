@@ -11,9 +11,10 @@
 
 #if defined(OS_LINUX) || defined(OS_MAC)
 #include <sys/stat.h>
+#include <dirent.h>
 #include <errno.h>
-#else
-#include <Windows.h>
+#else  // OS_WINDOWS
+#include <windows.h>
 #endif
 
 #include "../tracy/tracy.h"
@@ -22,6 +23,7 @@
 #include "string.h"
 #include "endian.h"
 #include "arena.h"
+#include "hashmap.h"
 
 /* ===================================================== */
 /*                       CONSTANTS                       */
@@ -33,6 +35,8 @@
 #define IO_PATH_SEPARATOR '\\'
 #endif
 
+#define IO_PATH_MAX_LENGTH 2048
+
 /* ===================================================== */
 /*                         TYPES                         */
 /* ===================================================== */
@@ -42,8 +46,26 @@ typedef enum {
   IO_ERR_MKFILE,
   IO_ERR_MKDIR,
   IO_ERR_STAT,
+  IO_ERR_OPENDIR,
   IO_ERR__COUNT,
 } IOError;
+
+typedef enum {
+  IO_KIND_FILE = 1,
+  IO_KIND_DIRECTORY,
+  IO_KIND_OTHER,
+  IO_KIND__COUNT,
+} IOKind;
+
+typedef struct IONode IONode;
+
+struct IONode {
+  Str8 name;
+  Sz size;
+  Bool is_directory;
+  IONode* parent;
+  HashMap* children;
+};
 
 /* ===================================================== */
 /*                          API                          */
@@ -51,8 +73,11 @@ typedef enum {
 
 IOError io_load_file(Arena*, CStr, NDBuffer*);
 IOError io_dump(Str8 path, Str8 data);
+IOError io_is_file(Str8 path, Bool* is_dir);
+IOError io_is_directory(Str8 path, Bool* is_dir);
 IOError io_make_directory(Str8 path);
-IOError io_is_directory(Str8 path, Bool *is_dir);
+IOError io_make_nested_directory(Str8 path);
+IOError io_directory_children(Str8 path, HashMap* children);
 
 #define IO_POS(f) ftell((f))
 #define IO_SET(f, ofs) fseek((f), (ofs), SEEK_SET)
@@ -61,44 +86,44 @@ IOError io_is_directory(Str8 path, Bool *is_dir);
 #define IO_BUF(f /* FILE* */, len /* U32 */, buf /* CBuf */) \
   fread((RawPtr)(buf), 1, (len), (f))
 
-#define IO_I16(f /* FILE* */, num /* I16* */) \
-  {                                           \
-    I16 tmp;                                  \
-    fread((RawPtr)&tmp, 1, sizeof(I16), (f));         \
-    tmp = nd_i16(tmp);                        \
-    *(num) = tmp;                             \
+#define IO_I16(f /* FILE* */, num /* I16* */)   \
+  {                                             \
+    I16 tmp;                                    \
+    fread((RawPtr) & tmp, 1, sizeof(I16), (f)); \
+    tmp = nd_i16(tmp);                          \
+    *(num) = tmp;                               \
   }
 
-#define IO_I32(f /* FILE* */, num /* I32* */) \
-  {                                           \
-    I32 tmp;                                  \
-    fread((RawPtr)&tmp, 1, sizeof(I32), (f));         \
-    tmp = nd_i32(tmp);                        \
-    *(num) = tmp;                             \
+#define IO_I32(f /* FILE* */, num /* I32* */)   \
+  {                                             \
+    I32 tmp;                                    \
+    fread((RawPtr) & tmp, 1, sizeof(I32), (f)); \
+    tmp = nd_i32(tmp);                          \
+    *(num) = tmp;                               \
   }
 
-#define IO_I64(f /* FILE* */, num /* I64* */) \
-  {                                           \
-    I64 tmp;                                  \
-    fread((RawPtr)&tmp, 1, sizeof(I64), (f));         \
-    tmp = nd_i64(tmp);                        \
-    *(num) = tmp;                             \
+#define IO_I64(f /* FILE* */, num /* I64* */)   \
+  {                                             \
+    I64 tmp;                                    \
+    fread((RawPtr) & tmp, 1, sizeof(I64), (f)); \
+    tmp = nd_i64(tmp);                          \
+    *(num) = tmp;                               \
   }
 
-#define IO_F32(f /* FILE* */, num /* F32* */) \
-  {                                           \
-    F32 tmp;                                  \
-    fread((RawPtr)&tmp, 1, sizeof(F32), (f));         \
-    tmp = nd_f32(tmp);                        \
-    *(num) = tmp;                             \
+#define IO_F32(f /* FILE* */, num /* F32* */)   \
+  {                                             \
+    F32 tmp;                                    \
+    fread((RawPtr) & tmp, 1, sizeof(F32), (f)); \
+    tmp = nd_f32(tmp);                          \
+    *(num) = tmp;                               \
   }
 
-#define IO_F64(f /* FILE* */, num /* F64* */) \
-  {                                           \
-    F64 tmp;                                  \
-    fread((RawPtr)&tmp, 1, sizeof(F64), (f));         \
-    tmp = nd_f64(tmp);                        \
-    *(num) = tmp;                             \
+#define IO_F64(f /* FILE* */, num /* F64* */)   \
+  {                                             \
+    F64 tmp;                                    \
+    fread((RawPtr) & tmp, 1, sizeof(F64), (f)); \
+    tmp = nd_f64(tmp);                          \
+    *(num) = tmp;                               \
   }
 
 /* ===================================================== */
@@ -181,13 +206,13 @@ io_dump(Str8 path, Str8 data) {
 
   FILE* f = fopen(path.cstr, "wb");
   if (0 == f) {
-    err=IO_ERR_MKFILE;
+    err = IO_ERR_MKFILE;
     goto cleanup;
   }
 
   Sz write_size = fwrite(data.cstr, 1, data.size, f);
   if (write_size != data.size) {
-    err=IO_ERR_MKFILE;
+    err = IO_ERR_MKFILE;
     goto cleanup;
   }
 
@@ -198,16 +223,95 @@ cleanup:
     fclose(f);
   }
   TracyCZoneEnd(trcyctx);
-  return IO_ERR_SUCCESS;
+  return err;
+}
+
+IOError
+io_directory_children(Str8 path, HashMap* children) {
+  TracyCZoneN(trcyctx, "io_directory_children", 1);
+
+  Assert(path.cstr != 0);
+  Assert(path.size > 0);
+  Assert(children != 0);
+
+  IOError err = IO_ERR_SUCCESS;
+
+  DIR *dir = opendir(path.cstr);
+  if (!dir) {
+    err = IO_ERR_OPENDIR;
+    goto cleanup;
+  }
+
+cleanup:
+  if (dir) {
+    closedir(dir);
+  }
+  TracyCZoneEnd(trcyctx);
+  return err;
 }
 
 #if defined(OS_LINUX) || defined(OS_MAC)
 
-#define IO_PATH_SEPARATOR '/'
+IOError
+io_is_file(Str8 path, Bool* is_file) {
+  TracyCZoneN(trcyctx, "io_is_file", 1);
+
+  Assert(path.cstr != 0);
+  Assert(path.size > 0);
+  Assert(is_file != 0);
+
+  IOError err = IO_ERR_SUCCESS;
+
+  struct stat info = {0};
+  if (-1 == stat(path.cstr, &info)) {
+    err = IO_ERR_STAT;
+    goto cleanup;
+  }
+
+  if ((info.st_mode & S_IFMT) == S_IFREG) {
+    *is_file = TRUE;
+  } else {
+    *is_file = FALSE;
+  }
+
+cleanup:
+  TracyCZoneEnd(trcyctx);
+  return err;
+}
+
+IOError
+io_is_directory(Str8 path, Bool* is_dir) {
+  TracyCZoneN(trcyctx, "io_is_directory", 1);
+
+  Assert(path.cstr != 0);
+  Assert(path.size > 0);
+  Assert(is_dir != 0);
+
+  IOError err = IO_ERR_SUCCESS;
+
+  struct stat info = {0};
+  if (-1 == stat(path.cstr, &info)) {
+    err = IO_ERR_STAT;
+    goto cleanup;
+  }
+
+  if ((info.st_mode & S_IFMT) == S_IFDIR) {
+    *is_dir = TRUE;
+  } else {
+    *is_dir = FALSE;
+  }
+
+cleanup:
+  TracyCZoneEnd(trcyctx);
+  return err;
+}
 
 IOError
 io_make_directory(Str8 path) {
   TracyCZoneN(trcyctx, "io_make_directory", 1);
+
+  Assert(path.cstr != 0);
+  Assert(path.size > 0);
 
   IOError err = IO_ERR_SUCCESS;
 
@@ -223,35 +327,58 @@ cleanup:
   return err;
 }
 
-IOError io_is_directory(Str8 path, Bool *is_dir) {
-  TracyCZoneN(trcyctx, "io_is_directory", 1);
+#else /* OS_WINDOWS */
+
+IOError
+io_is_file(Str8 path, Bool* is_file) {
+  TracyCZoneN(trcyctx, "io_is_file", 1);
+
+  Assert(path.cstr != 0);
+  Assert(path.size > 0);
+  Assert(is_file != 0);
 
   IOError err = IO_ERR_SUCCESS;
 
-  struct stat info = {0};
-  if(-1 == stat(path.cstr, &info)) {
-    err = IO_ERR_STAT;
-    goto cleanup;
+  DWORD attr = GetFileAttributesW((WCHAR*)path.cstr);
+  if (attr == INVALID_FILE_ATTRIBUTES) {
+    return IO_ERR_STAT;
   }
 
-
-  if((info.st_mode & S_IFMT) == S_IFDIR) {
-    *is_dir = TRUE;
-  } else {
-    *is_dir = FALSE;
-  }
-
+  *is_file = (attr & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_DEVICE)) != 0;
 
 cleanup:
   TracyCZoneEnd(trcyctx);
   return err;
 }
 
-#else /* OS_WINDOWS */
+IOError
+io_is_directory(Str8 path, Bool* is_dir) {
+  TracyCZoneN(trcyctx, "io_is_directory", 1);
+
+  Assert(path.cstr != 0);
+  Assert(path.size > 0);
+  Assert(is_dir != 0);
+
+  IOError err = IO_ERR_SUCCESS;
+
+  DWORD attr = GetFileAttributesW((WCHAR*)path.cstr);
+  if (attr == INVALID_FILE_ATTRIBUTES) {
+    return IO_ERR_STAT;
+  }
+
+  *is_dir = (attr & FILE_ATTRIBUTE_DIRECTORY) != 0;
+
+cleanup:
+  TracyCZoneEnd(trcyctx);
+  return err;
+}
 
 IOError
 io_make_directory(Str8 path) {
   TracyCZoneN(trcyctx, "io_make_directory", 1);
+
+  Assert(path.cstr != 0);
+  Assert(path.size > 0);
 
   IOError err = IO_ERR_SUCCESS;
 
@@ -270,12 +397,55 @@ cleanup:
   return err;
 }
 
-IOError io_is_directory(Str8 path, Bool *is_dir) {
-  // NOT IMPLEMENTED
-  AssertAlways(0);
+IOError
+io_directory_children(Str8 path, HashMap* children) {
+  TracyCZoneN(trcyctx, "io_directory_children", 1);
+
+  Assert(path.cstr != 0);
+  Assert(path.size > 0);
+  Assert(children != 0);
+  NotImplemented();
+
+  IOError err = IO_ERR_SUCCESS;
+
+// cleanup:
+//   TracyCZoneEnd(trcyctx);
+//   return err;
 }
 
+
 #endif
+
+IOError
+io_make_nested_directory(Str8 path) {
+  TracyCZoneN(trcyctx, "io_make_nested_directory", 1);
+
+  Assert(path.cstr != 0);
+  Assert(path.size > 0);
+  AssertAlways(path.size < IO_PATH_MAX_LENGTH);
+
+  IOError err = IO_ERR_SUCCESS;
+  char clone[IO_PATH_MAX_LENGTH] = {0};
+
+  for (U32 index = 0; index < path.size; index++) {
+    clone[index] = path.cstr[index];
+    if (path.cstr[index] == IO_PATH_SEPARATOR) {
+      err = io_make_directory(str8(clone));
+      if (err != IO_ERR_SUCCESS) {
+        goto cleanup;
+      }
+    }
+  }
+
+  io_make_directory(path);
+  if (err != IO_ERR_SUCCESS) {
+    goto cleanup;
+  }
+
+cleanup:
+  TracyCZoneEnd(trcyctx);
+  return err;
+}
 
 /* ===================================================== */
 /*                          END                          */

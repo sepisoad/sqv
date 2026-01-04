@@ -82,12 +82,15 @@ Arena*
 arena_create_(ArenaParams* ap) {
   TracyCZoneN(trcyctx, "arena_create_", 1);
 
-  U64 const large_page_size = platform_get_large_page_size();
+  U64 page_size = platform_get_large_page_size();
+  if (page_size == 0) {
+    page_size = (U64)platform_get_page_size();  // fallback
+  }
 
   /* TODO: this uses large pages size by default */
   U64 requested_reserve_size = AlignUp(ap->requested_reserve_size,
-                                       large_page_size);
-  U64 requested_commit_size = AlignUp(ap->requested_commit_size, large_page_size);
+                                       page_size);
+  U64 requested_commit_size = AlignUp(ap->requested_commit_size, page_size);
 
   RawPtr base = platform_reserve_large_pages(requested_reserve_size);
   platform_commit_large_pages(base, requested_commit_size);

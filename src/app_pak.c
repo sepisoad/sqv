@@ -157,7 +157,7 @@ static Nothing app_pak_draw_widget_explorer_item(struct nk_context* ctx,
                                                    PakTreeNode* node);
 static Nothing app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
                                                    PakTreeNode* node,
-                                                   Bool is_dir,
+                                                   Bool is_directory,
                                                    struct nk_image* image,
                                                    CStr text);
 
@@ -502,15 +502,15 @@ app_pak_handle_file_drop(CStr path) {
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
-  Bool is_dir = FALSE;
-  IOError ioerr = io_is_directory(str8((Str)path), &is_dir);
+  Bool is_directory = FALSE;
+  IOError ioerr = io_is_directory(str8((Str)path), &is_directory);
   if (IO_ERR_SUCCESS != ioerr) {
     S.mode = APP_PAK_MODE_FAILED;
     err = APP_PAK_ERR_DROP;
     goto cleanup;
   }
 
-  if (is_dir) {
+  if (is_directory) {
     app_pak_handle_file_drop_dir(path);
   } else {
     app_pak_handle_file_drop_pak(path);
@@ -900,7 +900,7 @@ app_pak_draw_widget_explorer_item(struct nk_context* ctx, PakTreeNode* node) {
   TracyCZoneN(trcyctx, "app_pak_draw_widget_explorer_item", 1);
 
   if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_NO_INPUT)) {
-    if (node->is_dir) {
+    if (node->is_directory) {
       app_pak_draw_widget_explorer_icon(
           ctx, node, TRUE, &ICONS.folder.icon_image, node->item_name);
     } else {
@@ -916,7 +916,7 @@ app_pak_draw_widget_explorer_item(struct nk_context* ctx, PakTreeNode* node) {
 static Nothing
 app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
                                   PakTreeNode* node,
-                                  Bool is_dir,
+                                  Bool is_directory,
                                   struct nk_image* image,
                                   CStr text) {
   TracyCZoneN(trcyctx, "app_pak_draw_widget_explorer_icon", 1);
@@ -938,7 +938,7 @@ app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
   }
 
   if (nk_button_image(ctx, *image)) {
-    if (is_dir) {
+    if (is_directory) {
       S.current_pak_tree_node = node;
     }
   }

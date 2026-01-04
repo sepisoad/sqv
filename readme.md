@@ -32,3 +32,27 @@ To build SQV, you need [`premake5`](https://premake.github.io/) installed on you
 ## Cool
 
 - d3d mesh optimization functions: https://github.com/wine-mirror/wine/blob/master/dlls/d3dx9_36/mesh.c
+
+
+## Notes:
+
+i experimented with mold just for fun to see if i can squeeze more time on build time, here is the result:
+
+# using gnu linker
+
+| full clean | full repeat | target clean | target repeat |
+|------------|-------------|--------------|---------------|
+| 14.034     | 0.078       | 0.630        | 0.028         |
+|            |             |
+
+# using mold linker
+
+| full clean | full repeat | target clean | target repeat |
+|------------|-------------|--------------|---------------|
+| 13.695     | 0.069       | 0.430        | 0.017         |
+
+there is a slight gain in the time but not a huge one, this does not mean that mold is not good enogh, in
+fact the way i structured the code base and build script makes the build time very short, so the benefits
+gained from mold is negligible, however if the code grows and the build system becomes more complicated
+i am pretty sure there are more substantial gains with mold, for now i think i will not use mold as it adds
+more complexity to the project setup

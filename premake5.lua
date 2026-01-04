@@ -6,6 +6,12 @@ workspace "ProjectWorkspace"
   configurations { "Debug", "Release", "Profiling" }
   location "."
   toolset "gcc"
+  buildoptions { "-std=gnu11" }
+  -- linkoptions  { "-fuse-ld=mold" }
+
+  filter "system:windows"
+    gccprefix "x86_64-w64-mingw32-"
+    architecture "x86_64"
 
   -- Debug (common)
   filter "configurations:Debug"
@@ -44,7 +50,7 @@ workspace "ProjectWorkspace"
     buildoptions { "-Wno-initializer-overrides" }
     linkoptions  { "-Wno-initializer-overrides" }
 
-  filter {} -- reset at end (good hygiene)
+  filter {} -- reset at end
 
 
 --
@@ -75,12 +81,17 @@ project "lib_sokol"
     defines { "SOKOL_GLCORE" }
     links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
     buildoptions { "-x objective-c" }
-  filter {}
 
   filter "system:linux"
     defines { "SOKOL_GLCORE" }
     links { "X11", "Xi", "Xcursor", "GL", "m" }
+
+  filter "system:windows"
+    links { "opengl32", "gdi32", "user32", "shell32", "ole32", "winmm" }
+    defines { "SOKOL_WIN32_FORCE_MAIN", "SOKOL_GLCORE", "NK_POINTER_TYPE=uintptr_t", }
+
   filter {}
+
 
 -- LIBRARY::hmm
 project "lib_hmm"
@@ -112,8 +123,6 @@ project "lib_sepi"
   objdir ".build/obj"
   targetname "sepi"
   buildoptions { "-Wno-deprecated-declarations" }
-  buildoptions { "-std=gnu11" }
-  defines { "USE_MEM_DEBUGGER" }
   files { "src/deps/sepi/sepi.c" }
 
 
@@ -133,16 +142,16 @@ project "app_playground"
   links { "lib_log:static", "lib_stb:static", "lib_hmm:static", "lib_sepi:static", "lib_sokol:static", }
   files { "src/app_playground.c" }
 
-  buildoptions { "-std=gnu11" }
-  defines { "SOKOL_GLCORE" }
-  defines { "_POSIX_C_SOURCE=199309L" } -- Needed for some C23 features
-
   filter "system:macosx"
     links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
-  filter {}
 
   filter "system:linux"
     links { "X11", "Xi", "Xcursor", "GL", "m" }
+
+  filter "system:windows"
+    links { "opengl32", "gdi32", "user32", "shell32", "ole32", "winmm" }
+    defines { "SOKOL_WIN32_FORCE_MAIN", "NK_INCLUDE_FIXED_TYPES" }
+
   filter {}
 
 -- APP::pak
@@ -157,16 +166,20 @@ project "app_pak"
   links { "lib_log:static", "lib_stb:static", "lib_sepi:static", "lib_sokol:static", }
   files { "src/app_pak.c" }
 
-  buildoptions { "-std=gnu11" }
   defines { "SOKOL_GLCORE" }
 
   filter "system:macosx"
     links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
-  filter {}
 
   filter "system:linux"
     links { "X11", "Xi", "Xcursor", "GL", "m" }
+
+  filter "system:windows"
+    links { "opengl32", "gdi32", "user32", "shell32", "ole32", "winmm" }
+    defines { "SOKOL_WIN32_FORCE_MAIN", "NK_INCLUDE_FIXED_TYPES" }
+
   filter {}
+
 
 --
 -- ACTIONS -----------------------
