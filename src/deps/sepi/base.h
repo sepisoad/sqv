@@ -45,6 +45,15 @@ typedef const char* CStr;
 /*                       KEYWORDS                        */
 /* ===================================================== */
 
+/* ===================================================== */
+/*                         DEBUG                         */
+/* ===================================================== */
+
+#if defined(DEBUG) || defined(_DEBUG)
+#define DEBUG_MODE
+#else
+#undef DEBUG_MODE
+#endif /* DEBUG_MODE */
 
 /* ===================================================== */
 /*                       PLATFOTM                        */
@@ -85,16 +94,6 @@ typedef const char* CStr;
 #else
 #error unsupported cpu architecture!
 #endif
-
-/* ===================================================== */
-/*                         DEBUG                         */
-/* ===================================================== */
-
-#if defined(DEBUG) || defined(_DEBUG)
-#define DEBUG_MODE
-#else
-#undef DEBUG_MODE
-#endif /* DEBUG_MODE */
 
 /* ===================================================== */
 /*                        MEMORY                         */
@@ -174,10 +173,13 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 
 #if CC_MSVC
 #define AlignOf(T) __alignof(T)
+#define LeadingZeroBits(T) _BitScanReverse64(0, T) // TODO: not tested!
 #elif CC_CLANG
 #define AlignOf(T) __alignof(T)
+#define LeadingZeroBits(T) __builtin_clzll(T)
 #elif CC_GCC
 #define AlignOf(T) __alignof__(T)
+#define LeadingZeroBits(T) __builtin_clzll(T)
 #endif
 
 
