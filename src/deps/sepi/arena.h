@@ -64,11 +64,21 @@ U64 arena_get_position(Arena* a);
 ArenaScratch arena_scratch_begin(Arena* a);
 Nothing arena_scratch_end(ArenaScratch s);
 
-#define arena_create(...) arena_create_(&(ArenaParams){.requested_reserve_size = ARENA_DEFAULT_RESERVE_SIZE, .requested_commit_size = ARENA_DEFAULT_COMMIT_SIZE, .caller_file_name = __FILE__, .caller_file_line = __LINE__, __VA_ARGS__})
-#define arena_push_array_no_zero_aligned(arena, type, count, alignment) (type *)arena_push((arena), sizeof(type) * (count), (alignment), (TRUE))
-#define arena_push_array_aligned(arena, type, count, alignment) (type *)arena_push((arena), sizeof(type) * (count), (alignment), (FALSE))
-#define arena_push_array_no_zero(arena, type, count) arena_push_array_no_zero_aligned(arena, type, count, Max(8, AlignOf(type)))
-#define arena_push_array(arena, type, count) arena_push_array_aligned(arena, type, count, Max(8, AlignOf(type)))
+#define arena_create(...)                                                  \
+  arena_create_(                                                           \
+      &(ArenaParams){.requested_reserve_size = ARENA_DEFAULT_RESERVE_SIZE, \
+                     .requested_commit_size = ARENA_DEFAULT_COMMIT_SIZE,   \
+                     .caller_file_name = __FILE__,                         \
+                     .caller_file_line = __LINE__,                         \
+                     __VA_ARGS__})
+#define arena_push_array_no_zero_aligned(arena, type, count, alignment) \
+  (type*)arena_push((arena), sizeof(type) * (count), (alignment), (TRUE))
+#define arena_push_array_aligned(arena, type, count, alignment) \
+  (type*)arena_push((arena), sizeof(type) * (count), (alignment), (FALSE))
+#define arena_push_array_no_zero(arena, type, count) \
+  arena_push_array_no_zero_aligned(arena, type, count, Max(8, AlignOf(type)))
+#define arena_push_array(arena, type, count) \
+  arena_push_array_aligned(arena, type, count, Max(8, AlignOf(type)))
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -88,14 +98,13 @@ arena_create_(ArenaParams* ap) {
   }
 
   /* TODO: this uses large pages size by default */
-  U64 requested_reserve_size = AlignUp(ap->requested_reserve_size,
-                                       page_size);
+  U64 requested_reserve_size = AlignUp(ap->requested_reserve_size, page_size);
   U64 requested_commit_size = AlignUp(ap->requested_commit_size, page_size);
 
   RawPtr base = platform_reserve_large_pages(requested_reserve_size);
   platform_commit_large_pages(base, requested_commit_size);
 
-  if(!base) {
+  if (!base) {
     Abort("failed to allocate memory to arena allocator");
   }
 
@@ -128,8 +137,8 @@ Nothing
 arena_destroy(Arena* a) {
   TracyCZoneN(trcyctx, "arena_destroy", 1);
 
-  for(Arena* it = a->current_block, *previous_block = 0; it != 0;
-      it = previous_block) {
+  for (Arena *it = a->current_block, *previous_block = 0; it != 0;
+       it = previous_block) {
     previous_block = it->previous_block;
     platform_release(it, it->reserved_size);
   }
@@ -145,14 +154,15 @@ arena_push(Arena* a, U64 size, U64 align, Bool with_zero) {
   U64 offset_aligned = AlignUp(current_block->offset, align);
   U64 offset_aligned_sized = offset_aligned + size;
 
-  if(current_block->reserved_size < offset_aligned_sized) {
+  if (current_block->reserved_size < offset_aligned_sized) {
     Arena* new_block = 0;
     Arena* previous_block;
 
-    for(new_block = a->free_last, previous_block = 0; new_block != 0;
-        previous_block = new_block, new_block = new_block->previous_block) {
-      if(new_block->reserved_size >= AlignUp(new_block->offset, align) + size) {
-        if(previous_block) {
+    for (new_block = a->free_last, previous_block = 0; new_block != 0;
+         previous_block = new_block, new_block = new_block->previous_block) {
+      if (new_block->reserved_size >=
+          AlignUp(new_block->offset, align) + size) {
+        if (previous_block) {
           previous_block->previous_block = new_block->previous_block;
         } else {
           a->free_last = new_block->previous_block;
@@ -161,23 +171,24 @@ arena_push(Arena* a, U64 size, U64 align, Bool with_zero) {
       }
     }
 
-
-    if(new_block == 0) {
+    if (new_block == 0) {
       Sz header_size = sizeof(Arena);
       U64 requested_reserve_size = current_block->requested_reserve_size;
       U64 requested_commit_size = current_block->requested_commit_size;
-      if(size + header_size > requested_reserve_size) {
+      if (size + header_size > requested_reserve_size) {
         requested_reserve_size = AlignUp(size + header_size, align);
         requested_commit_size = AlignUp(size + header_size, align);
       }
-      new_block = arena_create(.requested_reserve_size = requested_reserve_size,
-                              .requested_commit_size = requested_commit_size,
-                              .caller_file_name = (CStr) current_block->caller_file_name,
-                              .caller_file_line = current_block->caller_file_line);
+      new_block =
+          arena_create(.requested_reserve_size = requested_reserve_size,
+                       .requested_commit_size = requested_commit_size,
+                       .caller_file_name =
+                           (CStr)current_block->caller_file_name,
+                       .caller_file_line = current_block->caller_file_line);
     }
 
-    new_block->base_position = current_block->base_position +
-                               current_block->reserved_size;
+    new_block->base_position =
+        current_block->base_position + current_block->reserved_size;
     new_block->previous_block = a->current_block;
     a->current_block = new_block;
     current_block = new_block;
@@ -186,33 +197,35 @@ arena_push(Arena* a, U64 size, U64 align, Bool with_zero) {
   }
 
   U64 size_to_zero = 0;
-  if(with_zero) {
-    size_to_zero = Min(current_block->committed_size,
-                       offset_aligned_sized) - offset_aligned;
+  if (with_zero) {
+    size_to_zero = Min(current_block->committed_size, offset_aligned_sized) -
+                   offset_aligned;
   }
 
-  if(current_block->committed_size < offset_aligned_sized) {
-    U64 new_commit_size = offset_aligned_sized +
-                          current_block->requested_commit_size - 1;
+  if (current_block->committed_size < offset_aligned_sized) {
+    U64 new_commit_size =
+        offset_aligned_sized + current_block->requested_commit_size - 1;
     new_commit_size -= new_commit_size % current_block->requested_commit_size;
-    U64 commit_size_clamped = Max(new_commit_size, current_block->reserved_size);
-    U64 needed_commit_size = commit_size_clamped - current_block->committed_size;
+    U64 commit_size_clamped =
+        Max(new_commit_size, current_block->reserved_size);
+    U64 needed_commit_size =
+        commit_size_clamped - current_block->committed_size;
     U8* committed_size_ptr = (U8*)current_block + current_block->committed_size;
     platform_commit_large_pages(committed_size_ptr, needed_commit_size);
     current_block->committed_size = commit_size_clamped;
   }
 
   RawPtr result = 0;
-  if(current_block->committed_size >= offset_aligned_sized) {
+  if (current_block->committed_size >= offset_aligned_sized) {
     result = (U8*)current_block + offset_aligned;
     current_block->offset = offset_aligned_sized;
     AsanUnpoisonMemoryRegion(result, size);
-    if(size_to_zero != 0) {
+    if (size_to_zero != 0) {
       MemZero(result, size_to_zero);
     }
   }
 
-  if(result == 0) {
+  if (result == 0) {
     Abort("failed to allocate memory from arena allocator");
   }
 
@@ -243,10 +256,9 @@ arena_pop_to(Arena* a, U64 position) {
   U64 normilized_position = Max(header_size, position);
   Arena* current_block = a->current_block;
 
-  for(Arena* previous_block = 0;
-      current_block->base_position >= normilized_position;
-      current_block = previous_block
-     ) {
+  for (Arena* previous_block = 0;
+       current_block->base_position >= normilized_position;
+       current_block = previous_block) {
     previous_block = current_block->previous_block;
     current_block->offset = header_size;
     current_block->previous_block = a->free_last;
@@ -292,9 +304,7 @@ arena_scratch_begin(Arena* a) {
   U64 position = arena_get_position(a);
 
   TracyCZoneEnd(trcyctx);
-  return (ArenaScratch) {
-    a, position
-  };
+  return (ArenaScratch){a, position};
 }
 
 Nothing
@@ -312,4 +322,3 @@ arena_scratch_end(ArenaScratch s) {
 
 #endif /* SEPI_ARENA_IMPLEMENTATION */
 #endif /* SEPI_ARENA_H */
-
