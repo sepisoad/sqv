@@ -140,6 +140,8 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 #define MemZeroArray(a) MemZero((a),sizeof(a))
 #define MemZeroTyped(m,c) MemZero((m),sizeof(*(m))*(c))
 
+#define MemCopy(SRC, DST, SZ) memcpy((SRC), (DST), (SZ))
+
 #define MemoryCompare(a, b, size) memcmp((a), (b), (size))
 #define IsMemoryEq(a,b,z) (MemoryCompare((a),(b),(z)) == 0)
 #define IsStructEq(a,b) IsMemoryEq((a),(b),sizeof(*(a)))

@@ -62,6 +62,8 @@ extern TracyCZoneCtx trcyctx;
 List* list_create(Arena* a) {
   TracyCZoneN(tracyctx, "list_create", 1);
 
+  Assert(a != 0);
+
   List* l = arena_push(a, sizeof(List), AlignOf(List), FALSE);
   l->arena = a;
   l->head = 0;
@@ -75,6 +77,8 @@ List* list_create(Arena* a) {
 Nothing list_destroy(List* l) {
   TracyCZoneN(tracyctx, "list_destroy", 1);
 
+  Assert(l != 0);
+
   for(; l->length > 0; ) {
     list_pop_tail(l);
   }
@@ -84,6 +88,9 @@ Nothing list_destroy(List* l) {
 
 ListNode* list_push_tail(List* l, RawPtr ptr) {
   TracyCZoneN(tracyctx, "list_push_tail", 1);
+
+  Assert(l != 0);
+  Assert(ptr != 0);
 
   ListNode* n = arena_push(l->arena, sizeof(ListNode), AlignOf(ListNode), TRUE);
   n->ptr = ptr;
@@ -106,6 +113,9 @@ ListNode* list_push_tail(List* l, RawPtr ptr) {
 ListNode* list_push_head(List* l, RawPtr ptr) {
   TracyCZoneN(tracyctx, "list_push_head", 1);
 
+  Assert(l != 0);
+  Assert(ptr != 0);
+
   ListNode* n = arena_push(l->arena, sizeof(ListNode), AlignOf(ListNode), TRUE);
   n->ptr = ptr;
   l->length++;
@@ -126,6 +136,10 @@ ListNode* list_push_head(List* l, RawPtr ptr) {
 ListNode* list_push_after(List* l, ListNode* n, RawPtr ptr) {
   TracyCZoneN(tracyctx, "list_push_after", 1);
 
+  Assert(l != 0);
+  Assert(n != 0);
+  Assert(ptr != 0);
+
   ListNode* nn = arena_push(l->arena, sizeof(ListNode), AlignOf(ListNode), TRUE);
   nn->ptr = ptr;
   if (n->next) {
@@ -144,6 +158,10 @@ ListNode* list_push_after(List* l, ListNode* n, RawPtr ptr) {
 
 ListNode* list_push_before(List* l, ListNode* n, RawPtr ptr) {
   TracyCZoneN(tracyctx, "list_push_before", 1);
+
+  Assert(l != 0);
+  Assert(n != 0);
+  Assert(ptr != 0);
 
   ListNode* nn = arena_push(l->arena, sizeof(ListNode), AlignOf(ListNode), TRUE);
   nn->ptr = ptr;
@@ -166,6 +184,8 @@ ListNode* list_push_before(List* l, ListNode* n, RawPtr ptr) {
 
 ListNode* list_pop_tail(List* l) {
   TracyCZoneN(tracyctx, "list_pop_tail", 1);
+
+  Assert(l != 0);
 
   ListNode* res = 0;
 
@@ -193,6 +213,8 @@ cleanup:
 ListNode* list_pop_head(List* l) {
   TracyCZoneN(tracyctx, "list_pop_head", 1);
 
+  Assert(l != 0);
+
   ListNode* res = 0;
 
   if(!l->head) {
@@ -218,6 +240,9 @@ cleanup:
 
 ListNode* list_pop(List* l, ListNode* n) {
   TracyCZoneN(tracyctx, "list_pop", 1);
+
+  Assert(l != 0);
+  Assert(n != 0);
 
   ListNode* res = 0;
 
@@ -249,6 +274,8 @@ cleanup:
 
 RawPtr list_get_at(List* l, U64 index) {
   TracyCZoneN(tracyctx, "list_get_at", 1);
+
+  Assert(l != 0);
 
   ListNode* res = 0;
 
