@@ -132,6 +132,7 @@ io_load_file(Arena* arena, CStr path, NDBuffer* ndb) {
 
   {
     TracyCZoneN(trcyctx, "io_load_file::fseek", 2);
+    fseek(f, 0, SEEK_END);
     TracyCZoneEnd(trcyctx);
   }
 
