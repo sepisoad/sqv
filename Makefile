@@ -16,8 +16,8 @@ ifeq ($(config),debug)
   lib_sepi_config = debug
   app_playground_config = debug
   app_pak_config = debug
-
-else ifeq ($(config),release)
+endif
+ifeq ($(config),release)
   lib_log_config = release
   lib_sokol_config = release
   lib_hmm_config = release
@@ -25,8 +25,8 @@ else ifeq ($(config),release)
   lib_sepi_config = release
   app_playground_config = release
   app_pak_config = release
-
-else ifeq ($(config),profiling)
+endif
+ifeq ($(config),profiling)
   lib_log_config = profiling
   lib_sokol_config = profiling
   lib_hmm_config = profiling
@@ -34,9 +34,6 @@ else ifeq ($(config),profiling)
   lib_sepi_config = profiling
   app_playground_config = profiling
   app_pak_config = profiling
-
-else
-  $(error "invalid configuration $(config)")
 endif
 
 PROJECTS := lib_log lib_sokol lib_hmm lib_stb lib_sepi app_playground app_pak

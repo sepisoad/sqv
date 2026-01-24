@@ -265,6 +265,7 @@ ListNode* list_pop(List* l, ListNode* n) {
   n->next->previous = n->previous;
   n->next = 0;
   n->previous = 0;
+  res = n;
 
 cleanup:
   TracyCZoneEnd(tracyctx);

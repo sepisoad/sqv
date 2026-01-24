@@ -77,7 +77,7 @@ typedef const char* CStr;
 #define OS_LINUX 1
 #define _GNU_SOURCE
 #elif defined(__APPLE__) && defined(__MACH__)
-#define OS_MAC 1
+#define OS_MACOS 1
 #else
 #error unsupported operating system!
 #endif
@@ -164,7 +164,7 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 /* ===================================================== */
 
 /* GENERAL */
-#define noop ((void)0)
+#define NoOp ((void)0)
 #define Ignore(_V) ((void)(_V))
 
 /* MATH MACROS */

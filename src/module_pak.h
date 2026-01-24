@@ -16,7 +16,7 @@
 #include "deps/tracy/tracy.h"
 #include "deps/sepi/arena.h"
 #include "deps/sepi/endian.h"
-#include "deps/sepi/list.h"
+#include "deps/sepi/stack.h"
 #include "deps/sepi/hashmap.h"
 #include "deps/sepi/string.h"
 #include "deps/sepi/io.h"
@@ -541,22 +541,19 @@ pak_extract(Pak* pak, FILE* file, Str8 out_dir) {
 
   PakError err = PAK_ERR_SUCCESS;
   PakTreeNode* node = &pak->tree.root;
-  ListNode* list_node;
-  List nodes = {0};
+
+  // TODO: either use scratch arena for all allocation or use the main arena
   ArenaScratch scratch = arena_scratch_begin(pak->arena);
+  Stack* nodes = stack_create(scratch.arena);
 
-  list_push(scratch.arena, &nodes, &pak->tree.root);
+  stack_push(nodes, &pak->tree.root);
 
-  while (nodes.count > 0) {
-    ListError lerr = list_pop(&nodes, &list_node);
-    if (LIST_ERR_SUCCESS != lerr) {
-      if (LIST_EMPTY == lerr || 0 == list_node) {
-        goto cleanup;
-      }
-      err = PAK_ERR_EXTRACT;
-      goto cleanup;
+  while (nodes->length > 0) {
+    RawPtr raw_data = stack_pop(nodes);
+    if (0 == raw_data) {
+      break;
     }
-    node = (PakTreeNode*)list_node->data;
+    node = (PakTreeNode*)raw_data;
 
     for (U32 index = 0; index < node->children->count; index++) {
       HashMapKV* kv = hashmap_key_at(node->children, index);
@@ -575,11 +572,7 @@ pak_extract(Pak* pak, FILE* file, Str8 out_dir) {
       pak_join_path(out_dir, new_node_str, full_path_str);
 
       if (TRUE == new_node->is_directory) {
-        ListError lerr = list_push(scratch.arena, &nodes, new_node);
-        if (LIST_ERR_SUCCESS != lerr) {
-          err = PAK_ERR_EXTRACT;
-          goto cleanup;
-        }
+        stack_push(nodes, new_node);
 
         IOError ioerr = io_make_directory(full_path_str);
         if (IO_ERR_SUCCESS != ioerr) {
@@ -609,9 +602,8 @@ PakError
 pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
   TracyCZoneN(trcyctx, "pak_extract_item", 1);
   PakError err = PAK_ERR_SUCCESS;
-  ListNode* list_node;
-  List nodes = {0};
   ArenaScratch scratch = arena_scratch_begin(pak->arena);
+  Stack* nodes = stack_create(scratch.arena);
 
   char full_path_buf[PAK_ENTRY_MAX_EXTRACT_PATH_LEN] = {0};
   Str8 full_path_str = str8_raw(full_path_buf, PAK_ENTRY_MAX_EXTRACT_PATH_LEN);
@@ -638,18 +630,15 @@ pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
     start_index = strlen(node->parent->name);
   }
 
-  list_push(scratch.arena, &nodes, node);
+  stack_push(nodes, node);
 
-  while (nodes.count > 0) {
-    ListError lerr = list_pop(&nodes, &list_node);
-    if (LIST_ERR_SUCCESS != lerr) {
-      if (LIST_EMPTY == lerr || 0 == list_node) {
-        goto cleanup;
-      }
-      err = PAK_ERR_EXTRACT;
-      goto cleanup;
+  while (nodes->length > 0) {
+    RawPtr raw_data = stack_pop(nodes);
+    if (0 == raw_data) {
+      break;
     }
-    node = (PakTreeNode*)list_node->data;
+
+    node = (PakTreeNode*)raw_data;
 
     for (U32 index = 0; index < node->children->count; index++) {
       HashMapKV* kv = hashmap_key_at(node->children, index);
@@ -668,11 +657,7 @@ pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
       pak_join_path(out_dir, new_node_str, full_path_str);
 
       if (TRUE == new_node->is_directory) {
-        ListError lerr = list_push(scratch.arena, &nodes, new_node);
-        if (LIST_ERR_SUCCESS != lerr) {
-          err = PAK_ERR_EXTRACT;
-          goto cleanup;
-        }
+        stack_push(nodes, new_node);
 
         IOError ioerr = io_make_directory(full_path_str);
         if (IO_ERR_SUCCESS != ioerr) {
