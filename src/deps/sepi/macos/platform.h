@@ -55,11 +55,12 @@ platform_reserve_large_pages(Sz size) {
   TracyCZoneN(trcyctx, "platform_reserve_large_pages", 1);
 
   U32 flags = MAP_PRIVATE | MAP_ANON;
-  RawPtr result = mmap(0, size, PROT_NONE, flags, VM_FLAGS_SUPERPAGE_SIZE_2MB, 0);
+  U32 prot = PROT_READ | PROT_WRITE;
+  RawPtr result = mmap(0, size, prot, flags, VM_FLAGS_SUPERPAGE_SIZE_2MB, 0);
   if (result == MAP_FAILED) {
     Sz page_size = (Sz)sysconf(_SC_PAGESIZE);
     size = (size + (page_size - 1)) & ~(page_size - 1);
-    result = mmap(0, size, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
+    result = mmap(0, size, prot, MAP_PRIVATE | MAP_ANON, -1, 0);
 
     if (result == MAP_FAILED) {
       result = 0;

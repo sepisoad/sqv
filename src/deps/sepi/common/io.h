@@ -14,7 +14,7 @@
 /*                       CONSTANTS                       */
 /* ===================================================== */
 
-#define IO_PATH_MAX_LENGTH 2048
+extern const I8 IO_PATH_SEPARATOR;
 
 /* ===================================================== */
 /*                         TYPES                         */
@@ -24,6 +24,7 @@ typedef enum {
   IO_ERR_SUCCESS = 1,
   IO_ERR_MKFILE,
   IO_ERR_MKDIR,
+  IO_ERR_MKDIR_RECUR,
   IO_ERR_STAT,
   IO_ERR_OPENDIR,
   IO_ERR__COUNT,
@@ -46,14 +47,13 @@ struct IONode {
   HashMap* children;
 };
 
-
 /* ===================================================== */
 /*                          API                          */
 /* ===================================================== */
 
 IOError io_load_file(Arena*, CStr, NDBuffer*);
 IOError io_dump(Str8 path, Str8 data);
-IOError io_is_file(Str8 path, Bool* is_dir);
+IOError io_is_file(Str8 path, Bool* is_file);
 IOError io_is_directory(Str8 path, Bool* is_dir);
 IOError io_make_directory(Str8 path);
 IOError io_make_nested_directory(Str8 path);
@@ -105,7 +105,6 @@ IOError io_directory_children(Str8 path, HashMap* children);
     tmp = nd_f64(tmp);                          \
     *(num) = tmp;                               \
   }
-
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -199,6 +198,41 @@ cleanup:
   if (f) {
     fclose(f);
   }
+  TracyCZoneEnd(trcyctx);
+  return err;
+}
+
+IOError
+io_make_nested_directory(Str8 path) {
+  TracyCZoneN(trcyctx, "io_make_nested_directory", 1);
+
+  Assert(path.cstr != 0);
+  Assert(path.size > 0);
+
+  IOError err = IO_ERR_SUCCESS;
+  U32 original_size = path.size;
+
+  for (U32 index = 0; index < path.size; index++) {
+    if (path.cstr[index] == IO_PATH_SEPARATOR) {
+      path.size = index;
+      path.cstr[index] = 0;
+      err = io_make_directory(path);
+      path.size = original_size;
+      path.cstr[index] = IO_PATH_SEPARATOR;
+      if (IO_ERR_SUCCESS != err) {
+        err = IO_ERR_MKDIR_RECUR;
+        goto cleanup;
+      }
+    }
+  }
+
+  err = io_make_directory(path);
+  if (IO_ERR_SUCCESS != err) {
+    err = IO_ERR_MKDIR_RECUR;
+    goto cleanup;
+  }
+
+cleanup:
   TracyCZoneEnd(trcyctx);
   return err;
 }

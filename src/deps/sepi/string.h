@@ -6,6 +6,7 @@
 /* ===================================================== */
 
 #include "base.h"
+#include "arena.h"
 
 /* ===================================================== */
 /*                       CONSTANTS                       */
@@ -34,6 +35,7 @@ typedef struct {
 Str8 str8(Str cstr);
 Str8 str8_size(Str cstr, Sz size);
 Str8 str8_raw(RawPtr rptr, Sz size);
+Str8 str8_arena(Arena* a, Str cstr);
 Str8 str8_zero(void);
 Bool str8_join(Str8 a, Str8 b, Str8 c, char separator);
 Bool is_space_char(U8 c);
@@ -85,6 +87,23 @@ str8_raw(RawPtr rptr, Sz size) {
 }
 
 Str8
+str8_mem(RawPtr rptr, Str cstr) {
+  U32 size = strlen(cstr);
+  MemCopy(rptr, cstr, size);
+  Str8 result = {(Str)rptr, size};
+  return result;
+}
+
+Str8
+str8_arena(Arena* a, Str cstr) {
+  U32 size = strlen(cstr);
+  Str copy = arena_push(a, sizeof(I8) * (size + 1), AlignOf(I8), TRUE);
+  MemCopy(copy, cstr, size);
+  Str8 result = {copy, size};
+  return result;
+}
+
+Str8
 str8_zero(void) {
   Str8 result = {0};
   return result;
@@ -105,7 +124,7 @@ str8_join(Str8 a, Str8 b, Str8 c, char separator) {
     c.size++;
   }
 
-  memcpy(c.cstr+(c.size), b.cstr, b.size);
+  memcpy(c.cstr + (c.size), b.cstr, b.size);
   c.size += b.size;
 
   return TRUE;

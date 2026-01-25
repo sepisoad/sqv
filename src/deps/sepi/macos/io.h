@@ -25,7 +25,7 @@
 /*                       CONSTANTS                       */
 /* ===================================================== */
 
-#define IO_PATH_SEPARATOR '/'
+const I8 IO_PATH_SEPARATOR = '/';
 
 /* ===================================================== */
 /*                         TYPES                         */
@@ -130,9 +130,22 @@ io_make_directory(Str8 path) {
   TracyCZoneN(trcyctx, "io_make_directory", 1);
 
   Assert(path.cstr != 0);
-  Assert(path.size > 0);
 
   IOError err = IO_ERR_SUCCESS;
+
+  // NOTE: is this an error!?
+  if (path.size <= 0) {
+    goto cleanup;
+  }
+
+  Bool is_dir = FALSE;
+  // NOTE: we probably don't want to check the error, why?
+  // because if the path that we want to create does not
+  // exist then we get an error which is to be expected!
+  io_is_directory(path, &is_dir);
+  if (is_dir) {
+    goto cleanup;
+  }
 
   if (mkdir((char*)path.cstr, 0755) == -1) {
     if (EEXIST != errno) {
