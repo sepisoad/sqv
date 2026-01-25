@@ -8,7 +8,7 @@
 #include "../base.h"
 #include "../string.h"
 #include "../endian.h"
-#include "../hashmap.h"
+#include "../array.h"
 
 /* ===================================================== */
 /*                       CONSTANTS                       */
@@ -25,6 +25,8 @@ typedef enum {
   IO_ERR_MKFILE,
   IO_ERR_MKDIR,
   IO_ERR_MKDIR_RECUR,
+  IO_ERR_NOT_FILE,
+  IO_ERR_NOT_DIR,
   IO_ERR_STAT,
   IO_ERR_OPENDIR,
   IO_ERR__COUNT,
@@ -41,10 +43,9 @@ typedef struct IONode IONode;
 
 struct IONode {
   Str8 name;
-  Sz size;
   Bool is_directory;
   IONode* parent;
-  HashMap* children;
+  Array* children;
 };
 
 /* ===================================================== */
@@ -57,7 +58,7 @@ IOError io_is_file(Str8 path, Bool* is_file);
 IOError io_is_directory(Str8 path, Bool* is_dir);
 IOError io_make_directory(Str8 path);
 IOError io_make_nested_directory(Str8 path);
-IOError io_directory_children(Str8 path, HashMap* children);
+IOError io_directory_children(Arena* arena, Str8 path, IONode* node);
 
 #define IO_POS(f) ftell((f))
 #define IO_SET(f, ofs) fseek((f), (ofs), SEEK_SET)
@@ -236,6 +237,7 @@ cleanup:
   TracyCZoneEnd(trcyctx);
   return err;
 }
+
 
 /* ===================================================== */
 /*                          END                          */

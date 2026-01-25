@@ -93,16 +93,11 @@ array_push(Array* a, RawPtr ptr) {
     U64 seg_size = new_cap - old_cap;
 
     a->segments[a->used_segments] =
-        arena_push(a->arena,
-                   a->item_size * seg_size,
-                   a->item_alignment,
-                   TRUE);
+        arena_push(a->arena, a->item_size * seg_size, a->item_alignment, TRUE);
 
     a->used_segments++;
     a->capacity = ARRAY_SEGMENT_CAPACITY(a->used_segments);
   }
-
-  // printf("a->offset: %ld\n", a->offset);
 
   RawPtr res = array_get(a, a->offset);
   MemCopy(res, ptr, a->item_size);

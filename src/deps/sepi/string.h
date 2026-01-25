@@ -38,6 +38,7 @@ Str8 str8_raw(RawPtr rptr, Sz size);
 Str8 str8_arena(Arena* a, Str cstr);
 Str8 str8_zero(void);
 Bool str8_join(Str8 a, Str8 b, Str8 c, char separator);
+Bool str8_is_equal(Str8 a, Str8 b);
 Bool is_space_char(U8 c);
 Bool is_upper_char(U8 c);
 Bool is_lower_char(U8 c);
@@ -126,6 +127,24 @@ str8_join(Str8 a, Str8 b, Str8 c, char separator) {
 
   memcpy(c.cstr + (c.size), b.cstr, b.size);
   c.size += b.size;
+
+  return TRUE;
+}
+
+Bool
+str8_is_equal(Str8 a, Str8 b) {
+  U32 length_a = strlen(a.cstr);
+  U32 length_b = strlen(b.cstr);
+
+  if (length_a != length_b) {
+    return FALSE;
+  }
+
+  for (U32 index = 0; index < length_a; index++) {
+    if (a.cstr[index] != b.cstr[index]) {
+      return FALSE;
+    }
+  }
 
   return TRUE;
 }

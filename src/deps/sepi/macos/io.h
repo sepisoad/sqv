@@ -18,14 +18,14 @@
 #include "../string.h"
 #include "../endian.h"
 #include "../arena.h"
-#include "../hashmap.h"
+#include "../array.h"
 #include "../common/io.h"
 
 /* ===================================================== */
 /*                       CONSTANTS                       */
 /* ===================================================== */
 
-const I8 IO_PATH_SEPARATOR = '/';
+// --
 
 /* ===================================================== */
 /*                         TYPES                         */
@@ -46,6 +46,7 @@ const I8 IO_PATH_SEPARATOR = '/';
 #ifdef SEPI_MACOS_IO_IMPLEMENTATION
 
 extern TracyCZoneCtx trcyctx;
+const I8 IO_PATH_SEPARATOR = '/';
 
 IOError
 io_is_file(Str8 path, Bool* is_file) {
@@ -102,25 +103,68 @@ cleanup:
 }
 
 IOError
-io_directory_children(Str8 path, HashMap* children) {
+io_directory_children(Arena* arena, Str8 path, IONode* node) {
   TracyCZoneN(trcyctx, "io_directory_children", 1);
 
   Assert(path.cstr != 0);
   Assert(path.size > 0);
-  Assert(children != 0);
+  Assert(node != 0);
+  Assert(node->children == 0);
 
   IOError err = IO_ERR_SUCCESS;
+  DIR* dir = 0;
+  Bool is_dir = FALSE;
 
-  DIR *dir = opendir(path.cstr);
-  if (!dir) {
+  io_is_directory(path, &is_dir);
+  if (is_dir == FALSE) {
+    err = IO_ERR_NOT_DIR;
+    goto cleanup;
+  }
+
+  dir = opendir(path.cstr);
+  if (0 == dir) {
     err = IO_ERR_OPENDIR;
     goto cleanup;
   }
+
+  node->children = array_create(arena, sizeof(IONode), AlignOf(IONode));
+
+  Str8 dot_node_name = str8(".");
+  Str8 dot_dot_node_name = str8("..");
+
+  do {
+    struct dirent* ent = readdir(dir);
+    if (0 == ent) {
+      break;
+    }
+
+    if (DT_DIR != ent->d_type && DT_REG != ent->d_type) {
+      // NOTE: if the item is not a file or directory,
+      // we don't care and don't process it. RIGHT?
+      continue;
+    }
+
+    if (str8_is_equal(dot_node_name, str8(ent->d_name)) ||
+        str8_is_equal(dot_dot_node_name, str8(ent->d_name))) {
+      continue;
+    }
+
+    IONode* child = arena_push(arena, sizeof(IONode), AlignOf(IONode), TRUE);
+    child->name = str8_arena(arena, ent->d_name);
+    child->is_directory = (DT_DIR == ent->d_type);
+    child->parent = node;
+
+    array_push(node->children, child);
+  } while (TRUE);
+
+  node->name = str8_arena(arena, path.cstr);
+  node->is_directory = TRUE;
 
 cleanup:
   if (dir) {
     closedir(dir);
   }
+
   TracyCZoneEnd(trcyctx);
   return err;
 }

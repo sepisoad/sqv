@@ -23,7 +23,7 @@
 /*                       CONSTANTS                       */
 /* ===================================================== */
 
-const I8 IO_PATH_SEPARATOR = '\\';
+// --
 
 /* ===================================================== */
 /*                         TYPES                         */
@@ -44,6 +44,7 @@ const I8 IO_PATH_SEPARATOR = '\\';
 #ifdef SEPI_WINDOWS_IO_IMPLEMENTATION
 
 extern TracyCZoneCtx trcyctx;
+const I8 IO_PATH_SEPARATOR = '\\';
 
 IOError
 io_is_file(Str8 path, Bool* is_file) {
@@ -114,7 +115,7 @@ cleanup:
 }
 
 IOError
-io_directory_children(Str8 path, HashMap* children) {
+io_directory_children(Arena* arena, Str8 path, HashMap* children) {
   TracyCZoneN(trcyctx, "io_directory_children", 1);
 
   Assert(path.cstr != 0);

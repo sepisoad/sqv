@@ -223,13 +223,7 @@ sokol_main(I32 argc, char* argv[]) {
       .argv = argv,
   });
 
-  // CStr inpath = "/home/sepi/Projects/sepi/sqv/.keep/pak0/progs/spike.mdl";
-  // CStr inpath = "/home/sepi/Projects/sepi/sqv/.keep/pak0/progs/shambler.mdl";
-  // CStr inpath = "/home/sepi/Projects/sepi/sqv/.keep/pak0/progs/boss.mdl";
-  // CStr inpath = "/home/sepi/Games/pc/quake1/dwellv1p2/progs/boss_egypt.mdl";
-  // CStr inpath = "/home/sepi/Games/pc/quake1/MALICE/progs/rat.mdl";
-
-  CStr inpath = "/Users/sepi/Projects/sepi/sqv/.keep/wizard.mdl";
+  CStr inpath = ".keep/knight.mdl";
 
   return (sapp_desc){
       .init_cb = init,
