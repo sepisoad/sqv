@@ -213,7 +213,14 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 #endif
 
 #define StaticAssert(COND, ID) typedef char Glue(ID, __LINE__)[(COND)?1:-1]
-#define AssertAlways(x) do{if(!(x)) {Trap();}}while(0)
+#define AssertAlways(COND) \
+  do { \
+    if(!(COND)) { \
+      fprintf(stderr, "Assert: (%s)\n", #COND); \
+      fprintf(stderr, "At: %s:%d\n", __FILE__, __LINE__); \
+      Trap(); \
+    } \
+  }while(0)
 
 #ifdef DEBUG_MODE
 # define Assert(x) AssertAlways(x)
