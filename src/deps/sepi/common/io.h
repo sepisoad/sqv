@@ -9,6 +9,7 @@
 #include "../string.h"
 #include "../endian.h"
 #include "../array.h"
+#include "../stack.h"
 
 /* ===================================================== */
 /*                       CONSTANTS                       */
@@ -43,9 +44,10 @@ typedef struct IONode IONode;
 
 struct IONode {
   Str8 name;
+  Str8 path;
   Bool is_directory;
   IONode* parent;
-  Array* children;
+  ArrayOf(IONode*) children;
 };
 
 /* ===================================================== */
@@ -53,12 +55,13 @@ struct IONode {
 /* ===================================================== */
 
 IOError io_load_file(Arena*, CStr, NDBuffer*);
-IOError io_dump(Str8 path, Str8 data);
+IOError io_dump(Str8 path, Buf8 data);
 IOError io_is_file(Str8 path, Bool* is_file);
 IOError io_is_directory(Str8 path, Bool* is_dir);
 IOError io_make_directory(Str8 path);
 IOError io_make_nested_directory(Str8 path);
 IOError io_directory_children(Arena* arena, Str8 path, IONode* node);
+IOError io_directory_nested_children(Arena* arena, Str8 path, IONode* node);
 
 #define IO_POS(f) ftell((f))
 #define IO_SET(f, ofs) fseek((f), (ofs), SEEK_SET)
@@ -171,12 +174,12 @@ io_load_file(Arena* arena, CStr path, NDBuffer* ndb) {
 }
 
 IOError
-io_dump(Str8 path, Str8 data) {
+io_dump(Str8 path, Buf8 data) {
   TracyCZoneN(trcyctx, "io_dump", 1);
 
   Assert(path.cstr != 0);
-  Assert(path.size > 0);
-  Assert(data.cstr != 0);
+  Assert(path.length > 0);
+  Assert(data.cbuf != 0);
   Assert(data.size > 0);
 
   IOError err = IO_ERR_SUCCESS;
@@ -187,7 +190,7 @@ io_dump(Str8 path, Str8 data) {
     goto cleanup;
   }
 
-  Sz write_size = fwrite(data.cstr, 1, data.size, f);
+  Sz write_size = fwrite(data.cbuf, 1, data.size, f);
   if (write_size != data.size) {
     err = IO_ERR_MKFILE;
     goto cleanup;
@@ -208,18 +211,19 @@ io_make_nested_directory(Str8 path) {
   TracyCZoneN(trcyctx, "io_make_nested_directory", 1);
 
   Assert(path.cstr != 0);
-  Assert(path.size > 0);
+  Assert(path.length > 0);
 
   IOError err = IO_ERR_SUCCESS;
-  U32 original_size = path.size;
+  U32 original_length = path.length;
 
-  for (U32 index = 0; index < path.size; index++) {
+  for (U32 index = 0; index < path.length; index++) {
     if (path.cstr[index] == IO_PATH_SEPARATOR) {
-      path.size = index;
-      path.cstr[index] = 0;
+      path.length = index;
+      Str hack = (Str)&path.cstr[index];
+      *hack = 0;
       err = io_make_directory(path);
-      path.size = original_size;
-      path.cstr[index] = IO_PATH_SEPARATOR;
+      path.length = original_length;
+      *hack = IO_PATH_SEPARATOR;
       if (IO_ERR_SUCCESS != err) {
         err = IO_ERR_MKDIR_RECUR;
         goto cleanup;
@@ -238,6 +242,55 @@ cleanup:
   return err;
 }
 
+IOError
+io_directory_nested_children(Arena* arena, Str8 path, IONode* node) {
+  TracyCZoneN(trcyctx, "io_directory_nested_children", 1);
+
+  Assert(arena != 0);
+  Assert(path.cstr != 0);
+  Assert(path.length > 0);
+
+  IOError err = IO_ERR_SUCCESS;
+  StackOf(IONode*) nodes = 0;
+
+  err = io_directory_children(arena, path, node);
+  if (IO_ERR_SUCCESS != err) {
+    goto cleanup;
+  }
+
+  nodes = stack_create(arena);
+  // StackOf(Str8*) paths = stack_create(arena);
+  //
+
+  IONode* last = node;
+
+  printf("=======================\n");
+  do {
+    printf("%s\n", last->path.cstr);
+    for (U32 index = 0; index < last->children->offset; index++) {
+      IONode* child = array_get(last->children, index);
+      if (child->is_directory) {
+        Str8 new_path =
+            str8_join(arena, last->path, child->name, IO_PATH_SEPARATOR);
+        err = io_directory_children(arena, new_path, child);
+        if (IO_ERR_SUCCESS != err) {
+          goto cleanup;
+        }
+        stack_push(nodes, child);
+      }
+    }
+    last = stack_pop(nodes);
+  } while (last != 0);
+  printf("=======================\n");
+
+cleanup:
+  if (nodes) {
+    stack_destroy(nodes);
+  }
+
+  TracyCZoneEnd(trcyctx);
+  return err;
+}
 
 /* ===================================================== */
 /*                          END                          */
