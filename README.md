@@ -1,3 +1,5 @@
+🔔 THE ACTIVE BRANCH ATM IS "**DEV**"!
+
 # SQV - Sepi's Quake Viewer
 
 SQV (Sepi's Quake Viewer) is a lightweight program that renders Quake 1 `.MDL` files.
