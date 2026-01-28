@@ -53,7 +53,7 @@ io_is_file(Str8 path, Bool* is_file) {
   TracyCZoneN(trcyctx, "io_is_file", 1);
 
   Assert(path.cstr != 0);
-  Assert(path.size > 0);
+  Assert(path.length > 0);
   Assert(is_file != 0);
 
   IOError err = IO_ERR_SUCCESS;
@@ -80,7 +80,7 @@ io_is_directory(Str8 path, Bool* is_dir) {
   TracyCZoneN(trcyctx, "io_is_directory", 1);
 
   Assert(path.cstr != 0);
-  Assert(path.size > 0);
+  Assert(path.length > 0);
   Assert(is_dir != 0);
 
   IOError err = IO_ERR_SUCCESS;
@@ -106,8 +106,9 @@ IOError
 io_directory_children(Arena* arena, Str8 path, IONode* node) {
   TracyCZoneN(trcyctx, "io_directory_children", 1);
 
+  Assert(arena != 0);
   Assert(path.cstr != 0);
-  Assert(path.size > 0);
+  Assert(path.length > 0);
   Assert(node != 0);
   Assert(node->children == 0);
 
@@ -150,14 +151,16 @@ io_directory_children(Arena* arena, Str8 path, IONode* node) {
     }
 
     IONode* child = arena_push(arena, sizeof(IONode), AlignOf(IONode), TRUE);
-    child->name = str8_arena(arena, ent->d_name);
+    child->name = str8_clone(arena, str8(ent->d_name));
+    child->path = str8_join(arena, path, str8(ent->d_name), IO_PATH_SEPARATOR);
     child->is_directory = (DT_DIR == ent->d_type);
     child->parent = node;
 
     array_push(node->children, child);
   } while (TRUE);
 
-  node->name = str8_arena(arena, path.cstr);
+  node->name = str8_clone(arena, path);
+  node->path = str8_clone(arena, path); // NOTE: same as name
   node->is_directory = TRUE;
 
 cleanup:
@@ -178,7 +181,7 @@ io_make_directory(Str8 path) {
   IOError err = IO_ERR_SUCCESS;
 
   // NOTE: is this an error!?
-  if (path.size <= 0) {
+  if (path.length <= 0) {
     goto cleanup;
   }
 

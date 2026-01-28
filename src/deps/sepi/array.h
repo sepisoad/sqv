@@ -48,6 +48,8 @@ Array* array_create(Arena* a, U64 item_size, U64 item_alignment);
 RawPtr array_push(Array* a, RawPtr ptr);
 RawPtr array_get(Array* a, U64 index);
 
+#define ArrayOf(T) Array*
+
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
 /* ===================================================== */

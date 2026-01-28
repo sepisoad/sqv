@@ -24,20 +24,24 @@ enum {
 };
 
 typedef struct {
-  Str cstr;
-  Sz size;
+  CStr cstr;
+  Sz length;
 } Str8;
+
+typedef struct {
+  CBuf cbuf;
+  Sz size;
+} Buf8;
 
 /* ===================================================== */
 /*                          API                          */
 /* ===================================================== */
 
-Str8 str8(Str cstr);
-Str8 str8_size(Str cstr, Sz size);
-Str8 str8_raw(RawPtr rptr, Sz size);
-Str8 str8_arena(Arena* a, Str cstr);
+Str8 str8(CStr cstr);
+Str8 str8_raw(RawPtr rptr, Sz length);
+Str8 str8_clone(Arena* a, Str8 str);
 Str8 str8_zero(void);
-Bool str8_join(Str8 a, Str8 b, Str8 c, char separator);
+Str8 str8_join(Arena* a, Str8 str_a, Str8 str_b, char separator);
 Bool str8_is_equal(Str8 a, Str8 b);
 Bool is_space_char(U8 c);
 Bool is_upper_char(U8 c);
@@ -48,6 +52,8 @@ Bool is_digit_char(U8 c, U32 base);
 U8 to_lower_char(U8 c);
 U8 to_upper_char(U8 c);
 U8 correct_slash_from_char(U8 c);
+
+Buf8 buf8(CBuf cbuf, Sz size);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -70,37 +76,32 @@ static U8 integer_symbol_reverse[128] = {
 };
 
 Str8
-str8(Str cstr) {
-  Str8 result = {cstr, strlen((CStr)cstr)};
+str8(CStr cstr) {
+  Assert(cstr != 0);
+  Assert(strlen(cstr) > 0);
+
+  Str8 result = {cstr, strlen(cstr)};
   return result;
 }
 
 Str8
-str8_size(Str cstr, Sz size) {
-  Str8 result = {cstr, size};
+str8_raw(RawPtr rptr, Sz length) {
+  Assert(rptr != 0);
+  Assert(length > 0);
+
+  Str8 result = {(CStr)rptr, length};
   return result;
 }
 
 Str8
-str8_raw(RawPtr rptr, Sz size) {
-  Str8 result = {(Str)rptr, size};
-  return result;
-}
+str8_clone(Arena* a, Str8 str) {
+  Assert(a != 0);
+  Assert(str.cstr != 0);
+  Assert(strlen(str.cstr) > 0);
 
-Str8
-str8_mem(RawPtr rptr, Str cstr) {
-  U32 size = strlen(cstr);
-  MemCopy(rptr, cstr, size);
-  Str8 result = {(Str)rptr, size};
-  return result;
-}
-
-Str8
-str8_arena(Arena* a, Str cstr) {
-  U32 size = strlen(cstr);
-  Str copy = arena_push(a, sizeof(I8) * (size + 1), AlignOf(I8), TRUE);
-  MemCopy(copy, cstr, size);
-  Str8 result = {copy, size};
+  Str copy = arena_push(a, sizeof(I8) * (str.length + 1), AlignOf(I8), TRUE);
+  MemCopy(copy, str.cstr, str.length);
+  Str8 result = {copy, str.length};
   return result;
 }
 
@@ -110,38 +111,38 @@ str8_zero(void) {
   return result;
 }
 
-Bool
-str8_join(Str8 a, Str8 b, Str8 c, char separator) {
-  if (separator) {
-    Assert(a.size + b.size + 1 <= c.size);
-  } else {
-    Assert(a.size + b.size <= c.size);
-  }
+Str8
+str8_join(Arena* a, Str8 s1, Str8 s2, char separator) {
+  Assert(a != 0);
+  Assert(s1.cstr != 0);
+  Assert(s1.length > 0);
+  Assert(s2.cstr != 0);
+  Assert(s2.length > 0);
+  Assert(separator != 0);
 
-  memcpy(c.cstr, a.cstr, a.size);
-  c.size = a.size;
-  if (separator) {
-    c.cstr[a.size] = separator;
-    c.size++;
-  }
+  Sz length = s1.length + s2.length + 1; /*/*/
+  Str str = arena_push(a, sizeof(I8) * (length + 1 /*0*/), AlignOf(I8), TRUE);
 
-  memcpy(c.cstr + (c.size), b.cstr, b.size);
-  c.size += b.size;
+  memcpy(str, s1.cstr, s1.length);
+  str[s1.length] = separator;
+  memcpy(str + s1.length + 1, s2.cstr, s2.length);
 
-  return TRUE;
+  return (Str8){str, length};
 }
 
 Bool
-str8_is_equal(Str8 a, Str8 b) {
-  U32 length_a = strlen(a.cstr);
-  U32 length_b = strlen(b.cstr);
+str8_is_equal(Str8 str_a, Str8 str_b) {
+  Assert(str_a.cstr != 0);
+  Assert(str_a.length > 0);
+  Assert(str_b.cstr != 0);
+  Assert(str_b.length > 0);
 
-  if (length_a != length_b) {
+  if (str_a.length != str_b.length) {
     return FALSE;
   }
 
-  for (U32 index = 0; index < length_a; index++) {
-    if (a.cstr[index] != b.cstr[index]) {
+  for (U32 index = 0; index < str_a.length; index++) {
+    if (str_a.cstr[index] != str_b.cstr[index]) {
       return FALSE;
     }
   }
@@ -212,32 +213,49 @@ correct_slash_from_char(U8 c) {
 }
 
 Bool
-str8_cmp(Str8 a, Str8 b, StringCompareFlags flags) {
+str8_cmp(Str8 str_a, Str8 str_b, StringCompareFlags flags) {
+  Assert(str_a.cstr != 0);
+  Assert(str_a.length > 0);
+  Assert(str_b.cstr != 0);
+  Assert(str_b.length > 0);
+
   Bool result = FALSE;
-  if (a.size == b.size && flags == 0) {
-    result = IsMemoryEq(a.cstr, b.cstr, b.size);
-  } else if (a.size == b.size || (flags & StringCompareFlag_RightSideSloppy)) {
+
+  if (str_a.length == str_b.length && flags == 0) {
+    result = IsMemoryEq(str_a.cstr, str_b.cstr, str_b.length);
+  } else if (str_a.length == str_b.length ||
+             (flags & StringCompareFlag_RightSideSloppy)) {
     Bool case_insensitive = (flags & StringCompareFlag_CaseInsensitive);
     Bool slash_insensitive = (flags & StringCompareFlag_SlashInsensitive);
-    U64 size = Min(a.size, b.size);
+    U64 length = Min(str_a.length, str_b.length);
+
     result = 1;
-    for (U64 i = 0; i < size; i += 1) {
-      U8 at = a.cstr[i];
-      U8 bt = b.cstr[i];
+    for (U64 i = 0; i < length; i += 1) {
+      U8 char_a = str_a.cstr[i];
+      U8 char_b = str_b.cstr[i];
       if (case_insensitive) {
-        at = to_upper_char(at);
-        bt = to_upper_char(bt);
+        char_a = to_upper_char(char_a);
+        char_b = to_upper_char(char_b);
       }
       if (slash_insensitive) {
-        at = correct_slash_from_char(at);
-        bt = correct_slash_from_char(bt);
+        char_a = correct_slash_from_char(char_a);
+        char_b = correct_slash_from_char(char_b);
       }
-      if (at != bt) {
+      if (char_a != char_b) {
         result = 0;
         break;
       }
     }
   }
+  return result;
+}
+
+Buf8
+buf8(CBuf cbuf, Sz size) {
+  Assert(cbuf != 0);
+  Assert(size > 0);
+
+  Buf8 result = {cbuf, size};
   return result;
 }
 

@@ -45,6 +45,8 @@ Nothing stack_destroy(Stack* s);
 Nothing stack_push(Stack* s, RawPtr ptr);
 RawPtr stack_pop(Stack* s);
 
+#define StackOf(T) Stack*
+
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
 /* ===================================================== */

@@ -521,20 +521,6 @@ pak_unload(Pak* pak) {
 
 /* ===================================================== */
 
-static PakError
-pak_join_path(Str8 a, Str8 b, Str8 c) {
-  TracyCZoneN(trcyctx, "pak_join_path", 1);
-  PakError err = PAK_ERR_SUCCESS;
-
-  str8_join(a, b, c, IO_PATH_SEPARATOR);
-
-cleanup:
-  TracyCZoneEnd(trcyctx);
-  return err;
-}
-
-/* ===================================================== */
-
 PakError
 pak_extract(Pak* pak, FILE* file, Str8 out_dir) {
   TracyCZoneN(trcyctx, "pak_extract", 1);
@@ -563,13 +549,8 @@ pak_extract(Pak* pak, FILE* file, Str8 out_dir) {
       }
 
       PakTreeNode* new_node = (PakTreeNode*)kv->v_rawptr;
-
-      char full_path_buf[PAK_ENTRY_MAX_EXTRACT_PATH_LEN] = {0};
-      Str8 full_path_str =
-          str8_raw(full_path_buf, PAK_ENTRY_MAX_EXTRACT_PATH_LEN);
       Str8 new_node_str = str8(new_node->name);
-
-      pak_join_path(out_dir, new_node_str, full_path_str);
+      Str8 full_path_str = str8_join(scratch.arena, out_dir, new_node_str, IO_PATH_SEPARATOR);
 
       if (TRUE == new_node->is_directory) {
         stack_push(nodes, new_node);
@@ -580,12 +561,12 @@ pak_extract(Pak* pak, FILE* file, Str8 out_dir) {
           goto cleanup;
         }
       } else {
-        CStr src_buffer =
+        CBuf src_buffer =
             arena_push(scratch.arena, new_node->size, AlignOf(U8), TRUE);
 
         IO_SET(file, new_node->offset);
         IO_BUF(file, new_node->size, src_buffer);
-        io_dump(full_path_str, str8_size((Str)src_buffer, new_node->size));
+        io_dump(full_path_str, buf8(src_buffer, new_node->size));
       }
     }
   }
@@ -604,18 +585,15 @@ pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
   PakError err = PAK_ERR_SUCCESS;
   ArenaScratch scratch = arena_scratch_begin(pak->arena);
   Stack* nodes = stack_create(scratch.arena);
-
-  char full_path_buf[PAK_ENTRY_MAX_EXTRACT_PATH_LEN] = {0};
-  Str8 full_path_str = str8_raw(full_path_buf, PAK_ENTRY_MAX_EXTRACT_PATH_LEN);
   Str8 node_str = str8(node->item_name);
-  pak_join_path(out_dir, node_str, full_path_str);
+  Str8 full_path_str = str8_join(scratch.arena, out_dir, node_str, IO_PATH_SEPARATOR);
 
   if (FALSE == node->is_directory) {
-    CStr src_buffer = arena_push(scratch.arena, node->size, AlignOf(U8), TRUE);
+    CBuf src_buffer = arena_push(scratch.arena, node->size, AlignOf(U8), TRUE);
 
     IO_SET(file, node->offset);
     IO_BUF(file, node->size, src_buffer);
-    io_dump(full_path_str, str8_size((Str)src_buffer, node->size));
+    io_dump(full_path_str, buf8(src_buffer, node->size));
     goto cleanup;
   }
 
@@ -626,7 +604,7 @@ pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
   }
 
   U32 start_index = 0;
-  if(node->parent != &pak->tree.root){
+  if (node->parent != &pak->tree.root) {
     start_index = strlen(node->parent->name);
   }
 
@@ -648,13 +626,8 @@ pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
       }
 
       PakTreeNode* new_node = (PakTreeNode*)kv->v_rawptr;
-
-      char full_path_buf[PAK_ENTRY_MAX_EXTRACT_PATH_LEN] = {0};
-      Str8 full_path_str =
-          str8_raw(full_path_buf, PAK_ENTRY_MAX_EXTRACT_PATH_LEN);
       Str8 new_node_str = str8(new_node->name + start_index);
-
-      pak_join_path(out_dir, new_node_str, full_path_str);
+      Str8 full_path_str = str8_join(scratch.arena, out_dir, new_node_str, IO_PATH_SEPARATOR);
 
       if (TRUE == new_node->is_directory) {
         stack_push(nodes, new_node);
@@ -665,12 +638,12 @@ pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
           goto cleanup;
         }
       } else {
-        CStr src_buffer =
+        CBuf src_buffer =
             arena_push(scratch.arena, new_node->size, AlignOf(U8), TRUE);
 
         IO_SET(file, new_node->offset);
         IO_BUF(file, new_node->size, src_buffer);
-        io_dump(full_path_str, str8_size((Str)src_buffer, new_node->size));
+        io_dump(full_path_str, buf8(src_buffer, new_node->size));
       }
     }
   }

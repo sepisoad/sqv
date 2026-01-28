@@ -126,7 +126,7 @@ hashmap_list_pop(HashMapList* hml) {
 
 static U64
 hashmap_hasher(Str8 str) {
-  return rapidhash_withSeed(str.cstr, str.size, 1987);
+  return rapidhash_withSeed(str.cstr, str.length, 1987);
 }
 
 HashMap*
