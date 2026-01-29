@@ -59,16 +59,16 @@ init(void) {
   S.arena = arena_create();
 
   // load default Md1 file
-  Str path = sapp_userdata();
+  Str8 path = str8(sapp_userdata());
 
-  NDBuffer ndb = {0};
-  CBuf  buf = 0;
-  IOError ioerr = io_load_file(S.arena, path, &ndb);
+  // NDBuffer ndb = {0};
+  IONode node = {0};
+  IOError ioerr = io_load_file(S.arena, path, &node);
   if (ioerr != IO_ERR_SUCCESS) {
     // NOTE: this is a playground!
   }
 
-  md1_load(&S.md1, &ndb);
+  md1_load(&S.md1, &node);
   md1_get_vertices(&S.md1, 0, 0, &S.model.vbuf, &S.model.vbuf_size);
 
   // MODEL

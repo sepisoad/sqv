@@ -26,6 +26,7 @@ typedef enum {
   IO_ERR_MKFILE,
   IO_ERR_MKDIR,
   IO_ERR_MKDIR_RECUR,
+  IO_ERR_FILE_OPEN,
   IO_ERR_NOT_FILE,
   IO_ERR_NOT_DIR,
   IO_ERR_STAT,
@@ -46,6 +47,8 @@ struct IONode {
   Str8 name;
   Str8 path;
   Bool is_directory;
+  FILE* file;
+  NDBuffer buffer;
   IONode* parent;
   ArrayOf(IONode*) children;
 };
@@ -54,7 +57,8 @@ struct IONode {
 /*                          API                          */
 /* ===================================================== */
 
-IOError io_load_file(Arena*, CStr, NDBuffer*);
+IOError io_open_file(Str8 path, IONode* node);
+IOError io_load_file(Arena* a, Str8 path, IONode* node);
 IOError io_dump(Str8 path, Buf8 data);
 IOError io_is_file(Str8 path, Bool* is_file);
 IOError io_is_directory(Str8 path, Bool* is_dir);
@@ -117,32 +121,97 @@ IOError io_directory_nested_children(Arena* arena, Str8 path, IONode* node);
 #ifdef SEPI_COMMON_IO_IMPLEMENTATION
 
 IOError
-io_load_file(Arena* arena, CStr path, NDBuffer* ndb) {
+io_open_file(Str8 path, IONode* node) {
+  START_PROFILING(1);
+
+  Assert(path.cstr != 0);
+  Assert(path.length > 0);
+  Assert(node != 0);
+
+  IOError err = IO_ERR_SUCCESS;
+  Bool is_file = FALSE;
+
+  err = io_is_file(path, &is_file);
+  if (err != IO_ERR_SUCCESS) {
+    // NOTE:
+    // we use 'the already set' error value
+    goto cleanup;
+  }
+
+  node->file = fopen(path.cstr, "rb");
+  if (0 == node->file) {
+    err = IO_ERR_FILE_OPEN;
+    goto cleanup;
+  }
+
+  node->is_directory = FALSE;
+
+cleanup:
+  if (node->file && err != IO_ERR_SUCCESS) {
+    fclose(node->file);
+  }
+
+  END_PROFILING();
+  return err;
+}
+
+IOError
+io_load_file(Arena* arena, Str8 path, IONode* node) {
   START_PROFILING(1);
 
   Assert(arena != 0);
-  Assert(path != 0);
-  Assert(ndb != 0);
+  Assert(path.cstr != 0);
+  Assert(path.length > 0);
+  Assert(node != 0);
 
-  FILE* f;
-  f = fopen(path, "rb");
+  IOError err = IO_ERR_SUCCESS;
+  Bool is_file = FALSE;
 
-  AssertAlways(f != 0);
-  fseek(f, 0, SEEK_END);
+  err = io_is_file(path, &is_file);
+  if (err != IO_ERR_SUCCESS) {
+    // NOTE:
+    // we use 'the already set' error value
+    goto cleanup;
+  }
 
-  ndb->size = ftell(f) * sizeof(U8);
-  rewind(f);
 
-  ndb->base = (CBuf)arena_push(arena, ndb->size, AlignOf(U8), FALSE);
-  AssertAlways(ndb->base != 0);
+  node->file = fopen(path.cstr, "rb");
+  if (0 == node->file) {
+    err = IO_ERR_FILE_OPEN;
+    goto cleanup;
+  }
 
-  Sz rsize;
-  rsize = fread((void*)ndb->base, 1, ndb->size, f);
+  if (0 != fseek(node->file, 0, SEEK_END)) {
+    err = IO_ERR_FILE_OPEN;
+    goto cleanup;
+  }
 
-  AssertAlways(rsize == ndb->size);
+  node->buffer.size = ftell(node->file) * sizeof(U8);
+  if (-1l == node->buffer.size) {
+    err = IO_ERR_FILE_OPEN;
+    goto cleanup;
+  }
 
-  if (f) {
-    fclose(f);
+  // NOTE:
+  // rewind has no return to error on!
+  rewind(node->file);
+
+  node->buffer.base =
+      (CBuf)arena_push(arena, node->buffer.size, AlignOf(U8), FALSE);
+  AssertAlways(node->buffer.base != 0);
+
+  Sz rsize = fread((void*)node->buffer.base, 1, node->buffer.size, node->file);
+  if (rsize == node->buffer.size) {
+    err = IO_ERR_FILE_OPEN;
+    goto cleanup;
+  }
+
+  node->is_directory = FALSE;
+
+cleanup:
+  if (node->file) {
+    fclose(node->file);
+    node->file = 0;
   }
 
   END_PROFILING();
@@ -255,7 +324,6 @@ io_directory_nested_children(Arena* arena, Str8 path, IONode* node) {
     }
     last = stack_pop(nodes);
   } while (last != 0);
-
 
 cleanup:
   if (nodes) {

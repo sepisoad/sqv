@@ -135,10 +135,10 @@ static Nothing app_pak_cleanup_reload();
 static AppPakError app_pak_cleanup_icons();
 static AppPakError app_pak_cleanup_icon(AppPakImage* app_icon);
 
-static Nothing app_pak_input(const sapp_event* event);
-static AppPakError app_pak_handle_file_drop(CStr path);
-static AppPakError app_pak_handle_file_drop_pak(CStr path);
-static AppPakError app_pak_handle_file_drop_dir(CStr path);
+static Nothing app_pak_handle_user_input_events(const sapp_event* event);
+static AppPakError app_pak_handle_drop_event(CStr path);
+static AppPakError app_pak_handle_pak(CStr path);
+static AppPakError app_pak_handle_dir(CStr path);
 
 static Nothing app_pak_frame();
 static U32 app_pak_draw(struct nk_context* ctx);
@@ -193,7 +193,7 @@ sokol_main(int argc, char* argv[]) {
       .init_cb = app_pak_init,
       .frame_cb = app_pak_frame,
       .cleanup_cb = app_pak_cleanup,
-      .event_cb = app_pak_input,
+      .event_cb = app_pak_handle_user_input_events,
       .enable_clipboard = true,
       .width = 640,   // TODO: hard coded
       .height = 480,  // TODO: hard coded
@@ -231,7 +231,7 @@ app_pak_init(void) {
 
   if (S.input_path != NULL) {
     log_info("loading '%s' model", S.input_path);
-    app_pak_handle_file_drop(S.input_path);
+    app_pak_handle_drop_event(S.input_path);
   }
 
   app_pak_init_icons();
@@ -491,7 +491,7 @@ cleanup:
 /* ===================================================== */
 
 static Nothing
-app_pak_input(const sapp_event* event) {
+app_pak_handle_user_input_events(const sapp_event* event) {
   START_PROFILING(1);
 
   if ((event->type == SAPP_EVENTTYPE_KEY_DOWN) && !event->key_repeat) {
@@ -502,7 +502,7 @@ app_pak_input(const sapp_event* event) {
 
   snk_handle_event(event);
   if (event->type == SAPP_EVENTTYPE_FILES_DROPPED) {
-    app_pak_handle_file_drop(sapp_get_dropped_file_path(0));
+    app_pak_handle_drop_event(sapp_get_dropped_file_path(0));
   }
 
   END_PROFILING();
@@ -511,7 +511,7 @@ app_pak_input(const sapp_event* event) {
 /* ===================================================== */
 
 static AppPakError
-app_pak_handle_file_drop(CStr path) {
+app_pak_handle_drop_event(CStr path) {
   START_PROFILING(1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
@@ -525,9 +525,9 @@ app_pak_handle_file_drop(CStr path) {
   }
 
   if (is_directory) {
-    app_pak_handle_file_drop_dir(path);
+    app_pak_handle_dir(path);
   } else {
-    app_pak_handle_file_drop_pak(path);
+    app_pak_handle_pak(path);
   }
 
 cleanup:
@@ -538,7 +538,7 @@ cleanup:
 /* ===================================================== */
 
 static AppPakError
-app_pak_handle_file_drop_pak(CStr path) {
+app_pak_handle_pak(CStr path) {
   START_PROFILING(1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
@@ -584,7 +584,7 @@ cleanup:
 /* ===================================================== */
 
 static AppPakError
-app_pak_handle_file_drop_dir(CStr path) {
+app_pak_handle_dir(CStr path) {
   START_PROFILING(1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;

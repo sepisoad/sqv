@@ -196,7 +196,7 @@ typedef struct {
 /*                          API                          */
 /* ===================================================== */
 
-Md1Error md1_load(Md1* md1, NDBuffer* ndb);
+Md1Error md1_load(Md1* md1, IONode* node);
 Md1Error md1_get_vertices(const Md1* md1,
                           U32 pose_idx,
                           U32 frame_idx,
@@ -241,11 +241,13 @@ md1_load_image(CBuf ptr, Buf pixels, Sz sz) {
 }
 
 static Md1Error
-md1_load_skins(Md1* md1, NDBuffer* ndb) {
+md1_load_skins(Md1* md1, IONode* node) {
   START_PROFILING(1);
 
   Assert(md1 != 0);
-  Assert(ndb != 0);
+  Assert(node != 0);
+  Assert(node->buffer.base != 0);
+  Assert(node->buffer.size > 0);
 
   const Md1Details* details = &md1->details;
   const U32 channels = 4;
@@ -261,8 +263,8 @@ md1_load_skins(Md1* md1, NDBuffer* ndb) {
   for (U32 skin_idx = 0; skin_idx < details->skins_count; skin_idx++) {
     Dbg("skin #%d .P..", skin_idx);
 
-    MD1SkinType* st = (MD1SkinType*)ND_ADDR(ndb);
-    ND_MOVE(ndb, sizeof(MD1SkinType));
+    MD1SkinType* st = (MD1SkinType*)ND_ADDR(&node->buffer);
+    ND_MOVE(&node->buffer, sizeof(MD1SkinType));
 
     if (MD1_SKIN_SINGLE == *st) {
       Sz data_sz = sizeof(U8) * skin_sz * channels;
@@ -270,7 +272,7 @@ md1_load_skins(Md1* md1, NDBuffer* ndb) {
       Assert(data != 0);
 
       // constructing pixel data
-      U8* raw_data = (U8*)ND_ADDR(ndb);
+      U8* raw_data = (U8*)ND_ADDR(&node->buffer);
       for (U32 raw_idx = 0, rgba = 0; raw_idx < skin_sz; raw_idx++, rgba += 4) {
         U32 palette_idx = raw_data[raw_idx];
         data[rgba + 0] = quake1_palette[palette_idx][0]; /* RED */
@@ -278,7 +280,7 @@ md1_load_skins(Md1* md1, NDBuffer* ndb) {
         data[rgba + 2] = quake1_palette[palette_idx][2]; /* BLUE */
         data[rgba + 3] = 255; /* ALPHA - always opaque */
       }
-      ND_MOVE(ndb, skin_sz);
+      ND_MOVE(&node->buffer, skin_sz);
 
       // allocating texture data
       skins[skin_idx].image = sg_make_image(&(sg_image_desc){
@@ -317,11 +319,12 @@ md1_load_skins(Md1* md1, NDBuffer* ndb) {
 }
 
 static Md1Error
-md1_load_uvs(const Md1* md1, NDBuffer* ndb, Md1UV** uvs) {
+md1_load_uvs(const Md1* md1, IONode* node, Md1UV** uvs) {
   START_PROFILING(1);
 
   Assert(md1 != 0);
-  Assert(ndb != 0);
+  Assert(node != 0);
+  Assert(node->buffer.base != 0);
   Assert(uvs != 0);
 
   const Md1Details* details = &md1->details;
@@ -333,9 +336,9 @@ md1_load_uvs(const Md1* md1, NDBuffer* ndb, Md1UV** uvs) {
   AssertAlways(*uvs != 0);
 
   for (U32 i = 0; i < details->vertices_count; i++) {
-    ND_I32(ndb, &(*uvs)[i].is_on_seam);
-    ND_I32(ndb, &(*uvs)[i].u);
-    ND_I32(ndb, &(*uvs)[i].v);
+    ND_I32(&node->buffer, &(*uvs)[i].is_on_seam);
+    ND_I32(&node->buffer, &(*uvs)[i].u);
+    ND_I32(&node->buffer, &(*uvs)[i].v);
   }
 
   END_PROFILING();
@@ -343,11 +346,12 @@ md1_load_uvs(const Md1* md1, NDBuffer* ndb, Md1UV** uvs) {
 }
 
 static Md1Error
-md1_load_triangles(Md1* md1, NDBuffer* ndb, Md1FacedTriangle** fts) {
+md1_load_triangles(Md1* md1, IONode* node, Md1FacedTriangle** fts) {
   START_PROFILING(1);
 
   Assert(md1 != 0);
-  Assert(ndb != 0);
+  Assert(node != 0);
+  Assert(node->buffer.base != 0);
   Assert(fts != 0);
 
   Md1Details* details = &md1->details;
@@ -362,10 +366,10 @@ md1_load_triangles(Md1* md1, NDBuffer* ndb, Md1FacedTriangle** fts) {
   for (U32 i = 0, j = 0; i < details->triangles_count; i++, j += 3) {
     I32 a, b, c, f = 0;
 
-    ND_I32(ndb, &f);
-    ND_I32(ndb, &a);
-    ND_I32(ndb, &b);
-    ND_I32(ndb, &c);
+    ND_I32(&node->buffer, &f);
+    ND_I32(&node->buffer, &a);
+    ND_I32(&node->buffer, &b);
+    ND_I32(&node->buffer, &c);
 
     (*fts)[i].is_front_face = f;
     (*fts)[i].vertices_idx[0] = a;
@@ -403,14 +407,15 @@ md1_has_pose_name_changed(Str new, CStr old) {
 
 static Md1Error
 md1_load_single_frame(Md1* md1,
-                      NDBuffer* ndb,
+                      IONode* node,
                       U32 frame_idx,
                       Str frame_name,
                       Bool* is_bbox_loaded) {
   START_PROFILING(1);
 
   Assert(md1 != 0);
-  Assert(ndb != 0);
+  Assert(node != 0);
+  Assert(node->buffer.base != 0);
   Assert(frame_name != 0);
   Assert(is_bbox_loaded != 0);
 
@@ -419,8 +424,8 @@ md1_load_single_frame(Md1* md1,
   Sz frame_single_size = sizeof(MD1FrameSingle);
   MD1FrameSingle frame_single = {0};
 
-  memcpy(&frame_single, ND_ADDR(ndb), frame_single_size);
-  ND_MOVE(ndb, frame_single_size);
+  memcpy(&frame_single, ND_ADDR(&node->buffer), frame_single_size);
+  ND_MOVE(&node->buffer, frame_single_size);
 
   if (md1_has_pose_name_changed(frame_single.name, frame_name) &&
       frame_idx > 0) {
@@ -527,7 +532,7 @@ md1_load_single_frame(Md1* md1,
     md1->gpu.bbox_vertex_buffer_size = size;
   }
 
-  Md1NormalVertex* nv = (Md1NormalVertex*)ND_ADDR(ndb);
+  Md1NormalVertex* nv = (Md1NormalVertex*)ND_ADDR(&node->buffer);
   Sz nv_size = sizeof(Md1NormalVertex);
   Md1Vertex* frame_verts =
       md1->vertices + (details->vertices_count * frame_idx);
@@ -537,7 +542,7 @@ md1_load_single_frame(Md1* md1,
     // NOTE: basically 'Md1NormalVertex' is composed of 4 one byte elements
     //       so we do not need to be worried about endianness and we can
     //       safely copy the memory here!
-    memcpy(&nv, ND_ADDR(ndb), nv_size);
+    memcpy(&nv, ND_ADDR(&node->buffer), nv_size);
 
     frame_verts[i].vertex.X = nv.vertex[0];
     frame_verts[i].vertex.Y = nv.vertex[1];
@@ -549,7 +554,7 @@ md1_load_single_frame(Md1* md1,
     frame_verts[i].normal.Y = quake1_normals[nv.normal_idx][1];
     frame_verts[i].normal.Z = quake1_normals[nv.normal_idx][2];
 
-    ND_MOVE(ndb, sizeof(Md1NormalVertex));
+    ND_MOVE(&node->buffer, sizeof(Md1NormalVertex));
   }
 
   END_PROFILING();
@@ -557,11 +562,12 @@ md1_load_single_frame(Md1* md1,
 }
 
 static Md1Error
-md1_load_frames(Md1* md1, NDBuffer* ndb) {
+md1_load_frames(Md1* md1, IONode* node) {
   START_PROFILING(1);
 
   Assert(md1 != 0);
-  Assert(ndb != 0);
+  Assert(node != 0);
+  Assert(node->buffer.base != 0);
 
   Md1Details* details = &md1->details;
   Arena* a = md1->arena;
@@ -588,10 +594,10 @@ md1_load_frames(Md1* md1, NDBuffer* ndb) {
 
   for (U32 frame_idx = 0; frame_idx < details->frames_count; frame_idx++) {
     MD1FrameType ft = 0;
-    ND_I32(ndb, &ft);
+    ND_I32(&node->buffer, &ft);
 
     if (MD1_FT_SINGLE == ft) {
-      md1_load_single_frame(md1, ndb, frame_idx, frame_name, &is_bbox_loaded);
+      md1_load_single_frame(md1, node, frame_idx, frame_name, &is_bbox_loaded);
     } else {
       AssertAlways("NOT IMPLEMENTED!");
     }
@@ -757,38 +763,39 @@ md1_make_display_list_v2(Md1* md1,
 }
 
 Md1Error
-md1_load(Md1* md1, NDBuffer* ndb) {
+md1_load(Md1* md1, IONode* node) {
   START_PROFILING(1);
 
   Assert(md1 != 0);
-  Assert(ndb != 0);
+  Assert(node != 0);
+  Assert(node->buffer.base != 0);
   Assert(md1->arena == 0);
 
   Md1Error err = MD1_ERR_SUCCESS;
   MemZero(md1, sizeof(Md1));
   Md1RawHeader rh = {0};
 
-  ND_I32(ndb, &rh.magic_code);
-  ND_I32(ndb, &rh.version);
-  ND_F32(ndb, &rh.scale[0]);
-  ND_F32(ndb, &rh.scale[1]);
-  ND_F32(ndb, &rh.scale[2]);
-  ND_F32(ndb, &rh.translate[0]);
-  ND_F32(ndb, &rh.translate[1]);
-  ND_F32(ndb, &rh.translate[2]);
-  ND_F32(ndb, &rh.bounding_radius);
-  ND_F32(ndb, &rh.eye_position[0]);
-  ND_F32(ndb, &rh.eye_position[1]);
-  ND_F32(ndb, &rh.eye_position[2]);
-  ND_I32(ndb, &rh.skins_count);
-  ND_I32(ndb, &rh.skin_width);
-  ND_I32(ndb, &rh.skin_height);
-  ND_I32(ndb, &rh.vertices_count);
-  ND_I32(ndb, &rh.triangles_count);
-  ND_I32(ndb, &rh.frames_count);
-  ND_I32(ndb, &rh.sync_type);
-  ND_I32(ndb, &rh.flags);
-  ND_F32(ndb, &rh.size);
+  ND_I32(&node->buffer, &rh.magic_code);
+  ND_I32(&node->buffer, &rh.version);
+  ND_F32(&node->buffer, &rh.scale[0]);
+  ND_F32(&node->buffer, &rh.scale[1]);
+  ND_F32(&node->buffer, &rh.scale[2]);
+  ND_F32(&node->buffer, &rh.translate[0]);
+  ND_F32(&node->buffer, &rh.translate[1]);
+  ND_F32(&node->buffer, &rh.translate[2]);
+  ND_F32(&node->buffer, &rh.bounding_radius);
+  ND_F32(&node->buffer, &rh.eye_position[0]);
+  ND_F32(&node->buffer, &rh.eye_position[1]);
+  ND_F32(&node->buffer, &rh.eye_position[2]);
+  ND_I32(&node->buffer, &rh.skins_count);
+  ND_I32(&node->buffer, &rh.skin_width);
+  ND_I32(&node->buffer, &rh.skin_height);
+  ND_I32(&node->buffer, &rh.vertices_count);
+  ND_I32(&node->buffer, &rh.triangles_count);
+  ND_I32(&node->buffer, &rh.frames_count);
+  ND_I32(&node->buffer, &rh.sync_type);
+  ND_I32(&node->buffer, &rh.flags);
+  ND_F32(&node->buffer, &rh.size);
 
   Md1Details* details = &md1->details;
 
@@ -820,14 +827,14 @@ md1_load(Md1* md1, NDBuffer* ndb) {
   // TODO: set some initial params
   md1->arena = arena_create();
 
-  err = md1_load_skins(md1, ndb);
+  err = md1_load_skins(md1, node);
   if (err != MD1_ERR_SUCCESS) {
     END_PROFILING();
     return err;
   }
 
   Md1UV* uvs = 0;
-  err = md1_load_uvs(md1, ndb, &uvs);
+  err = md1_load_uvs(md1, node, &uvs);
   if (err != MD1_ERR_SUCCESS) {
     END_PROFILING();
     return err;
@@ -835,14 +842,14 @@ md1_load(Md1* md1, NDBuffer* ndb) {
   Assert(uvs != 0);
 
   Md1FacedTriangle* faced_triangles = NULL;
-  err = md1_load_triangles(md1, ndb, &faced_triangles);
+  err = md1_load_triangles(md1, node, &faced_triangles);
   if (err != MD1_ERR_SUCCESS) {
     END_PROFILING();
     return err;
   }
   Assert(faced_triangles != 0);
 
-  err = md1_load_frames(md1, ndb);
+  err = md1_load_frames(md1, node);
   if (err != MD1_ERR_SUCCESS) {
     END_PROFILING();
     return err;
