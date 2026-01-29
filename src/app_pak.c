@@ -12,10 +12,10 @@
 
 #include <stdio.h>
 
-#if defined(PROFILING)
-#include "deps/tracy/tracy.h"
-TracyCZoneCtx trcyctx;
-#endif
+// #if defined(PROFILING)
+// #include "deps/tracy/tracy.h"
+// TracyCZoneCtx trcyctx;
+// #endif
 
 #include "deps/hmm/hmm.h"
 #include "deps/log/log.h"
@@ -28,6 +28,7 @@ TracyCZoneCtx trcyctx;
 #include "deps/sokol/sokol_log.h"
 #include "deps/sokol/sokol_nuklear.h"
 #include "deps/sokol/sokol_time.h"
+// #include "deps/sepi/profiler.h"
 #include "deps/sepi/base.h"
 #include "deps/sepi/io.h"
 
@@ -63,7 +64,8 @@ TracyCZoneCtx trcyctx;
 
 typedef enum {
   APP_PAK_MODE_EMPTY,
-  APP_PAK_MODE_LOADED,
+  APP_PAK_MODE_PAK_LOADED,
+  APP_PAK_MODE_DIR_LOADED,
   APP_PAK_MODE_FAILED,
 } AppPakMode;
 
@@ -71,6 +73,7 @@ typedef enum {
   APP_PAK_ERR_SUCCESS = 1,
   APP_PAK_ERR_DROP,
   APP_PAK_ERR_FILE_OPEN,
+  APP_PAK_ERR_DIR_OPEN,
   APP_PAK_ERR_ICON_INIT,
   APP_PAK_ERR_MODULE_PAK,
   APP_PAK_ERR__COUNT,
@@ -105,12 +108,17 @@ static struct {
   AppPakMode mode;
   PakTreeNode* current_pak_tree_node;
   PakTreeNode* requested_extracting_item;
+  IONode input_dir;
   FILE* input_file;
-  CStr input_file_path;
+  CStr input_path;
+  // TODO:
+  // maybe use a dynamic array now that we have proper arena allocator
   char export_path_buffer[APP_PAK_MAX_EXPORT_PATH_LENGTH];
   char error_text[APP_PAK_MAX_ERROR_LENGTH];
   Arena* arena;
 } S;
+
+MASTER_PROFILING_CONTEXT;
 
 /* ===================================================== */
 /*                      DECLERATIONS                     */
@@ -120,8 +128,8 @@ static Nothing app_pak_init();
 static AppPakError app_pak_init_style(struct nk_style* s);
 static AppPakError app_pak_init_icons();
 static AppPakError app_pak_init_icon(AppPakImage* app_icon,
-                                       CBuf buffer,
-                                       Sz size);
+                                     CBuf buffer,
+                                     Sz size);
 static Nothing app_pak_cleanup();
 static Nothing app_pak_cleanup_reload();
 static AppPakError app_pak_cleanup_icons();
@@ -135,31 +143,31 @@ static AppPakError app_pak_handle_file_drop_dir(CStr path);
 static Nothing app_pak_frame();
 static U32 app_pak_draw(struct nk_context* ctx);
 static Nothing app_pak_draw_mode_empty(struct nk_context* ctx,
-                                         nk_flags window_flags,
-                                         U32 window_width,
-                                         U32 window_height);
+                                       nk_flags window_flags,
+                                       U32 window_width,
+                                       U32 window_height);
 static Nothing app_pak_draw_mode_failed(struct nk_context* ctx,
-                                          nk_flags window_flags,
-                                          U32 window_width,
-                                          U32 window_height);
+                                        nk_flags window_flags,
+                                        U32 window_width,
+                                        U32 window_height);
 static Nothing app_pak_draw_mode_loaded(struct nk_context* ctx,
-                                          nk_flags window_flags,
-                                          U32 window_width,
-                                          U32 window_height);
+                                        nk_flags window_flags,
+                                        U32 window_width,
+                                        U32 window_height);
 static Nothing app_pak_draw_mode_loaded(struct nk_context* ctx,
-                                          nk_flags window_flags,
-                                          U32 window_width,
-                                          U32 window_height);
+                                        nk_flags window_flags,
+                                        U32 window_width,
+                                        U32 window_height);
 static Nothing app_pak_draw_widget_explorer_area(struct nk_context* ctx,
-                                                   U32 window_width,
-                                                   U32 window_height);
+                                                 U32 window_width,
+                                                 U32 window_height);
 static Nothing app_pak_draw_widget_explorer_item(struct nk_context* ctx,
-                                                   PakTreeNode* node);
+                                                 PakTreeNode* node);
 static Nothing app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
-                                                   PakTreeNode* node,
-                                                   Bool is_directory,
-                                                   struct nk_image* image,
-                                                   CStr text);
+                                                 PakTreeNode* node,
+                                                 Bool is_directory,
+                                                 struct nk_image* image,
+                                                 CStr text);
 
 /* ===================================================== */
 /*                       FUNCTIONS                       */
@@ -167,7 +175,7 @@ static Nothing app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
 
 sapp_desc
 sokol_main(int argc, char* argv[]) {
-  TracyCZoneN(trcyctx, "sokol_main", 1);
+  START_PROFILING(1);
 
   sargs_setup(&(sargs_desc){
       .argc = argc,
@@ -177,9 +185,9 @@ sokol_main(int argc, char* argv[]) {
   MemZero(&S, sizeof(S));
 
   if (sargs_exists("-i"))
-    S.input_file_path = sargs_value("-i");
+    S.input_path = sargs_value("-i");
   else if (sargs_exists("--input"))
-    S.input_file_path = sargs_value("--input");
+    S.input_path = sargs_value("--input");
 
   return (sapp_desc){
       .init_cb = app_pak_init,
@@ -197,14 +205,14 @@ sokol_main(int argc, char* argv[]) {
       .logger.func = slog_func,
   };
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 /* ===================================================== */
 
 void
 app_pak_init(void) {
-  TracyCZoneN(trcyctx, "app_pak_init", 1);
+  START_PROFILING(1);
 
   S.arena = arena_create();
 
@@ -221,21 +229,21 @@ app_pak_init(void) {
 
   S.mode = APP_PAK_MODE_EMPTY;
 
-  if (S.input_file_path != NULL) {
-    log_info("loading '%s' model", S.input_file_path);
-    app_pak_handle_file_drop(S.input_file_path);
+  if (S.input_path != NULL) {
+    log_info("loading '%s' model", S.input_path);
+    app_pak_handle_file_drop(S.input_path);
   }
 
   app_pak_init_icons();
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 /* ===================================================== */
 
 static AppPakError
 app_pak_init_style(struct nk_style* s) {
-  TracyCZoneN(trcyctx, "app_pak_init_style", 1);
+  START_PROFILING(1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
@@ -276,7 +284,7 @@ app_pak_init_style(struct nk_style* s) {
   button->active.data.color.b = 200;
 
 cleanup:
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
@@ -284,7 +292,7 @@ cleanup:
 
 static AppPakError
 app_pak_init_icons() {
-  TracyCZoneN(trcyctx, "app_pak_init_icons", 1);
+  START_PROFILING(1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
@@ -322,7 +330,7 @@ app_pak_init_icons() {
   }
 
 cleanup:
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
@@ -330,7 +338,7 @@ cleanup:
 
 static AppPakError
 app_pak_init_icon(AppPakImage* app_icon, CBuf buffer, Sz size) {
-  TracyCZoneN(trcyctx, "app_pak_init_icon", 1);
+  START_PROFILING(1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
@@ -342,7 +350,7 @@ app_pak_init_icon(AppPakImage* app_icon, CBuf buffer, Sz size) {
              "failed to load icon image from memory");
     goto cleanup;
   }
-  TracyCAlloc(data, size);
+  START_MEMORY_PROFILING(data, size);
 
   app_icon->image = sg_make_image(&(sg_image_desc){
       .width = w,
@@ -372,10 +380,10 @@ app_pak_init_icon(AppPakImage* app_icon, CBuf buffer, Sz size) {
 cleanup:
   if (data) {
     free((RawPtr)data);
-    TracyCFree(data);
+    END_MEMORY_PROFILING(data);
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
@@ -383,12 +391,15 @@ cleanup:
 
 static Nothing
 app_pak_cleanup() {
-  TracyCZoneN(trcyctx, "app_pak_cleanup", 1);
+  START_PROFILING(1);
 
   if (S.input_file) {
     fclose(S.input_file);
     S.input_file = 0;
   }
+
+  // TODO:
+  // should we check the loaded directory if there is?
 
   app_pak_cleanup_icons();
   snk_shutdown();
@@ -396,18 +407,21 @@ app_pak_cleanup() {
   pak_unload(&S.pak);
   arena_destroy(S.arena);
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 static Nothing
 app_pak_cleanup_reload() {
-  TracyCZoneN(trcyctx, "app_pak_cleanup_reload", 1);
+  START_PROFILING(1);
 
   if (S.input_file) {
     fclose(S.input_file);
     S.input_file = 0;
-    S.input_file_path = 0;
+    S.input_path = 0;
   }
+
+  // TODO:
+  // should we clean up opened directory if there is
 
   S.is_extracting_requested = FALSE;
   S.requested_extracting_item = 0;
@@ -419,12 +433,12 @@ app_pak_cleanup_reload() {
   S.arena = 0;
   S.arena = arena_create();
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 static AppPakError
 app_pak_cleanup_icons() {
-  TracyCZoneN(trcyctx, "app_pak_cleanup_icons", 1);
+  START_PROFILING(1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
@@ -454,13 +468,13 @@ app_pak_cleanup_icons() {
   }
 
 cleanup:
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
 static AppPakError
 app_pak_cleanup_icon(AppPakImage* app_icon) {
-  TracyCZoneN(trcyctx, "app_pak_cleanup_icon", 1);
+  START_PROFILING(1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
@@ -470,7 +484,7 @@ app_pak_cleanup_icon(AppPakImage* app_icon) {
   snk_destroy_image(app_icon->ui_image);
 
 cleanup:
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
@@ -478,7 +492,7 @@ cleanup:
 
 static Nothing
 app_pak_input(const sapp_event* event) {
-  TracyCZoneN(trcyctx, "app_pak_input", 1);
+  START_PROFILING(1);
 
   if ((event->type == SAPP_EVENTTYPE_KEY_DOWN) && !event->key_repeat) {
     if (event->key_code == SAPP_KEYCODE_ESCAPE) {
@@ -491,14 +505,14 @@ app_pak_input(const sapp_event* event) {
     app_pak_handle_file_drop(sapp_get_dropped_file_path(0));
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 /* ===================================================== */
 
 static AppPakError
 app_pak_handle_file_drop(CStr path) {
-  TracyCZoneN(trcyctx, "app_pak_handle_file_drop", 1);
+  START_PROFILING(1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
@@ -517,7 +531,7 @@ app_pak_handle_file_drop(CStr path) {
   }
 
 cleanup:
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
@@ -525,7 +539,7 @@ cleanup:
 
 static AppPakError
 app_pak_handle_file_drop_pak(CStr path) {
-  TracyCZoneN(trcyctx, "app_pak_handle_file_drop_pak", 1);
+  START_PROFILING(1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
@@ -533,9 +547,11 @@ app_pak_handle_file_drop_pak(CStr path) {
   // we may want to allow this to happen, so the user does not have to
   // re-run the app for a new .PAK file! but this has to reset all the
   // states and wipe the arenas!
-  if (S.mode == APP_PAK_MODE_LOADED) {
+  if (S.mode == APP_PAK_MODE_PAK_LOADED || S.mode == APP_PAK_MODE_DIR_LOADED) {
     // goto cleanup;
     app_pak_cleanup_reload();
+    // TODO:
+    // do we need to call any cleanup function for loaded directory?
   }
 
   S.input_file = fopen(path, "rb");
@@ -556,12 +572,12 @@ app_pak_handle_file_drop_pak(CStr path) {
     goto cleanup;
   }
 
-  S.mode = APP_PAK_MODE_LOADED;
-  S.input_file_path = path;
+  S.mode = APP_PAK_MODE_PAK_LOADED;
+  S.input_path = path;
   S.current_pak_tree_node = &S.pak.tree.root;
 
 cleanup:
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
@@ -569,12 +585,22 @@ cleanup:
 
 static AppPakError
 app_pak_handle_file_drop_dir(CStr path) {
-  TracyCZoneN(trcyctx, "app_pak_handle_file_drop_dir", 1);
+  START_PROFILING(1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
+  IOError ioerr =
+      io_directory_nested_children(S.arena, str8(path), &S.input_dir);
+  if (ioerr != IO_ERR_SUCCESS) {
+    Dbg("FAKKK YOOOO");
+    err = APP_PAK_ERR_DIR_OPEN;
+    goto cleanup;
+  }
+
+  Dbg("Noice!");
+
 cleanup:
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
@@ -582,7 +608,7 @@ cleanup:
 
 static Nothing
 app_pak_frame() {
-  TracyCZoneN(trcyctx, "app_pak_frame", 1);
+  START_PROFILING(1);
   TracyCFrameMarkStart(0);
 
   struct nk_context* ctx = snk_new_frame();
@@ -605,14 +631,14 @@ app_pak_frame() {
   sg_commit();
 
   TracyCFrameMarkEnd(0);
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 /* ===================================================== */
 
 static U32
 app_pak_draw(struct nk_context* ctx) {
-  TracyCZoneN(trcyctx, "app_pak_draw", 1);
+  START_PROFILING(1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
@@ -625,13 +651,13 @@ app_pak_draw(struct nk_context* ctx) {
   nk_style_hide_cursor(ctx);
   if (S.mode == APP_PAK_MODE_EMPTY) {
     app_pak_draw_mode_empty(ctx, window_flags, window_width, window_height);
-  } else if (S.mode == APP_PAK_MODE_LOADED) {
+  } else if (S.mode == APP_PAK_MODE_PAK_LOADED) {
     app_pak_draw_mode_loaded(ctx, window_flags, window_width, window_height);
   } else if (S.mode == APP_PAK_MODE_FAILED) {
     app_pak_draw_mode_failed(ctx, window_flags, window_width, window_height);
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return !nk_window_is_closed(ctx, window_title);
 }
 
@@ -642,38 +668,49 @@ app_pak_draw_mode_empty(struct nk_context* ctx,
                         nk_flags window_flags,
                         U32 window_width,
                         U32 window_height) {
-  TracyCZoneN(trcyctx, "app_pak_draw_mode_empty", 1);
+  START_PROFILING(1);
 
-  static char label[] = "Please drop a .PAK file here, I'm hungry!";
+  static char label_line_1[] = "drop a .pak file for extraction";
+  static char label_line_2[] = "or drop a folder for packaging as .pak file";
 
   if (nk_begin(ctx, "", nk_rect(0, 0, window_width, window_height),
                window_flags)) {
     struct nk_rect content_region = nk_window_get_content_region(ctx);
     const struct nk_user_font* font = ctx->style.font;
 
-    F32 text_width =
-        font->width(font->userdata, font->height, label, (int)strlen(label));
+    F32 line_width = font->width(font->userdata, font->height, label_line_2,
+                                 (int)strlen(label_line_2));
     F32 text_height = font->height;
     F32 text_pad_x = ctx->style.text.padding.x;
     F32 text_pad_y = ctx->style.text.padding.y;
-    F32 element_width = text_width + 2.0f * text_pad_x;
+    F32 element_width = line_width + 2.0f * text_pad_x;
     F32 element_height = text_height + 2.0f * text_pad_y;
 
-    struct nk_rect r = {
+    struct nk_rect r1 = {
         .x = content_region.x + (content_region.w - element_width) * 0.5f,
-        .y = content_region.y + (content_region.h - element_height) * 0.5f,
+        .y =
+            content_region.y + (content_region.h - (element_height * 4)) * 0.5f,
         .w = element_width,
         .h = element_height,
     };
 
-    nk_layout_space_begin(ctx, NK_STATIC, content_region.h, 1);
-    nk_layout_space_push(ctx, r);
-    nk_label(ctx, label, NK_TEXT_CENTERED);
+    struct nk_rect r2 = {
+        .x = content_region.x + (content_region.w - element_width) * 0.5f,
+        .y = r1.y + element_height,
+        .w = element_width,
+        .h = element_height,
+    };
+
+    nk_layout_space_begin(ctx, NK_STATIC, content_region.h, 2);
+    nk_layout_space_push(ctx, r1);
+    nk_label(ctx, label_line_1, NK_TEXT_CENTERED);
+    nk_layout_space_push(ctx, r2);
+    nk_label(ctx, label_line_2, NK_TEXT_CENTERED);
     nk_layout_space_end(ctx);
   }
   nk_end(ctx);
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 /* ===================================================== */
@@ -683,7 +720,7 @@ app_pak_draw_mode_failed(struct nk_context* ctx,
                          nk_flags window_flags,
                          U32 window_width,
                          U32 window_height) {
-  TracyCZoneN(trcyctx, "app_pak_draw_mode_failed", 1);
+  START_PROFILING(1);
 
   if (nk_begin(ctx, "", nk_rect(0, 0, window_width, window_height),
                window_flags)) {
@@ -707,14 +744,12 @@ app_pak_draw_mode_failed(struct nk_context* ctx,
 
     nk_layout_space_begin(ctx, NK_STATIC, content_region.h, 1);
     nk_layout_space_push(ctx, r);
-    // nk_text_wrap(ctx, S.error_text, strlen(S.error_text));//,
-    // NK_TEXT_CENTERED);
     nk_text(ctx, S.error_text, strlen(S.error_text), NK_TEXT_CENTERED);
     nk_layout_space_end(ctx);
   }
   nk_end(ctx);
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 /* ===================================================== */
@@ -724,7 +759,7 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
                          nk_flags window_flags,
                          U32 window_width,
                          U32 window_height) {
-  TracyCZoneN(trcyctx, "app_pak_draw_mode_loaded", 1);
+  START_PROFILING(1);
 
   Bool is_root = S.current_pak_tree_node->item_name[0] == ' ';
 
@@ -834,11 +869,11 @@ app_pak_draw_mode_loaded(struct nk_context* ctx,
                        window_width, APP_PAK_BOTTOM_REGION_HEIGHT),
                NK_WINDOW_NO_SCROLLBAR)) {
     nk_layout_row_dynamic(ctx, 0, 1);
-    nk_label(ctx, S.input_file_path, NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
+    nk_label(ctx, S.input_path, NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
   }
   nk_end(ctx);
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 /* ===================================================== */
@@ -847,7 +882,7 @@ static Nothing
 app_pak_draw_widget_explorer_area(struct nk_context* ctx,
                                   U32 window_width,
                                   U32 window_height) {
-  TracyCZoneN(trcyctx, "app_pak_draw_widget_explorer_area", 1);
+  START_PROFILING(1);
 
   HashMap* children = S.current_pak_tree_node->children;
   U32 items_count = children->count;
@@ -890,14 +925,14 @@ app_pak_draw_widget_explorer_area(struct nk_context* ctx,
     nk_group_end(ctx);
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 /* ===================================================== */
 
 static Nothing
 app_pak_draw_widget_explorer_item(struct nk_context* ctx, PakTreeNode* node) {
-  TracyCZoneN(trcyctx, "app_pak_draw_widget_explorer_item", 1);
+  START_PROFILING(1);
 
   if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_NO_INPUT)) {
     if (node->is_directory) {
@@ -910,7 +945,7 @@ app_pak_draw_widget_explorer_item(struct nk_context* ctx, PakTreeNode* node) {
     nk_group_end(ctx);
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 static Nothing
@@ -919,7 +954,7 @@ app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
                                   Bool is_directory,
                                   struct nk_image* image,
                                   CStr text) {
-  TracyCZoneN(trcyctx, "app_pak_draw_widget_explorer_icon", 1);
+  START_PROFILING(1);
 
   // icon image
   nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_IMAGE_HEIGHT,
@@ -950,7 +985,7 @@ app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
   // NK_TEXT_ALIGN_MIDDLE); nk_label_wrap(ctx, text);
   nk_text_wrap(ctx, text, strlen(text));
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 /* ===================================================== */

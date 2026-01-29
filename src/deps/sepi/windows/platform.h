@@ -28,7 +28,7 @@
 
 #ifdef SEPI_WINDOWS_PLATFORM_IMPLEMENTATION
 
-extern TracyCZoneCtx trcyctx;
+SLAVE_PROFILING_CONTEXT;
 
 #include <sysinfoapi.h>
 #include <memoryapi.h>
@@ -54,7 +54,7 @@ platform_get_large_page_size() {
 
 RawPtr
 platform_reserve_large_pages(Sz size) {
-  TracyCZoneN(trcyctx, "platform_reserve_large_pages", 1);
+  START_PROFILING(1);
 
   DWORD flags = MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES;
   RawPtr result = VirtualAlloc(0, size, flags, PAGE_READWRITE);
@@ -66,8 +66,8 @@ platform_reserve_large_pages(Sz size) {
     }
   }
 
-  TracyCAlloc(result, size);
-  TracyCZoneEnd(trcyctx);
+  START_MEMORY_PROFILING(result, size);
+  END_PROFILING();
   return result;
 }
 
@@ -78,13 +78,13 @@ platform_commit_large_pages(RawPtr ptr, Sz size) {
 
 Nothing
 platform_release(RawPtr ptr, Sz size) {
-  TracyCZoneN(trcyctx, "platform_release", 1);
+  START_PROFILING(1);
 
   Ignore(size);
   VirtualFree(ptr, 0, MEM_RELEASE);
 
-  TracyCFree(ptr);
-  TracyCZoneEnd(trcyctx);
+  END_MEMORY_PROFILING(ptr);
+  END_PROFILING();
 }
 
 

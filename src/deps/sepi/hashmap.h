@@ -87,11 +87,11 @@ HashMapKV* hashmap_key_at(HashMap* hm, U32 index);
 
 #ifdef SEPI_HASHMAP_IMPLEMENTATION
 
-extern TracyCZoneCtx trcyctx;
+MASTER_PROFILING_CONTEXT;
 
 static Nothing
 hashmap_list_concat_in_place(HashMapList* to, HashMapList* from) {
-  TracyCZoneN(trcyctx, "hashmap_list_concat_in_place", 1);
+  START_PROFILING(1);
 
   if (from->first) {
     if (to->first) {
@@ -104,12 +104,12 @@ hashmap_list_concat_in_place(HashMapList* to, HashMapList* from) {
     MemZeroStruct(from);
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 static HashMapNode*
 hashmap_list_pop(HashMapList* hml) {
-  TracyCZoneN(trcyctx, "hashmap_list_pop", 1);
+  START_PROFILING(1);
 
   HashMapNode* hmn = hml->first;
 
@@ -120,7 +120,7 @@ hashmap_list_pop(HashMapList* hml) {
     hml->first = hml->first->next;
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return hmn;
 }
 
@@ -131,19 +131,19 @@ hashmap_hasher(Str8 str) {
 
 HashMap*
 hashmap_init(Arena* a, U64 capacity) {
-  TracyCZoneN(trcyctx, "hashmap_init", 1);
+  START_PROFILING(1);
 
   HashMap* hm = arena_push_array(a, HashMap, 1);
   hm->capacity = capacity;
   hm->list = arena_push_array(a, HashMapList, capacity);
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return hm;
 }
 
 Nothing
 hashmap_purge(HashMap* hm) {
-  TracyCZoneN(trcyctx, "hashmap_purge", 1);
+  START_PROFILING(1);
 
   hm->count = 0;
 
@@ -151,12 +151,12 @@ hashmap_purge(HashMap* hm) {
     hashmap_list_concat_in_place(&hm->free_list, &hm->list[i]);
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 HashMapNode*
 hashmap_push(Arena* a, HashMap* hm, U64 hash, HashMapKV kv) {
-  TracyCZoneN(trcyctx, "hashmap_push", 1);
+  START_PROFILING(1);
 
   HashMapNode* hmn;
 
@@ -182,7 +182,7 @@ hashmap_push(Arena* a, HashMap* hm, U64 hash, HashMapKV kv) {
 
   hm->count += 1;
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return hmn;
 }
 
@@ -220,25 +220,25 @@ hashmap_push_u32_str8(Arena* a, HashMap* hm, U32 key, Str8 value) {
 
 HashMapKV*
 hashmap_find(HashMap* hm, Str8 key) {
-  TracyCZoneN(trcyctx, "hashmap_find", 1);
+  START_PROFILING(1);
 
   U64 hash = hashmap_hasher(key);
   U64 i = hash % hm->capacity;
   HashMapList* list = hm->list + i;
   for (HashMapNode* hmn = list->first; hmn != 0; hmn = hmn->next) {
     if (str8_cmp(hmn->kv.k_str, key, 0)) {
-      TracyCZoneEnd(trcyctx);
+      END_PROFILING();
       return &hmn->kv;
     }
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return 0;
 }
 
 HashMapKV
 hashmap_pop(HashMap* hm, Str8 key) {
-  TracyCZoneN(trcyctx, "hashmap_pop", 1);
+  START_PROFILING(1);
 
   HashMapKV kv = {0};
   U64 hash = hashmap_hasher(key);
@@ -257,18 +257,18 @@ hashmap_pop(HashMap* hm, Str8 key) {
       }
       hm->count--;
 
-      TracyCZoneEnd(trcyctx);
+      END_PROFILING();
       return kv;
     }
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return kv;
 }
 
 Str8*
 hashmap_keys(Arena* a, HashMap* hm) {
-  TracyCZoneN(trcyctx, "hashmap_keys", 1);
+  START_PROFILING(1);
 
   Str8* keys = arena_push_array_no_zero(a, Str8, hm->count);
   for (U64 listidx = 0, cursor = 0; listidx < hm->capacity; ++listidx) {
@@ -279,19 +279,19 @@ hashmap_keys(Arena* a, HashMap* hm) {
     }
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return keys;
 }
 
 HashMapKV*
 hashmap_key_at(HashMap* hm, U32 index) {
-  TracyCZoneN(trcyctx, "hashmap_key_at", 1);
+  START_PROFILING(1);
 
   for (U64 listidx = 0, cursor = 0; listidx < hm->capacity; ++listidx) {
     for (HashMapNode* node = hm->list[listidx].first; node != 0;
          node = node->next) {
       if (cursor == index) {
-        TracyCZoneEnd(trcyctx);
+        END_PROFILING();
         return &node->kv;
       }
       Assert(cursor < hm->count);
@@ -299,7 +299,7 @@ hashmap_key_at(HashMap* hm, U32 index) {
     }
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return 0;
 }
 

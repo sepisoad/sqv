@@ -57,10 +57,10 @@ RawPtr list_get_at(List* l, U64 index);
 
 #ifdef SEPI_LIST_IMPLEMENTATION
 
-extern TracyCZoneCtx trcyctx;
+SLAVE_PROFILING_CONTEXT;
 
 List* list_create(Arena* a) {
-  TracyCZoneN(tracyctx, "list_create", 1);
+  START_PROFILING(1);
 
   Assert(a != 0);
 
@@ -75,7 +75,7 @@ List* list_create(Arena* a) {
 }
 
 Nothing list_destroy(List* l) {
-  TracyCZoneN(tracyctx, "list_destroy", 1);
+  START_PROFILING(1);
 
   Assert(l != 0);
 
@@ -87,7 +87,7 @@ Nothing list_destroy(List* l) {
 }
 
 ListNode* list_push_tail(List* l, RawPtr ptr) {
-  TracyCZoneN(tracyctx, "list_push_tail", 1);
+  START_PROFILING(1);
 
   Assert(l != 0);
   Assert(ptr != 0);
@@ -111,7 +111,7 @@ ListNode* list_push_tail(List* l, RawPtr ptr) {
 }
 
 ListNode* list_push_head(List* l, RawPtr ptr) {
-  TracyCZoneN(tracyctx, "list_push_head", 1);
+  START_PROFILING(1);
 
   Assert(l != 0);
   Assert(ptr != 0);
@@ -134,7 +134,7 @@ ListNode* list_push_head(List* l, RawPtr ptr) {
 }
 
 ListNode* list_push_after(List* l, ListNode* n, RawPtr ptr) {
-  TracyCZoneN(tracyctx, "list_push_after", 1);
+  START_PROFILING(1);
 
   Assert(l != 0);
   Assert(n != 0);
@@ -157,7 +157,7 @@ ListNode* list_push_after(List* l, ListNode* n, RawPtr ptr) {
 }
 
 ListNode* list_push_before(List* l, ListNode* n, RawPtr ptr) {
-  TracyCZoneN(tracyctx, "list_push_before", 1);
+  START_PROFILING(1);
 
   Assert(l != 0);
   Assert(n != 0);
@@ -183,7 +183,7 @@ ListNode* list_push_before(List* l, ListNode* n, RawPtr ptr) {
 }
 
 ListNode* list_pop_tail(List* l) {
-  TracyCZoneN(tracyctx, "list_pop_tail", 1);
+  START_PROFILING(1);
 
   Assert(l != 0);
 
@@ -211,7 +211,7 @@ cleanup:
 }
 
 ListNode* list_pop_head(List* l) {
-  TracyCZoneN(tracyctx, "list_pop_head", 1);
+  START_PROFILING(1);
 
   Assert(l != 0);
 
@@ -239,7 +239,7 @@ cleanup:
 }
 
 ListNode* list_pop(List* l, ListNode* n) {
-  TracyCZoneN(tracyctx, "list_pop", 1);
+  START_PROFILING(1);
 
   Assert(l != 0);
   Assert(n != 0);
@@ -274,7 +274,7 @@ cleanup:
 }
 
 RawPtr list_get_at(List* l, U64 index) {
-  TracyCZoneN(tracyctx, "list_get_at", 1);
+  START_PROFILING(1);
 
   Assert(l != 0);
 

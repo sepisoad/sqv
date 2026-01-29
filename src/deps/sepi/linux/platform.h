@@ -28,7 +28,7 @@
 
 #ifdef SEPI_LINUX_PLATFORM_IMPLEMENTATION
 
-extern TracyCZoneCtx trcyctx;
+SLAVE_PROFILING_CONTEXT;
 
 #include <sys/sysinfo.h> /* get_nprocs */
 #include <unistd.h>      /* getpagesize */
@@ -51,7 +51,7 @@ platform_get_large_page_size() {
 
 RawPtr
 platform_reserve_large_pages(Sz size) {
-  TracyCZoneN(trcyctx, "platform_reserve_large_pages", 1);
+  START_PROFILING(1);
 
   U32 flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB;
   RawPtr result = mmap(0, size, PROT_NONE, flags, -1, 0);
@@ -64,29 +64,29 @@ platform_reserve_large_pages(Sz size) {
     }
   }
 
-  TracyCAlloc(result, size);
-  TracyCZoneEnd(trcyctx);
+  START_MEMORY_PROFILING(result, size);
+  END_PROFILING();
   return result;
 }
 
 U32
 platform_commit_large_pages(RawPtr ptr, Sz size) {
-  TracyCZoneN(trcyctx, "platform_commit_large_pages", 1);
+  START_PROFILING(1);
 
   mprotect(ptr, size, PROT_READ | PROT_WRITE);
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return 1;
 }
 
 Nothing
 platform_release(RawPtr ptr, Sz size) {
-  TracyCZoneN(trcyctx, "platform_release", 1);
+  START_PROFILING(1);
 
   munmap(ptr, size);
 
-  TracyCFree(ptr);
-  TracyCZoneEnd(trcyctx);
+  END_MEMORY_PROFILING(ptr);
+  END_PROFILING();
 }
 
 

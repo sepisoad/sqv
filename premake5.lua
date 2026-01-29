@@ -6,6 +6,7 @@ workspace "ProjectWorkspace"
   configurations { "Debug", "Release", "Profiling" }
   location "."
   toolset "gcc"
+  includedirs { "src/deps" }
   buildoptions { "-std=gnu11" }
   -- linkoptions  { "-fuse-ld=mold" }
 

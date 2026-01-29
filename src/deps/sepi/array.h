@@ -56,11 +56,11 @@ RawPtr array_get(Array* a, U64 index);
 
 #ifdef SEPI_ARRAY_IMPLEMENTATION
 
-extern TracyCZoneCtx trcyctx;
+SLAVE_PROFILING_CONTEXT;
 
 Array*
 array_create(Arena* a, U64 item_size, U64 item_alignment) {
-  TracyCZoneN(tracyctx, "array_create", 1);
+  START_PROFILING(1);
 
   Assert(a != 0);
   Assert(item_size > 0);
@@ -84,7 +84,7 @@ array_create(Arena* a, U64 item_size, U64 item_alignment) {
 
 RawPtr
 array_push(Array* a, RawPtr ptr) {
-  TracyCZoneN(tracyctx, "array_push", 1);
+  START_PROFILING(1);
 
   Assert(a != 0);
   Assert(ptr != 0);
@@ -112,7 +112,7 @@ array_push(Array* a, RawPtr ptr) {
 
 RawPtr
 array_get(Array* a, U64 index) {
-  TracyCZoneN(tracyctx, "array_get", 1);
+  START_PROFILING(1);
 
   Assert(a != 0);
   Assert(index < a->capacity);

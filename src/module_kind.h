@@ -97,11 +97,14 @@ KindError kind_guess_entry(Str, U32, Kind*);
 
 #ifdef MODULE_KIND_IMPLEMENTATION
 
-extern TracyCZoneCtx trcyctx;
+SLAVE_PROFILING_CONTEXT;
 
 static KindError
 guess_file_type(CStr buf, Kind* kind) {
-  TracyCZoneN(trcyctx, "guess_file_type", 1);
+  START_PROFILING(1);
+
+  // TODO:
+  // use goto here!
 
   Assert(buf != 0);
   Assert(kind != 0);
@@ -109,24 +112,24 @@ guess_file_type(CStr buf, Kind* kind) {
   if (strncmp(buf, "PACK", 4) == 0) {
     *kind = KIND_PAK;
 
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (strncmp(buf, "IDPO", 4) == 0) {
     *kind = KIND_MD1;
 
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return KIND_ERR_INVALID;
 }
 
 KindError
 kind_guess_entry(Str path, U32 len, Kind* kind) {
-  TracyCZoneN(trcyctx, "kind_guess_entry", 1);
+  START_PROFILING(1);
 
   Assert(path != 0);
   Assert(len > 0);
@@ -146,240 +149,240 @@ kind_guess_entry(Str path, U32 len, Kind* kind) {
 
   if (!strncmp(ext, "pak", 3)) {
     *kind = KIND_PAK;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "pa3", 3)) {
     *kind = KIND_PK3;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "bin", 3)) {
     *kind = KIND_BIN;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "dat", 3)) {
     *kind = KIND_DAT;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "mdl", 3)) {
     *kind = KIND_MD1;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "md2", 3)) {
     *kind = KIND_MD2;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "md3", 3)) {
     *kind = KIND_MD3;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "ms2", 3)) {
     *kind = KIND_MS2;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "smd", 3)) {
     *kind = KIND_SMD;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "bsp", 3)) {
     *kind = KIND_BSP;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "ent", 3)) {
     *kind = KIND_ENT;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "md5mesh", 7)) {
     *kind = KIND_MD5MESH;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "md5anim", 7)) {
     *kind = KIND_MD5ANIM;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "mdanim", 6)) {
     *kind = KIND_MDANIM;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "bnvib", 5)) {
     *kind = KIND_BNVIB;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "nav", 3)) {
     *kind = KIND_NAV;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "map", 3)) {
     *kind = KIND_MAP;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "raw", 3)) {
     *kind = KIND_RAW;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "dem", 3)) {
     *kind = KIND_DEM;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "lit", 3)) {
     *kind = KIND_LIT;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "lights", 6)) {
     *kind = KIND_LIGHTS;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "rtlights", 8)) {
     *kind = KIND_RTLIGHTS;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "wad", 3)) {
     *kind = KIND_WAD;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "lmp", 3)) {
     *kind = KIND_LMP;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "pcx", 3)) {
     *kind = KIND_PCX;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "jpg", 3)) {
     *kind = KIND_JPG;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "png", 3)) {
     *kind = KIND_PNG;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "tga", 3)) {
     *kind = KIND_TGA;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "spr", 3)) {
     *kind = KIND_SPR;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "spr32", 5)) {
     *kind = KIND_SPR32;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "skin", 4)) {
     *kind = KIND_SKIN;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "wav", 3)) {
     *kind = KIND_WAV;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "ogg", 3)) {
     *kind = KIND_OGG;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "mp3", 3)) {
     *kind = KIND_MP3;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "rc", 3)) {
     *kind = KIND_RC;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "cfg", 3)) {
     *kind = KIND_CFG;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "txt", 3)) {
     *kind = KIND_TXT;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   if (!strncmp(ext, "json", 3)) {
     *kind = KIND_JSON;
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return KIND_ERR_SUCCESS;
   }
 
   *kind = KIND_UNKNOWN;
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return KIND_ERR_SUCCESS;
 }
 
 KindError
 kind_guess_file(CStr path, Kind* kind) {
-  TracyCZoneN(trcyctx, "kind_guess_file", 1);
+  START_PROFILING(1);
 
   Assert(path != 0);
   Assert(kind != 0);
@@ -398,13 +401,13 @@ kind_guess_file(CStr path, Kind* kind) {
 
   fclose(f);
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return guess_file_type(buf, kind);
 }
 
 KindError
 kind_guess_buffer(CStr data, Kind* kind) {
-  TracyCZoneN(trcyctx, "kind_guess_buffer", 1);
+  START_PROFILING(1);
 
   Assert(data != 0);
   Assert(kind != 0);
@@ -412,7 +415,7 @@ kind_guess_buffer(CStr data, Kind* kind) {
   char buf[9] = {0};
   Assert(memcpy(buf, data, 8) != 0);
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return guess_file_type(buf, kind);
 }
 

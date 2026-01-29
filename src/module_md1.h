@@ -219,11 +219,11 @@ Md1Error md1_unload(Md1* md1);
 
 #include "data.h"
 
-extern TracyCZoneCtx trcyctx;
+SLAVE_PROFILING_CONTEXT;
 
 static Nothing
 md1_load_image(CBuf ptr, Buf pixels, Sz sz) {
-  TracyCZoneN(trcyctx, "md1_load_image", 1);
+  START_PROFILING(1);
 
   Assert(pixels != 0);
   Assert(sz > 0);
@@ -237,12 +237,12 @@ md1_load_image(CBuf ptr, Buf pixels, Sz sz) {
     pixels[j + 3] = 255;                       // alpha, always opaque
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 static Md1Error
 md1_load_skins(Md1* md1, NDBuffer* ndb) {
-  TracyCZoneN(trcyctx, "md1_load_skins", 1);
+  START_PROFILING(1);
 
   Assert(md1 != 0);
   Assert(ndb != 0);
@@ -312,13 +312,13 @@ md1_load_skins(Md1* md1, NDBuffer* ndb) {
 
   md1->skins = skins;
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
 static Md1Error
 md1_load_uvs(const Md1* md1, NDBuffer* ndb, Md1UV** uvs) {
-  TracyCZoneN(trcyctx, "md1_load_uvs", 1);
+  START_PROFILING(1);
 
   Assert(md1 != 0);
   Assert(ndb != 0);
@@ -338,13 +338,13 @@ md1_load_uvs(const Md1* md1, NDBuffer* ndb, Md1UV** uvs) {
     ND_I32(ndb, &(*uvs)[i].v);
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
 static Md1Error
 md1_load_triangles(Md1* md1, NDBuffer* ndb, Md1FacedTriangle** fts) {
-  TracyCZoneN(trcyctx, "md1_load_triangles", 1);
+  START_PROFILING(1);
 
   Assert(md1 != 0);
   Assert(ndb != 0);
@@ -373,13 +373,13 @@ md1_load_triangles(Md1* md1, NDBuffer* ndb, Md1FacedTriangle** fts) {
     (*fts)[i].vertices_idx[2] = c;
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
 static Bool
 md1_has_pose_name_changed(Str new, CStr old) {
-  TracyCZoneN(trcyctx, "md1_has_pose_name_changed", 1);
+  START_PROFILING(1);
 
   for (U32 i = 0; i < MD1_MAX_FRAME_NAME_LEN - 1; i++) {
     if (isdigit(new[i])) {
@@ -388,16 +388,16 @@ md1_has_pose_name_changed(Str new, CStr old) {
   }
 
   if (strlen(old) <= 0) {
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return TRUE;
   }
 
   if (strcmp(new, old) != 0) {
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return TRUE;
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return FALSE;
 }
 
@@ -407,7 +407,7 @@ md1_load_single_frame(Md1* md1,
                       U32 frame_idx,
                       Str frame_name,
                       Bool* is_bbox_loaded) {
-  TracyCZoneN(trcyctx, "md1_load_single_frame", 1);
+  START_PROFILING(1);
 
   Assert(md1 != 0);
   Assert(ndb != 0);
@@ -552,13 +552,13 @@ md1_load_single_frame(Md1* md1,
     ND_MOVE(ndb, sizeof(Md1NormalVertex));
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
 static Md1Error
 md1_load_frames(Md1* md1, NDBuffer* ndb) {
-  TracyCZoneN(trcyctx, "md1_load_frames", 1);
+  START_PROFILING(1);
 
   Assert(md1 != 0);
   Assert(ndb != 0);
@@ -597,13 +597,13 @@ md1_load_frames(Md1* md1, NDBuffer* ndb) {
     }
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
 Md1Error
 md1_make_display_list(Md1* md1, Md1UV* uvs, Md1FacedTriangle* faced_triangles) {
-  TracyCZoneN(trcyctx, "md1_make_display_list", 1);
+  START_PROFILING(1);
 
   Assert(md1 != 0);
   Assert(uvs != 0);
@@ -654,7 +654,7 @@ md1_make_display_list(Md1* md1, Md1UV* uvs, Md1FacedTriangle* faced_triangles) {
     }
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
@@ -662,7 +662,7 @@ static Md1Error
 md1_make_display_list_v2(Md1* md1,
                          Md1UV* uvs,
                          Md1FacedTriangle* faced_triangles) {
-  TracyCZoneN(trcyctx, "md1_make_display_list_v2", 1);
+  START_PROFILING(1);
 
   Md1Error err = MD1_ERR_SUCCESS;
   Md1Details* details = &md1->details;
@@ -752,13 +752,13 @@ md1_make_display_list_v2(Md1* md1,
   md1->gpu.index_buffer_size = index_buffer_size;
   md1->gpu.index_buffer = index_buffer;
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
 Md1Error
 md1_load(Md1* md1, NDBuffer* ndb) {
-  TracyCZoneN(trcyctx, "md1_load", 1);
+  START_PROFILING(1);
 
   Assert(md1 != 0);
   Assert(ndb != 0);
@@ -822,14 +822,14 @@ md1_load(Md1* md1, NDBuffer* ndb) {
 
   err = md1_load_skins(md1, ndb);
   if (err != MD1_ERR_SUCCESS) {
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return err;
   }
 
   Md1UV* uvs = 0;
   err = md1_load_uvs(md1, ndb, &uvs);
   if (err != MD1_ERR_SUCCESS) {
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return err;
   }
   Assert(uvs != 0);
@@ -837,20 +837,20 @@ md1_load(Md1* md1, NDBuffer* ndb) {
   Md1FacedTriangle* faced_triangles = NULL;
   err = md1_load_triangles(md1, ndb, &faced_triangles);
   if (err != MD1_ERR_SUCCESS) {
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return err;
   }
   Assert(faced_triangles != 0);
 
   err = md1_load_frames(md1, ndb);
   if (err != MD1_ERR_SUCCESS) {
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return err;
   }
 
   err = md1_make_display_list(md1, uvs, faced_triangles);
   if (err != MD1_ERR_SUCCESS) {
-    TracyCZoneEnd(trcyctx);
+    END_PROFILING();
     return err;
   }
 
@@ -865,7 +865,7 @@ md1_load(Md1* md1, NDBuffer* ndb) {
   Dbg("details.skins: %d", details->skins_count);
   Dbg("details.skin size: %d x %d", details->skin_width, details->skin_height);
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
@@ -875,7 +875,7 @@ md1_get_vertices(const Md1* md1,
                  U32 pose_frame_idx,
                  F32** frame_vbuf,
                  Sz* frame_vertex_buffer_size) {
-  TracyCZoneN(trcyctx, "md1_get_vertices", 1);
+  START_PROFILING(1);
 
   Assert(md1 != 0);
   Assert(frame_vbuf != 0);
@@ -890,7 +890,7 @@ md1_get_vertices(const Md1* md1,
                                      md1->gpu.frame_vertex_buffer_size];
   *frame_vertex_buffer_size = md1->gpu.frame_vertex_buffer_size * sizeof(F32);
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
@@ -902,7 +902,7 @@ md1_get_vertices_v2(Md1* md1,
                     Sz* vbuf_size,
                     U32** ibuf,
                     Sz* ibuf_size) {
-  TracyCZoneN(trcyctx, "md1_get_vertices_v2", 1);
+  START_PROFILING(1);
 
   Assert(md1 != 0);
   Assert(vbuf != 0);
@@ -923,19 +923,19 @@ md1_get_vertices_v2(Md1* md1,
   *ibuf = md1->gpu.index_buffer;
   *ibuf_size = md1->gpu.index_buffer_size;
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
 Md1Error
 md1_unload(Md1* md1) {
-  TracyCZoneN(trcyctx, "md1_unload", 1);
+  START_PROFILING(1);
 
   Assert(md1 != 0);
   Assert(md1->arena != 0);
   arena_destroy(md1->arena);
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return MD1_ERR_SUCCESS;
 }
 

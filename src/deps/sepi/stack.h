@@ -53,11 +53,11 @@ RawPtr stack_pop(Stack* s);
 
 #ifdef SEPI_STACK_IMPLEMENTATION
 
-extern TracyCZoneCtx trcyctx;
+SLAVE_PROFILING_CONTEXT;
 
 Stack*
 stack_create(Arena* a) {
-  TracyCZoneN(trcyctx, "stack_create", 1);
+  START_PROFILING(1);
 
   Stack* s = arena_push(a, sizeof(Stack), AlignOf(Stack), FALSE);
   s->arena = a;
@@ -65,13 +65,13 @@ stack_create(Arena* a) {
   s->bottom = 0;
   s->top = 0;
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return s;
 }
 
 Nothing
 stack_destroy(Stack* s) {
-  TracyCZoneN(trcyctx, "stack_destroy", 1);
+  START_PROFILING(1);
 
   for (; s->length > 0;) {
     stack_pop(s);
@@ -82,12 +82,12 @@ stack_destroy(Stack* s) {
   s->bottom = 0;
   s->top = 0;
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 Nothing
 stack_push(Stack* s, RawPtr ptr) {
-  TracyCZoneN(trcyctx, "stack_push", 1);
+  START_PROFILING(1);
 
   StackNode* node =
       arena_push(s->arena, sizeof(StackNode), AlignOf(StackNode), FALSE);
@@ -96,12 +96,12 @@ stack_push(Stack* s, RawPtr ptr) {
   s->top = node;
   s->length++;
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 RawPtr
 stack_pop(Stack* s) {
-  TracyCZoneN(trcyctx, "stack_pop", 1);
+  START_PROFILING(1);
 
   if (!s->length) {
     return 0;
@@ -116,7 +116,7 @@ stack_pop(Stack* s) {
 
   s->length--;
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return ptr;
 }
 

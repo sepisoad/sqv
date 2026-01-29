@@ -86,11 +86,11 @@ Nothing arena_scratch_end(ArenaScratch s);
 
 #ifdef SEPI_ARENA_IMPLEMENTATION
 
-extern TracyCZoneCtx trcyctx;
+SLAVE_PROFILING_CONTEXT;
 
 Arena*
 arena_create_(ArenaParams* ap) {
-  TracyCZoneN(trcyctx, "arena_create_", 1);
+  START_PROFILING(1);
 
   U64 page_size = platform_get_large_page_size();
   if (page_size == 0) {
@@ -129,13 +129,13 @@ arena_create_(ArenaParams* ap) {
   AsanPoisonMemoryRegion(base, requested_commit_size);
   AsanUnpoisonMemoryRegion(base, header_size);
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return a;
 }
 
 Nothing
 arena_destroy(Arena* a) {
-  TracyCZoneN(trcyctx, "arena_destroy", 1);
+  START_PROFILING(1);
 
   for (Arena *it = a->current_block, *previous_block = 0; it != 0;
        it = previous_block) {
@@ -143,12 +143,12 @@ arena_destroy(Arena* a) {
     platform_release(it, it->reserved_size);
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 RawPtr
 arena_push(Arena* a, U64 size, U64 align, Bool with_zero) {
-  TracyCZoneN(trcyctx, "arena_push", 1);
+  START_PROFILING(1);
 
   Arena* current_block = a->current_block;
   U64 offset_aligned = AlignUp(current_block->offset, align);
@@ -229,13 +229,13 @@ arena_push(Arena* a, U64 size, U64 align, Bool with_zero) {
     Abort("failed to allocate memory from arena allocator");
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return result;
 }
 
 Nothing
 arena_pop(Arena* a, U64 amount) {
-  TracyCZoneN(trcyctx, "arena_pop", 1);
+  START_PROFILING(1);
 
   U64 old_position = arena_get_position(a);
   U64 new_position = old_position;
@@ -245,12 +245,12 @@ arena_pop(Arena* a, U64 amount) {
 
   arena_pop_to(a, new_position);
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 Nothing
 arena_pop_to(Arena* a, U64 position) {
-  TracyCZoneN(trcyctx, "arena_pop_to", 1);
+  START_PROFILING(1);
 
   Sz header_size = sizeof(Arena);
   U64 normilized_position = Max(header_size, position);
@@ -274,46 +274,46 @@ arena_pop_to(Arena* a, U64 position) {
                          (current_block->offset - new_offset));
   current_block->offset = new_offset;
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 Nothing
 arena_clear(Arena* a) {
-  TracyCZoneN(trcyctx, "arena_clear", 1);
+  START_PROFILING(1);
 
   arena_pop_to(a, 0);
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 U64
 arena_get_position(Arena* a) {
-  TracyCZoneN(trcyctx, "arena_get_position", 1);
+  START_PROFILING(1);
 
   Arena* current_block = a->current_block;
   U64 position = current_block->base_position + current_block->offset;
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return position;
 }
 
 ArenaScratch
 arena_scratch_begin(Arena* a) {
-  TracyCZoneN(trcyctx, "arena_scratch_begin", 1);
+  START_PROFILING(1);
 
   U64 position = arena_get_position(a);
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return (ArenaScratch){a, position};
 }
 
 Nothing
 arena_scratch_end(ArenaScratch s) {
-  TracyCZoneN(trcyctx, "arena_scratch_end", 1);
+  START_PROFILING(1);
 
   arena_pop_to(s.arena, s.offset);
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 /* ===================================================== */

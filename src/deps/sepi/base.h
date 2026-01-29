@@ -243,6 +243,28 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 #endif /* DEBUG_MODE */
 
 /* ===================================================== */
+/*                      PROFILING                        */
+/* ===================================================== */
+
+#ifdef PROFILING
+#include <tracy/tracy.h>
+#define MASTER_PROFILING_CONTEXT TracyCZoneCtx trcyctx;
+#define SLAVE_PROFILING_CONTEXT extern TracyCZoneCtx trcyctx;
+#define START_PROFILING(NUM) TracyCZoneN(trcyctx, __func__, (NUM));
+#define END_PROFILING() TracyCZoneEnd(trcyctx);
+#define START_MEMORY_PROFILING(PTR, SIZE) TracyCAlloc((PTR), (SIZE));
+#define END_MEMORY_PROFILING(PTR) TracyCFree((PTR));
+#else /* NOT PROFILING */
+#define MASTER_PROFILING_CONTEXT
+#define SLAVE_PROFILING_CONTEXT
+#define START_PROFILING(NUM)
+#define END_PROFILING()
+#define START_MEMORY_PROFILING(PTR, SIZE)
+#define END_MEMORY_PROFILING(PTR)
+#endif /* PROFILING */
+
+
+/* ===================================================== */
 /*                          END                          */
 /* ===================================================== */
 

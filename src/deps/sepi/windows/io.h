@@ -43,12 +43,13 @@
 
 #ifdef SEPI_WINDOWS_IO_IMPLEMENTATION
 
-extern TracyCZoneCtx trcyctx;
+SLAVE_PROFILING_CONTEXT;
+
 const I8 IO_PATH_SEPARATOR = '\\';
 
 IOError
 io_is_file(Str8 path, Bool* is_file) {
-  TracyCZoneN(trcyctx, "io_is_file", 1);
+  START_PROFILING(1);
 
   Assert(path.cstr != 0);
   Assert(path.size > 0);
@@ -64,13 +65,13 @@ io_is_file(Str8 path, Bool* is_file) {
   *is_file = (attr & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_DEVICE)) != 0;
 
 cleanup:
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
 IOError
 io_is_directory(Str8 path, Bool* is_dir) {
-  TracyCZoneN(trcyctx, "io_is_directory", 1);
+  START_PROFILING(1);
 
   Assert(path.cstr != 0);
   Assert(path.size > 0);
@@ -86,13 +87,13 @@ io_is_directory(Str8 path, Bool* is_dir) {
   *is_dir = (attr & FILE_ATTRIBUTE_DIRECTORY) != 0;
 
 cleanup:
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
 IOError
 io_make_directory(Str8 path) {
-  TracyCZoneN(trcyctx, "io_make_directory", 1);
+  START_PROFILING(1);
 
   Assert(path.cstr != 0);
   Assert(path.size > 0);
@@ -110,13 +111,13 @@ io_make_directory(Str8 path) {
   }
 
 cleanup:
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
 IOError
 io_directory_children(Arena* arena, Str8 path, HashMap* children) {
-  TracyCZoneN(trcyctx, "io_directory_children", 1);
+  START_PROFILING(1);
 
   Assert(path.cstr != 0);
   Assert(path.size > 0);
@@ -126,7 +127,7 @@ io_directory_children(Arena* arena, Str8 path, HashMap* children) {
   IOError err = IO_ERR_SUCCESS;
 
 cleanup:
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 

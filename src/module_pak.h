@@ -13,7 +13,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "deps/tracy/tracy.h"
 #include "deps/sepi/arena.h"
 #include "deps/sepi/endian.h"
 #include "deps/sepi/stack.h"
@@ -103,11 +102,11 @@ PakError pak_extract_item(Pak* pak,
 
 #ifdef MODULE_PAK_IMPLEMENTATION
 
-extern TracyCZoneCtx trcyctx;
+SLAVE_PROFILING_CONTEXT;
 
 static PakError
 pak_get_path_depth(CStr path, U32 length, U32* depth) {
-  TracyCZoneN(trcyctx, "pak_get_path_depth", 1);
+  START_PROFILING(1);
 
   Assert(path != 0);
   Assert(length > 0);
@@ -123,7 +122,7 @@ pak_get_path_depth(CStr path, U32 length, U32* depth) {
     }
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return PAK_ERR_SUCCESS;
 }
 
@@ -134,7 +133,7 @@ pak_get_path_at_depth(CStr path,
                       U32 length,
                       U32 depth,
                       char out[PAK_ENTRY_NAME_LEN]) {
-  TracyCZoneN(trcyctx, "pak_get_path_at_depth", 1);
+  START_PROFILING(1);
 
   Assert(path != 0);
   Assert(out != 0);
@@ -153,7 +152,7 @@ pak_get_path_at_depth(CStr path,
     out[index] = path[index];
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return PAK_ERR_SUCCESS;
 }
 
@@ -162,7 +161,7 @@ pak_get_item_name_at_depth(CStr path,
                            U32 length,
                            U32 depth,
                            char out[PAK_ENTRY_NAME_LEN]) {
-  TracyCZoneN(trcyctx, "pak_get_item_name_at_depth", 1);
+  START_PROFILING(1);
 
   Assert(path != 0);
   Assert(out != 0);
@@ -184,7 +183,7 @@ pak_get_item_name_at_depth(CStr path,
     }
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return PAK_ERR_SUCCESS;
 }
 
@@ -192,7 +191,7 @@ pak_get_item_name_at_depth(CStr path,
 
 static PakError
 pak_read_entries_from_memory(Pak* pak, NDBuffer* ndb) {
-  TracyCZoneN(trcyctx, "pak_read_entries_from_memory", 1);
+  START_PROFILING(1);
 
   Assert(pak != 0);
   Assert(ndb != 0);
@@ -296,7 +295,7 @@ pak_read_entries_from_memory(Pak* pak, NDBuffer* ndb) {
   }
 
 cleanup:
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
@@ -304,7 +303,7 @@ cleanup:
 
 PakError
 pak_load_from_memory(Pak* pak, NDBuffer* ndb) {
-  TracyCZoneN(trcyctx, "pak_load_from_memory", 1);
+  START_PROFILING(1);
 
   Assert(pak != 0);
   Assert(ndb != 0);
@@ -353,7 +352,7 @@ pak_load_from_memory(Pak* pak, NDBuffer* ndb) {
   }
 
 cleanup:
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
@@ -361,7 +360,7 @@ cleanup:
 
 static PakError
 pak_read_entries_from_file(Pak* pak, FILE* file) {
-  TracyCZoneN(trcyctx, "pak_read_entries_from_file", 1);
+  START_PROFILING(1);
 
   Assert(pak != 0);
   Assert(file != 0);
@@ -455,7 +454,7 @@ pak_read_entries_from_file(Pak* pak, FILE* file) {
   }
 
 cleanup:
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
@@ -463,7 +462,7 @@ cleanup:
 
 PakError
 pak_load_from_file(Pak* pak, FILE* file) {
-  TracyCZoneN(trcyctx, "pak_load_from_file", 1);
+  START_PROFILING(1);
 
   Assert(pak != 0);
   Assert(file != 0);
@@ -502,7 +501,7 @@ pak_load_from_file(Pak* pak, FILE* file) {
   }
 
 cleanup:
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
@@ -510,20 +509,20 @@ cleanup:
 
 Nothing
 pak_unload(Pak* pak) {
-  TracyCZoneN(trcyctx, "pak_unload", 1);
+  START_PROFILING(1);
 
   if (pak->arena) {
     arena_destroy(pak->arena);
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
 }
 
 /* ===================================================== */
 
 PakError
 pak_extract(Pak* pak, FILE* file, Str8 out_dir) {
-  TracyCZoneN(trcyctx, "pak_extract", 1);
+  START_PROFILING(1);
 
   PakError err = PAK_ERR_SUCCESS;
   PakTreeNode* node = &pak->tree.root;
@@ -573,7 +572,7 @@ pak_extract(Pak* pak, FILE* file, Str8 out_dir) {
 
 cleanup:
   arena_scratch_end(scratch);
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
@@ -581,7 +580,7 @@ cleanup:
 
 PakError
 pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
-  TracyCZoneN(trcyctx, "pak_extract_item", 1);
+  START_PROFILING(1);
   PakError err = PAK_ERR_SUCCESS;
   ArenaScratch scratch = arena_scratch_begin(pak->arena);
   Stack* nodes = stack_create(scratch.arena);
@@ -650,7 +649,7 @@ pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
 
 cleanup:
   arena_scratch_end(scratch);
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 

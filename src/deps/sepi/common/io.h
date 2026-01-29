@@ -118,64 +118,40 @@ IOError io_directory_nested_children(Arena* arena, Str8 path, IONode* node);
 
 IOError
 io_load_file(Arena* arena, CStr path, NDBuffer* ndb) {
-  TracyCZoneN(trcyctx, "io_load_file", 1);
+  START_PROFILING(1);
 
   Assert(arena != 0);
   Assert(path != 0);
   Assert(ndb != 0);
 
   FILE* f;
-  {
-    TracyCZoneN(trcyctx, "io_load_file::fopen", 2);
-    f = fopen(path, "rb");
-    TracyCZoneEnd(trcyctx);
-  }
+  f = fopen(path, "rb");
 
   AssertAlways(f != 0);
+  fseek(f, 0, SEEK_END);
 
-  {
-    TracyCZoneN(trcyctx, "io_load_file::fseek", 2);
-    fseek(f, 0, SEEK_END);
-    TracyCZoneEnd(trcyctx);
-  }
-
-  {
-    TracyCZoneN(trcyctx, "io_load_file::ftell", 2);
-    ndb->size = ftell(f) * sizeof(U8);
-    TracyCZoneEnd(trcyctx);
-  }
-
-  {
-    TracyCZoneN(trcyctx, "io_load_file::rewind", 2);
-    rewind(f);
-    TracyCZoneEnd(trcyctx);
-  }
+  ndb->size = ftell(f) * sizeof(U8);
+  rewind(f);
 
   ndb->base = (CBuf)arena_push(arena, ndb->size, AlignOf(U8), FALSE);
   AssertAlways(ndb->base != 0);
 
   Sz rsize;
-  {
-    TracyCZoneN(trcyctx, "io_load_file::fread", 2);
-    rsize = fread((void*)ndb->base, 1, ndb->size, f);
-    TracyCZoneEnd(trcyctx);
-  }
+  rsize = fread((void*)ndb->base, 1, ndb->size, f);
 
   AssertAlways(rsize == ndb->size);
 
   if (f) {
-    TracyCZoneN(trcyctx, "io_load_file::fclose", 2);
     fclose(f);
-    TracyCZoneEnd(trcyctx);
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return IO_ERR_SUCCESS;
 }
 
 IOError
 io_dump(Str8 path, Buf8 data) {
-  TracyCZoneN(trcyctx, "io_dump", 1);
+  START_PROFILING(1);
 
   Assert(path.cstr != 0);
   Assert(path.length > 0);
@@ -202,13 +178,13 @@ cleanup:
   if (f) {
     fclose(f);
   }
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
 IOError
 io_make_nested_directory(Str8 path) {
-  TracyCZoneN(trcyctx, "io_make_nested_directory", 1);
+  START_PROFILING(1);
 
   Assert(path.cstr != 0);
   Assert(path.length > 0);
@@ -238,13 +214,13 @@ io_make_nested_directory(Str8 path) {
   }
 
 cleanup:
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
 IOError
 io_directory_nested_children(Arena* arena, Str8 path, IONode* node) {
-  TracyCZoneN(trcyctx, "io_directory_nested_children", 1);
+  START_PROFILING(1);
 
   Assert(arena != 0);
   Assert(path.cstr != 0);
@@ -264,9 +240,7 @@ io_directory_nested_children(Arena* arena, Str8 path, IONode* node) {
 
   IONode* last = node;
 
-  printf("=======================\n");
   do {
-    printf("%s\n", last->path.cstr);
     for (U32 index = 0; index < last->children->offset; index++) {
       IONode* child = array_get(last->children, index);
       if (child->is_directory) {
@@ -281,14 +255,14 @@ io_directory_nested_children(Arena* arena, Str8 path, IONode* node) {
     }
     last = stack_pop(nodes);
   } while (last != 0);
-  printf("=======================\n");
+
 
 cleanup:
   if (nodes) {
     stack_destroy(nodes);
   }
 
-  TracyCZoneEnd(trcyctx);
+  END_PROFILING();
   return err;
 }
 
