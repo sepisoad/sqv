@@ -1,8 +1,3 @@
-/*
- * Copyright 2025 Sepehr Aryani (me@sepi.me)
- * Licensed under LGPL v3
- */
-
 #pragma once
 /*
     #version:1# (machine generated, don't edit!)
