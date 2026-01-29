@@ -193,7 +193,6 @@ newaction {
   execute = function()
     os.execute("sokol-shdc -m default -i src/shaders/default.glsl -l glsl410 -f sokol -o src/shaders/default.glsl.h")
     os.execute("sokol-shdc -m bbox -i src/shaders/bbox.glsl -l glsl410 -f sokol -o src/shaders/bbox.glsl.h")
-    os.execute("sokol-shdc -m debug -i src/shaders/debug.glsl -l glsl410 -f sokol -o src/shaders/debug.glsl.h")
   end
 }
 
