@@ -892,10 +892,10 @@ app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
   if (nk_begin(ctx, "loaded_mode_top_region",
                nk_rect(0, 0, window_width, APP_PAK_TOP_REGION_HEIGHT),
                NK_WINDOW_NO_SCROLLBAR)) {
-    nk_layout_row_template_begin(ctx, ICONS.home.icon_image.h);
-    nk_layout_row_template_push_static(ctx, 30);
-    nk_layout_row_template_push_static(ctx, 30);
-    nk_layout_row_template_push_static(ctx, 30);
+    nk_layout_row_template_begin(ctx, APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT);
+    nk_layout_row_template_push_static(ctx, APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT);
+    nk_layout_row_template_push_static(ctx, APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT);
+    nk_layout_row_template_push_static(ctx, APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT);
     nk_layout_row_template_push_dynamic(ctx);
     nk_layout_row_template_end(ctx);
 
@@ -936,6 +936,7 @@ app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
     app_pak_draw_widget_dir_explorer_area(ctx, window_width,
                                           middle_region_height);
   }
+
 
   if (S.is_extracting_requested) {
     struct nk_rect s = {.x = 50, .y = 50, .w = window_width - 100, .h = 190};
