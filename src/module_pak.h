@@ -87,13 +87,12 @@ typedef struct {
 /*                          API                          */
 /* ===================================================== */
 
-PakError pak_load_from_memory(Pak* pak, NDBuffer* ndb);
-PakError pak_load_from_file(Pak* pak, FILE* file);
+PakError pak_load_from_file(Pak* pak, IONode* node);
 Nothing pak_unload(Pak* pak);
-PakError pak_extract(Pak* pak, FILE* file, Str8 out_dir);
+PakError pak_extract(Pak* pak, IONode* node, Str8 out_dir);
 PakError pak_extract_item(Pak* pak,
                           PakTreeNode* node,
-                          FILE* file,
+                          IONode* ionode,
                           Str8 out_dir);
 
 /* ===================================================== */
@@ -301,69 +300,13 @@ cleanup:
 
 /* ===================================================== */
 
-PakError
-pak_load_from_memory(Pak* pak, NDBuffer* ndb) {
-  START_PROFILING(1);
-
-  Assert(pak != 0);
-  Assert(ndb != 0);
-  Assert(pak->arena == 0);
-
-  PakError err = PAK_ERR_SUCCESS;
-
-  U8 magic_code[PAK_MAGIC_CODE_LEN] = {0};
-  I32 offset = 0;
-  I32 size = 0;
-
-  pak->arena = arena_create();
-
-  memcpy(magic_code, ndb->base, PAK_MAGIC_CODE_LEN);
-  ND_MOVE(ndb, PAK_MAGIC_CODE_LEN);
-  ND_I32(ndb, &offset);
-  ND_I32(ndb, &size);
-  ND_ADDR_SET(ndb, offset);
-
-  // TODO: replace these with error codes!
-  if (offset > 0)
-    ;
-  if (size > 0)
-    ;
-  if (magic_code[0] == 'P')
-    ;
-  if (magic_code[1] == 'A')
-    ;
-  if (magic_code[2] == 'C')
-    ;
-  if (magic_code[3] == 'K')
-    ;
-
-  pak->details.entries_count = size / sizeof(PakRawEntry);
-
-  // TODO: find a proper default 'cap'
-  pak->tree.root.parent = 0;
-  pak->tree.root.children = hashmap_init(pak->arena, 64);
-  pak->tree.root.is_directory = TRUE;
-  MemZero(pak->tree.root.name, PAK_ENTRY_NAME_LEN);
-  pak->tree.root.name[0] = ' ';
-
-  err = pak_read_entries_from_memory(pak, ndb);
-  if (err != PAK_ERR_SUCCESS) {
-    goto cleanup;
-  }
-
-cleanup:
-  END_PROFILING();
-  return err;
-}
-
-/* ===================================================== */
-
 static PakError
-pak_read_entries_from_file(Pak* pak, FILE* file) {
+pak_read_entries_from_file(Pak* pak, IONode* node) {
   START_PROFILING(1);
 
   Assert(pak != 0);
-  Assert(file != 0);
+  Assert(node != 0);
+  Assert(node->file != 0);
 
   PakError err = PAK_ERR_SUCCESS;
 
@@ -378,9 +321,9 @@ pak_read_entries_from_file(Pak* pak, FILE* file) {
     U32 size = 0;
     U32 offset = 0;
 
-    IO_BUF(file, PAK_ENTRY_NAME_LEN, entry->name);
-    IO_I32(file, &offset);
-    IO_I32(file, &size);
+    IO_BUF(node, PAK_ENTRY_NAME_LEN, entry->name);
+    IO_I32(node, &offset);
+    IO_I32(node, &size);
 
     KindError kerr =
         kind_guess_entry(entry->name, PAK_ENTRY_NAME_LEN, &entry->kind);
@@ -461,11 +404,12 @@ cleanup:
 /* ===================================================== */
 
 PakError
-pak_load_from_file(Pak* pak, FILE* file) {
+pak_load_from_file(Pak* pak, IONode* node) {
   START_PROFILING(1);
 
   Assert(pak != 0);
-  Assert(file != 0);
+  Assert(node != 0);
+  // Assert(node->buffer.base != 0); // TODO: this caused crash! do i need this
 
   PakError err = PAK_ERR_SUCCESS;
 
@@ -475,10 +419,10 @@ pak_load_from_file(Pak* pak, FILE* file) {
 
   pak->arena = arena_create();
 
-  IO_BUF(file, PAK_MAGIC_CODE_LEN, magic_code);
-  IO_I32(file, &offset);
-  IO_I32(file, &size);
-  IO_SET(file, offset);
+  IO_BUF(node, PAK_MAGIC_CODE_LEN, magic_code);
+  IO_I32(node, &offset);
+  IO_I32(node, &size);
+  IO_SET(node, offset);
 
   if ((offset <= 0) || (size <= 0) || (magic_code[0] != 'P') ||
       (magic_code[1] != 'A') || (magic_code[2] != 'C') ||
@@ -495,7 +439,7 @@ pak_load_from_file(Pak* pak, FILE* file) {
   MemZero(pak->tree.root.name, PAK_ENTRY_NAME_LEN);
   pak->tree.root.name[0] = ' ';
 
-  err = pak_read_entries_from_file(pak, file);
+  err = pak_read_entries_from_file(pak, node);
   if (err != PAK_ERR_SUCCESS) {
     goto cleanup;
   }
@@ -521,7 +465,7 @@ pak_unload(Pak* pak) {
 /* ===================================================== */
 
 PakError
-pak_extract(Pak* pak, FILE* file, Str8 out_dir) {
+pak_extract(Pak* pak, IONode* ionode, Str8 out_dir) {
   START_PROFILING(1);
 
   PakError err = PAK_ERR_SUCCESS;
@@ -563,8 +507,8 @@ pak_extract(Pak* pak, FILE* file, Str8 out_dir) {
         CBuf src_buffer =
             arena_push(scratch.arena, new_node->size, AlignOf(U8), TRUE);
 
-        IO_SET(file, new_node->offset);
-        IO_BUF(file, new_node->size, src_buffer);
+        IO_SET(ionode, new_node->offset);
+        IO_BUF(ionode, new_node->size, src_buffer);
         io_dump(full_path_str, buf8(src_buffer, new_node->size));
       }
     }
@@ -579,7 +523,7 @@ cleanup:
 /* ===================================================== */
 
 PakError
-pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
+pak_extract_item(Pak* pak, PakTreeNode* node, IONode* ionode, Str8 out_dir) {
   START_PROFILING(1);
   PakError err = PAK_ERR_SUCCESS;
   ArenaScratch scratch = arena_scratch_begin(pak->arena);
@@ -590,8 +534,8 @@ pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
   if (FALSE == node->is_directory) {
     CBuf src_buffer = arena_push(scratch.arena, node->size, AlignOf(U8), TRUE);
 
-    IO_SET(file, node->offset);
-    IO_BUF(file, node->size, src_buffer);
+    IO_SET(ionode, node->offset);
+    IO_BUF(ionode, node->size, src_buffer);
     io_dump(full_path_str, buf8(src_buffer, node->size));
     goto cleanup;
   }
@@ -640,8 +584,8 @@ pak_extract_item(Pak* pak, PakTreeNode* node, FILE* file, Str8 out_dir) {
         CBuf src_buffer =
             arena_push(scratch.arena, new_node->size, AlignOf(U8), TRUE);
 
-        IO_SET(file, new_node->offset);
-        IO_BUF(file, new_node->size, src_buffer);
+        IO_SET(ionode, new_node->offset);
+        IO_BUF(ionode, new_node->size, src_buffer);
         io_dump(full_path_str, buf8(src_buffer, new_node->size));
       }
     }

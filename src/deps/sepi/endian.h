@@ -33,6 +33,7 @@ I32 nd_i32(I32 num); /* works on unsigned intergers as well */
 I64 nd_i64(I64 num); /* works on unsigned intergers as well */
 F32 nd_f32(F32 num);
 F64 nd_f64(F64 num);
+Nothing nd_reset(NDBuffer* ndb);
 
 #define ND_ADDR(ndb) ((ndb)->base + (ndb)->offset)
 #define ND_ADDR_SET(ndb, ofs) ((ndb)->offset = (ofs))
@@ -160,6 +161,12 @@ nd_f64(F64 num) {
   dst[6] = src[1];
   dst[7] = src[0];
   return result;
+}
+
+Nothing nd_reset(NDBuffer* ndb) {
+  ndb->base = 0;
+  ndb->offset = 0;
+  ndb->size = 0;
 }
 
 /* ===================================================== */

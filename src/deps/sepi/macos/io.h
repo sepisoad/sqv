@@ -160,8 +160,14 @@ io_directory_children(Arena* arena, Str8 path, IONode* node) {
     array_push(node->children, child);
   } while (TRUE);
 
-  node->name = str8_clone(arena, path);
-  node->path = str8_clone(arena, path); // NOTE: same as name
+  Str8 temp_name;
+  err = io_get_path_base_name(path, &temp_name);
+  if (IO_ERR_SUCCESS != err) {
+    goto cleanup;
+  }
+
+  node->name = str8_clone(arena, temp_name);
+  node->path = str8_clone(arena, path);
   node->is_directory = TRUE;
 
 cleanup:

@@ -57,7 +57,8 @@ struct IONode {
 /*                          API                          */
 /* ===================================================== */
 
-IOError io_open_file(Str8 path, IONode* node);
+IOError io_open_file(Arena* arena, Str8 path, IONode* node);
+IOError io_close_file(IONode* node);
 IOError io_load_file(Arena* a, Str8 path, IONode* node);
 IOError io_dump(Str8 path, Buf8 data);
 IOError io_is_file(Str8 path, Bool* is_file);
@@ -66,52 +67,53 @@ IOError io_make_directory(Str8 path);
 IOError io_make_nested_directory(Str8 path);
 IOError io_directory_children(Arena* arena, Str8 path, IONode* node);
 IOError io_directory_nested_children(Arena* arena, Str8 path, IONode* node);
+IOError io_get_path_base_name(Str8 path, Str8* name);
 
-#define IO_POS(f) ftell((f))
-#define IO_SET(f, ofs) fseek((f), (ofs), SEEK_SET)
-#define IO_MOVE(f, sz) fseek((f), (sz), SEEK_CUR)
+#define IO_POS(n /* IONode* */) ftell((n->file))
+#define IO_SET(n /* IONode* */, ofs /* U32 */) fseek((n->file), (ofs), SEEK_SET)
+#define IO_MOVE(n /* IONode* */, sz /* Sz */) fseek((n->file), (sz), SEEK_CUR)
 
-#define IO_BUF(f /* FILE* */, len /* U32 */, buf /* CBuf */) \
-  fread((RawPtr)(buf), 1, (len), (f))
+#define IO_BUF(n /* IONode* */, len /* U32 */, buf /* CBuf */) \
+  fread((RawPtr)(buf), 1, (len), ((n)->file))
 
-#define IO_I16(f /* FILE* */, num /* I16* */)   \
-  {                                             \
-    I16 tmp;                                    \
-    fread((RawPtr) & tmp, 1, sizeof(I16), (f)); \
-    tmp = nd_i16(tmp);                          \
-    *(num) = tmp;                               \
+#define IO_I16(n /* IONode* */, num /* I16* */)         \
+  {                                                     \
+    I16 tmp;                                            \
+    fread((RawPtr)(&tmp), 1, sizeof(I16), ((n)->file)); \
+    tmp = nd_i16(tmp);                                  \
+    *(num) = tmp;                                       \
   }
 
-#define IO_I32(f /* FILE* */, num /* I32* */)   \
-  {                                             \
-    I32 tmp;                                    \
-    fread((RawPtr) & tmp, 1, sizeof(I32), (f)); \
-    tmp = nd_i32(tmp);                          \
-    *(num) = tmp;                               \
+#define IO_I32(n /* IONode* */, num /* I32* */)         \
+  {                                                     \
+    I32 tmp;                                            \
+    fread((RawPtr)(&tmp), 1, sizeof(I32), ((n)->file)); \
+    tmp = nd_i32(tmp);                                  \
+    *(num) = tmp;                                       \
   }
 
-#define IO_I64(f /* FILE* */, num /* I64* */)   \
-  {                                             \
-    I64 tmp;                                    \
-    fread((RawPtr) & tmp, 1, sizeof(I64), (f)); \
-    tmp = nd_i64(tmp);                          \
-    *(num) = tmp;                               \
+#define IO_I64(n /* IONode* */, num /* I64* */)         \
+  {                                                     \
+    I64 tmp;                                            \
+    fread((RawPtr)(&tmp), 1, sizeof(I64), ((n)->file)); \
+    tmp = nd_i64(tmp);                                  \
+    *(num) = tmp;                                       \
   }
 
-#define IO_F32(f /* FILE* */, num /* F32* */)   \
-  {                                             \
-    F32 tmp;                                    \
-    fread((RawPtr) & tmp, 1, sizeof(F32), (f)); \
-    tmp = nd_f32(tmp);                          \
-    *(num) = tmp;                               \
+#define IO_F32(n /* IONode* */, num /* F32* */)         \
+  {                                                     \
+    F32 tmp;                                            \
+    fread((RawPtr)(&tmp), 1, sizeof(F32), ((n)->file)); \
+    tmp = nd_f32(tmp);                                  \
+    *(num) = tmp;                                       \
   }
 
-#define IO_F64(f /* FILE* */, num /* F64* */)   \
-  {                                             \
-    F64 tmp;                                    \
-    fread((RawPtr) & tmp, 1, sizeof(F64), (f)); \
-    tmp = nd_f64(tmp);                          \
-    *(num) = tmp;                               \
+#define IO_F64(n /* IONode* */, num /* F64* */)         \
+  {                                                     \
+    F64 tmp;                                            \
+    fread((RawPtr)(&tmp), 1, sizeof(F64), ((n)->file)); \
+    tmp = nd_f64(tmp);                                  \
+    *(num) = tmp;                                       \
   }
 
 /* ===================================================== */
@@ -121,7 +123,7 @@ IOError io_directory_nested_children(Arena* arena, Str8 path, IONode* node);
 #ifdef SEPI_COMMON_IO_IMPLEMENTATION
 
 IOError
-io_open_file(Str8 path, IONode* node) {
+io_open_file(Arena* arena, Str8 path, IONode* node) {
   START_PROFILING(1);
 
   Assert(path.cstr != 0);
@@ -145,12 +147,38 @@ io_open_file(Str8 path, IONode* node) {
   }
 
   node->is_directory = FALSE;
+  node->name = str8_clone(arena, path);
+  node->path = str8_clone(arena, path);
 
 cleanup:
   if (node->file && err != IO_ERR_SUCCESS) {
     fclose(node->file);
   }
 
+  END_PROFILING();
+  return err;
+}
+
+IOError
+io_close_file(IONode* node) {
+  START_PROFILING(1);
+
+  Assert(node != 0);
+
+  IOError err = IO_ERR_SUCCESS;
+
+  str8_reset(&node->name);
+  str8_reset(&node->path);
+  node->is_directory = FALSE;
+  if (!node->file) {
+    fclose(node->file);
+    node->file = 0;
+  }
+  nd_reset(&node->buffer);
+  node->parent = 0;
+  node->children = 0;
+
+cleanup:
   END_PROFILING();
   return err;
 }
@@ -173,7 +201,6 @@ io_load_file(Arena* arena, Str8 path, IONode* node) {
     // we use 'the already set' error value
     goto cleanup;
   }
-
 
   node->file = fopen(path.cstr, "rb");
   if (0 == node->file) {
@@ -296,16 +323,12 @@ io_directory_nested_children(Arena* arena, Str8 path, IONode* node) {
   Assert(path.length > 0);
 
   IOError err = IO_ERR_SUCCESS;
-  StackOf(IONode*) nodes = 0;
+  StackOf(IONode*) nodes = stack_create(arena);
 
   err = io_directory_children(arena, path, node);
   if (IO_ERR_SUCCESS != err) {
     goto cleanup;
   }
-
-  nodes = stack_create(arena);
-  // StackOf(Str8*) paths = stack_create(arena);
-  //
 
   IONode* last = node;
 
@@ -330,6 +353,37 @@ cleanup:
     stack_destroy(nodes);
   }
 
+  END_PROFILING();
+  return err;
+}
+
+IOError
+io_get_path_base_name(Str8 path, Str8* name) {
+  START_PROFILING(1);
+
+  Assert(path.cstr != 0);
+  Assert(path.length > 0);
+  Assert(name != 0);
+
+  IOError err = IO_ERR_SUCCESS;
+  U32 last_index = path.length;
+  U32 last_segment_index = 0;
+
+  if (IO_PATH_SEPARATOR == last_index) {
+    last_index--;
+  }
+
+  for(U32 index = path.length; index >= 0; index--) {
+    if (path.cstr[index] == IO_PATH_SEPARATOR) {
+      last_segment_index = index + 1;
+      break;
+    }
+  }
+
+  name->cstr = &path.cstr[last_segment_index];
+  name->length = strlen(name->cstr);
+
+cleanup:
   END_PROFILING();
   return err;
 }

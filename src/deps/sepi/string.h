@@ -42,6 +42,7 @@ Str8 str8_raw(RawPtr rptr, Sz length);
 Str8 str8_clone(Arena* a, Str8 str);
 Str8 str8_zero(void);
 Str8 str8_join(Arena* a, Str8 str_a, Str8 str_b, char separator);
+Nothing str8_reset(Str8* ptr);
 Bool str8_is_equal(Str8 a, Str8 b);
 Bool is_space_char(U8 c);
 Bool is_upper_char(U8 c);
@@ -128,6 +129,11 @@ str8_join(Arena* a, Str8 s1, Str8 s2, char separator) {
   memcpy(str + s1.length + 1, s2.cstr, s2.length);
 
   return (Str8){str, length};
+}
+
+Nothing str8_reset(Str8* ptr) {
+  ptr->cstr = 0;
+  ptr->length = 0;
 }
 
 Bool
