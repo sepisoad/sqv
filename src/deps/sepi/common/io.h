@@ -346,7 +346,7 @@ io_directory_nested_children(Arena* arena, Str8 path, IONode* node) {
       }
     }
     last = stack_pop(nodes);
-  } while (last != 0);
+  } while (last != 0 && last->is_directory);
 
 cleanup:
   if (nodes) {
@@ -373,7 +373,7 @@ io_get_path_base_name(Str8 path, Str8* name) {
     last_index--;
   }
 
-  for(U32 index = path.length; index >= 0; index--) {
+  for (U32 index = path.length; index >= 0; index--) {
     if (path.cstr[index] == IO_PATH_SEPARATOR) {
       last_segment_index = index + 1;
       break;

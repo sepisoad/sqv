@@ -45,6 +45,7 @@ workspace "ProjectWorkspace"
     defines { "DEBUG", "PROFILING", "TRACY_ENABLE" }
     symbols "On"
     optimize "On"
+    links { "TracyClient", "c++" }
 
   -- Profiling + macOS
   filter { "configurations:Profiling", "system:macosx" }

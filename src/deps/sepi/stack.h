@@ -104,7 +104,7 @@ stack_pop(Stack* s) {
   START_PROFILING(1);
 
   if (!s->length) {
-    return 0;
+    goto cleanup;
   }
 
   StackNode* old_top = s->top;
@@ -116,6 +116,7 @@ stack_pop(Stack* s) {
 
   s->length--;
 
+cleanup:
   END_PROFILING();
   return ptr;
 }

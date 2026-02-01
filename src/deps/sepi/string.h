@@ -228,7 +228,7 @@ str8_cmp(Str8 str_a, Str8 str_b, StringCompareFlags flags) {
   Bool result = FALSE;
 
   if (str_a.length == str_b.length && flags == 0) {
-    result = IsMemoryEq(str_a.cstr, str_b.cstr, str_b.length);
+    result = MemoryEq(str_a.cstr, str_b.cstr, str_b.length);
   } else if (str_a.length == str_b.length ||
              (flags & StringCompareFlag_RightSideSloppy)) {
     Bool case_insensitive = (flags & StringCompareFlag_CaseInsensitive);

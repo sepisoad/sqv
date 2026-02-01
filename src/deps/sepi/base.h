@@ -135,17 +135,15 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 # define AsanUnpoisonMemoryRegion(addr, size) ((void)(addr), (void)(size))
 #endif /* DEBUG_MODE */
 
-#define MemZero(s,z) memset((s),0,(z))
-#define MemZeroStruct(s) MemZero((s),sizeof(*(s)))
-#define MemZeroArray(a) MemZero((a),sizeof(a))
-#define MemZeroTyped(m,c) MemZero((m),sizeof(*(m))*(c))
-
+#define MemZero(ptr,size) memset((ptr),0,(size))
+#define MemZeroStruct(ptr) MemZero((ptr),sizeof(*(ptr)))
+#define MemZeroArray(ptr) MemZero((ptr),sizeof(ptr))
+#define MemZeroTyped(ptr,count) MemZero((ptr),sizeof(*(ptr))*(count))
 #define MemCopy(SRC, DST, SZ) memcpy((SRC), (DST), (SZ))
-
 #define MemoryCompare(a, b, size) memcmp((a), (b), (size))
-#define IsMemoryEq(a,b,z) (MemoryCompare((a),(b),(z)) == 0)
-#define IsStructEq(a,b) IsMemoryEq((a),(b),sizeof(*(a)))
-#define IsArrayEq(a,b) IsMemoryEq((a),(b),sizeof(a))
+#define MemoryEq(a,b,z) (MemoryCompare((a),(b),(z)) == 0)
+#define StructEq(a,b) MemoryEq((a),(b),sizeof(*(a)))
+#define ArrayEq(a,b) MemoryEq((a),(b),sizeof(a))
 
 /* ===================================================== */
 /*                         UNITS                         */
@@ -248,10 +246,10 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 
 #ifdef PROFILING
 #include <tracy/tracy.h>
-#define MASTER_PROFILING_CONTEXT TracyCZoneCtx trcyctx;
-#define SLAVE_PROFILING_CONTEXT extern TracyCZoneCtx trcyctx;
-#define START_PROFILING(NUM) TracyCZoneN(trcyctx, __func__, (NUM));
-#define END_PROFILING() TracyCZoneEnd(trcyctx);
+#define MASTER_PROFILING_CONTEXT TracyCZoneCtx tracyctx;
+#define SLAVE_PROFILING_CONTEXT extern TracyCZoneCtx tracyctx;
+#define START_PROFILING(NUM) TracyCZoneN(tracyctx, __func__, (NUM));
+#define END_PROFILING() TracyCZoneEnd(tracyctx);
 #define START_MEMORY_PROFILING(PTR, SIZE) TracyCAlloc((PTR), (SIZE));
 #define END_MEMORY_PROFILING(PTR) TracyCFree((PTR));
 #else /* NOT PROFILING */

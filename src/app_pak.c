@@ -41,7 +41,7 @@
 #define APP_PAK_WINDOW_PADDING_Y 2
 #define APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT 40
 #define APP_PAK_TOP_REGION_HEIGHT APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT + 5
-#define APP_PAK_BOTTOM_REGION_HEIGHT 30
+#define APP_PAK_BOTTOM_REGION_HEIGHT 35
 #define APP_PAK_EXPLORER_ICON_IMAGE_HEIGHT 50
 #define APP_PAK_EXPLORER_ICON_TEXT_HEIGHT 25
 #define APP_PAK_EXPLORER_ICON_HEIGHT \
@@ -101,11 +101,13 @@ static struct {
 static struct {
   Bool is_app_styled;
   Bool is_extracting_requested;
+  Bool is_packaging_requested;
   Pak pak;
   AppPakMode mode;
   PakTreeNode* current_pak_tree_node;
   PakTreeNode* requested_extracting_item;
   IONode input_node;
+  IONode* current_dir_node;
   Str8 input_path;
   // TODO:
   // maybe use a dynamic array now that we have proper arena allocator
@@ -164,12 +166,16 @@ static Nothing app_pak_draw_widget_explorer_pak_item(struct nk_context* ctx,
                                                      PakTreeNode* node);
 static Nothing app_pak_draw_widget_explorer_dir_item(struct nk_context* ctx,
                                                      IONode* node);
-static Nothing app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
-                                                 PakTreeNode* node,
-                                                 Bool is_directory,
-                                                 struct nk_image* image,
-                                                 Str8 text);
-
+static Nothing app_pak_draw_widget_explorer_pak_icon(struct nk_context* ctx,
+                                                     PakTreeNode* node,
+                                                     Bool is_directory,
+                                                     struct nk_image* image,
+                                                     Str8 text);
+static Nothing app_pak_draw_widget_explorer_dir_icon(struct nk_context* ctx,
+                                                     IONode* node,
+                                                     Bool is_directory,
+                                                     struct nk_image* image,
+                                                     Str8 text);
 /* ===================================================== */
 /*                       FUNCTIONS                       */
 /* ===================================================== */
@@ -408,17 +414,15 @@ static Nothing
 app_pak_cleanup_reload() {
   START_PROFILING(1);
 
-  io_close_file(&S.input_node);
-
-  S.is_extracting_requested = FALSE;
-  S.requested_extracting_item = 0;
   S.mode = APP_PAK_MODE_EMPTY;
-  MemZeroArray(S.error_text);
+  S.is_extracting_requested = FALSE;
+  S.is_packaging_requested = FALSE;
+  S.requested_extracting_item = 0;
 
+  MemZeroArray(S.error_text);
+  io_close_file(&S.input_node);
   pak_unload(&S.pak);
-  arena_destroy(S.arena);
-  S.arena = 0;
-  S.arena = arena_create();
+  arena_clear(S.arena);
 
   END_PROFILING();
 }
@@ -585,6 +589,7 @@ app_pak_handle_dir(Str8 path) {
 
   S.mode = APP_PAK_MODE_DIR_LOADED;
   S.input_path = path;
+  S.current_dir_node = &S.input_node;
 
 cleanup:
   END_PROFILING();
@@ -761,10 +766,12 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
     nk_layout_row_template_begin(ctx, APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT);
     nk_layout_row_template_push_static(ctx,
                                        APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT);
-    nk_layout_row_template_push_static(ctx,
-                                       APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT);
-    nk_layout_row_template_push_static(ctx,
-                                       APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT);
+    if (S.current_pak_tree_node != &S.pak.tree.root) {
+      nk_layout_row_template_push_static(ctx,
+                                         APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT);
+      nk_layout_row_template_push_static(ctx,
+                                         APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT);
+    }
     nk_layout_row_template_push_dynamic(ctx);
     nk_layout_row_template_end(ctx);
 
@@ -772,13 +779,15 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
       S.is_extracting_requested = TRUE;
     }
 
-    if (nk_button_image(ctx, ICONS.home.icon_image)) {
-      S.current_pak_tree_node = &S.pak.tree.root;
-    }
+    if (S.current_pak_tree_node != &S.pak.tree.root) {
+      if (nk_button_image(ctx, ICONS.home.icon_image)) {
+        S.current_pak_tree_node = &S.pak.tree.root;
+      }
 
-    if (nk_button_image(ctx, ICONS.back.icon_image)) {
-      if (S.current_pak_tree_node->parent) {
-        S.current_pak_tree_node = S.current_pak_tree_node->parent;
+      if (nk_button_image(ctx, ICONS.back.icon_image)) {
+        if (S.current_pak_tree_node->parent) {
+          S.current_pak_tree_node = S.current_pak_tree_node->parent;
+        }
       }
     }
 
@@ -893,27 +902,36 @@ app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
                nk_rect(0, 0, window_width, APP_PAK_TOP_REGION_HEIGHT),
                NK_WINDOW_NO_SCROLLBAR)) {
     nk_layout_row_template_begin(ctx, APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT);
-    nk_layout_row_template_push_static(ctx, APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT);
-    nk_layout_row_template_push_static(ctx, APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT);
-    nk_layout_row_template_push_static(ctx, APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT);
+    if (S.current_dir_node == &S.input_node) {
+      nk_layout_row_template_push_static(ctx,
+                                         APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT);
+    } else {
+      nk_layout_row_template_push_static(ctx,
+                                         APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT);
+      nk_layout_row_template_push_static(ctx,
+                                         APP_PAK_TOP_REGION_ICON_IMAGE_HEIGHT);
+    }
     nk_layout_row_template_push_dynamic(ctx);
     nk_layout_row_template_end(ctx);
 
-    if (nk_button_image(ctx, ICONS.package.icon_image)) {
-      S.is_extracting_requested = TRUE;
-    }
+    if (S.current_dir_node == &S.input_node) {
+      if (nk_button_image(ctx, ICONS.package.icon_image)) {
+        S.is_packaging_requested = TRUE;
+      }
+    } else {
+      if (nk_button_image(ctx, ICONS.home.icon_image)) {
+        S.current_dir_node = &S.input_node;
+      }
 
-    if (nk_button_image(ctx, ICONS.home.icon_image)) {
-      S.current_pak_tree_node = &S.pak.tree.root;
-    }
-
-    if (nk_button_image(ctx, ICONS.back.icon_image)) {
-      if (S.current_pak_tree_node->parent) {
-        S.current_pak_tree_node = S.current_pak_tree_node->parent;
+      if (nk_button_image(ctx, ICONS.back.icon_image)) {
+        if (S.current_dir_node->parent) {
+          S.current_dir_node = S.current_dir_node->parent;
+        }
       }
     }
 
-    nk_label(ctx, S.input_path.cstr, NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
+    nk_label(ctx, S.current_dir_node->path.cstr,
+             NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
   }
   nk_end(ctx);
 
@@ -937,10 +955,9 @@ app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
                                           middle_region_height);
   }
 
-
-  if (S.is_extracting_requested) {
+  if (S.is_packaging_requested) {
     struct nk_rect s = {.x = 50, .y = 50, .w = window_width - 100, .h = 190};
-    if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, "Extract",
+    if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, "Package",
                        NK_WINDOW_CLOSABLE | NK_WINDOW_NO_SCROLLBAR, s)) {
       nk_layout_row_dynamic(ctx, 20, 1);
       nk_label(ctx, "output path:", NK_TEXT_LEFT);
@@ -949,40 +966,45 @@ app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
                                      nk_filter_default);
       nk_layout_row_dynamic(ctx, 0, 3);
       if (nk_button_label(ctx, "ok")) {
-        if (0 == S.requested_extracting_item) {
-          PakError perr =
-              pak_extract(&S.pak, &S.input_node, str8(S.export_path_buffer));
-          if (PAK_ERR_SUCCESS != perr) {
-            snprintf(S.error_text, APP_PAK_MAX_ERROR_LENGTH,
-                     "failed to extract pak file into '%s'",
-                     S.export_path_buffer);
-            S.mode = APP_PAK_MODE_FAILED;
-          }
-        } else {
-          PakError perr =
-              pak_extract_item(&S.pak, S.requested_extracting_item,
-                               &S.input_node, str8(S.export_path_buffer));
-          if (PAK_ERR_SUCCESS != perr) {
-            snprintf(S.error_text, APP_PAK_MAX_ERROR_LENGTH,
-                     "failed to extract item '%s' into '%s'",
-                     S.requested_extracting_item->name, S.export_path_buffer);
-            S.mode = APP_PAK_MODE_FAILED;
-          }
-        }
+        // TODO:
+        // this needs to be a packaing function
 
-        S.is_extracting_requested = FALSE;
-        S.requested_extracting_item = 0;
+        // if (0 == S.requested_extracting_item) {
+        //   PakError perr =
+        //       pak_extract(&S.pak, &S.input_node, str8(S.export_path_buffer));
+        //   if (PAK_ERR_SUCCESS != perr) {
+        //     snprintf(S.error_text, APP_PAK_MAX_ERROR_LENGTH,
+        //              "failed to make pak file into '%s'",
+        //              S.export_path_buffer);
+        //     S.mode = APP_PAK_MODE_FAILED;
+        //   }
+        // } else {
+        //   PakError perr =
+        //       pak_extract_item(&S.pak, S.requested_extracting_item,
+        //                        &S.input_node, str8(S.export_path_buffer));
+        //   if (PAK_ERR_SUCCESS != perr) {
+        //     snprintf(S.error_text, APP_PAK_MAX_ERROR_LENGTH,
+        //              "failed to extract item '%s' into '%s'",
+        //              S.requested_extracting_item->name,
+        //              S.export_path_buffer);
+        //     S.mode = APP_PAK_MODE_FAILED;
+        //   }
+        // }
+
+        // S.is_packaging_requested = FALSE;
+        // // S.requested_extracting_item = 0;
       }
+
       nk_label(ctx, "", 0);
       if (nk_button_label(ctx, "cancel")) {
-        S.is_extracting_requested = FALSE;
-        S.requested_extracting_item = 0;
+        S.is_packaging_requested = FALSE;
+        // S.requested_extracting_item = 0;
       }
 
       nk_popup_end(ctx);
     } else {
-      S.is_extracting_requested = FALSE;
-      S.requested_extracting_item = 0;
+      S.is_packaging_requested = FALSE;
+      // S.requested_extracting_item = 0;
     }
   }
 
@@ -1063,7 +1085,7 @@ app_pak_draw_widget_dir_explorer_area(struct nk_context* ctx,
                                       U32 window_height) {
   START_PROFILING(1);
 
-  Array* children = S.input_node.children;
+  Array* children = S.current_dir_node->children;
   U32 items_count = children->offset;
   U32 columns = (window_width + APP_PAK_EXPLORER_ICON_GAP) /
                 (APP_PAK_EXPLORER_ICON_TEXT_WIDTH + APP_PAK_EXPLORER_ICON_GAP);
@@ -1119,10 +1141,10 @@ app_pak_draw_widget_explorer_pak_item(struct nk_context* ctx,
 
   if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_NO_INPUT)) {
     if (node->is_directory) {
-      app_pak_draw_widget_explorer_icon(
+      app_pak_draw_widget_explorer_pak_icon(
           ctx, node, TRUE, &ICONS.folder.icon_image, str8(node->item_name));
     } else {
-      app_pak_draw_widget_explorer_icon(
+      app_pak_draw_widget_explorer_pak_icon(
           ctx, node, FALSE, &ICONS.file.icon_image, str8(node->item_name));
     }
     nk_group_end(ctx);
@@ -1139,11 +1161,11 @@ app_pak_draw_widget_explorer_dir_item(struct nk_context* ctx, IONode* node) {
 
   if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_NO_INPUT)) {
     if (node->is_directory) {
-      app_pak_draw_widget_explorer_icon(ctx, 0, TRUE, &ICONS.folder.icon_image,
-                                        node->name);
+      app_pak_draw_widget_explorer_dir_icon(
+          ctx, node, TRUE, &ICONS.folder.icon_image, node->name);
     } else {
-      app_pak_draw_widget_explorer_icon(ctx, 0, FALSE, &ICONS.file.icon_image,
-                                        node->name);
+      app_pak_draw_widget_explorer_dir_icon(ctx, node, FALSE,
+                                            &ICONS.file.icon_image, node->name);
     }
     nk_group_end(ctx);
   }
@@ -1154,11 +1176,11 @@ app_pak_draw_widget_explorer_dir_item(struct nk_context* ctx, IONode* node) {
 /* ===================================================== */
 
 static Nothing
-app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
-                                  PakTreeNode* node,
-                                  Bool is_directory,
-                                  struct nk_image* image,
-                                  Str8 text) {
+app_pak_draw_widget_explorer_pak_icon(struct nk_context* ctx,
+                                      PakTreeNode* node,
+                                      Bool is_directory,
+                                      struct nk_image* image,
+                                      Str8 text) {
   START_PROFILING(1);
 
   // icon image
@@ -1168,13 +1190,17 @@ app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
   // icon image context menue
   struct nk_rect bounds;
   bounds = nk_widget_bounds(ctx);
-  if (nk_contextual_begin(ctx, 0, nk_vec2(150, 230), bounds)) {
-    nk_layout_row_dynamic(ctx, 20, 1);
-    if (nk_contextual_item_label(ctx, "extract this item", NK_TEXT_CENTERED)) {
-      S.is_extracting_requested = TRUE;
-      S.requested_extracting_item = node;
+
+  if (APP_PAK_MODE_PAK_LOADED == S.mode) {
+    if (nk_contextual_begin(ctx, 0, nk_vec2(150, 230), bounds)) {
+      nk_layout_row_dynamic(ctx, 20, 1);
+      if (nk_contextual_item_label(ctx, "extract this item",
+                                   NK_TEXT_CENTERED)) {
+        S.is_extracting_requested = TRUE;
+        S.requested_extracting_item = node;
+      }
+      nk_contextual_end(ctx);
     }
-    nk_contextual_end(ctx);
   }
 
   if (nk_button_image(ctx, *image)) {
@@ -1188,6 +1214,38 @@ app_pak_draw_widget_explorer_icon(struct nk_context* ctx,
                        APP_PAK_EXPLORER_ICON_TEXT_WIDTH, 1);
   // nk_text(ctx, text, strlen(text), NK_TEXT_ALIGN_LEFT |
   // NK_TEXT_ALIGN_MIDDLE); nk_label_wrap(ctx, text);
+  nk_text_wrap(ctx, text.cstr, text.length);
+
+  END_PROFILING();
+}
+
+/* ===================================================== */
+
+static Nothing
+app_pak_draw_widget_explorer_dir_icon(struct nk_context* ctx,
+                                      IONode* node,
+                                      Bool is_directory,
+                                      struct nk_image* image,
+                                      Str8 text) {
+  START_PROFILING(1);
+
+  // icon image
+  nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_IMAGE_HEIGHT,
+                       APP_PAK_EXPLORER_ICON_IMAGE_WIDTH, 1);
+
+  // icon image context menue
+  struct nk_rect bounds;
+  bounds = nk_widget_bounds(ctx);
+
+  if (nk_button_image(ctx, *image)) {
+    if (is_directory) {
+      S.current_dir_node = node;
+    }
+  }
+
+  // icon text
+  nk_layout_row_static(ctx, APP_PAK_EXPLORER_ICON_TEXT_HEIGHT,
+                       APP_PAK_EXPLORER_ICON_TEXT_WIDTH, 1);
   nk_text_wrap(ctx, text.cstr, text.length);
 
   END_PROFILING();
