@@ -217,7 +217,7 @@ Md1Error md1_unload(Md1* md1);
 
 #ifdef MODULE_MD1_IMPLEMENTATION
 
-#include "data.h"
+#include "data_quake.h"
 
 SLAVE_PROFILING_CONTEXT;
 
