@@ -1,13 +1,11 @@
 # TODO
-- [ ] refactor sepi module
-- [ ] enumerate file system to get list of files and directory
-- [ ] add folder drag into an existing loaded pak to create new .PAK file
-- [ ] iterate through directory and create the same hash tree from items in directory for packaging
+- [ ] create a generic tree data structur to abstract PAK and DIR
+- [ ] package DIR into PAK
+- [ ] replace the fixed size error buffer with Str8+Arena
 
 # CHALLENGING
 - [?] use Str8 everywhere it makes sense:
-      this requires some annoying code change and i still am
-      not sure about the benefits!
+      i made some good progress on this
 
 # REJECTED
 - [-] edit mode:
@@ -28,3 +26,5 @@
 - [X] allow droping files even if there is already file loaded
 - [X] extract file/foler
 - [X] lazy load file contents when needed! if ever!
+- [X] refactor sepi module
+- [X] enumerate file system to get list of files and directory
