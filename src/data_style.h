@@ -4,6 +4,16 @@
 const static struct {
   struct {
     struct {
+      U32 size;
+      struct {
+        U8 r;
+        U8 g;
+        U8 b;
+      } color;
+    } border;
+  } global;
+  struct {
+    struct {
       U32 x;
       U32 y;
     } padding;
@@ -14,7 +24,6 @@ const static struct {
         U8 b;
       } background;
     } color;
-    U32 border;
   } window;
 
   struct {
@@ -63,6 +72,14 @@ const static struct {
       U32 w;
       U32 h;
     } contextual;
+    struct {
+      struct {
+        U8 r;
+        U8 g;
+        U8 b;
+        U8 a;
+      } background;
+    } color;
   } explorer;
 
   struct {
@@ -72,6 +89,16 @@ const static struct {
       U32 w;
       U32 h;
     } rectangle;
+    struct {
+      struct {
+        U32 r;
+        U32 g;
+        U32 b;
+      } color;
+    } background;
+    struct {
+      U32 height;
+    }font;
   } dialog;
 
   struct {
@@ -99,6 +126,19 @@ const static struct {
   } font;
 
 } STYLE = {
+    .global =
+        {
+            .border =
+                {
+                    .size = 0,
+                    .color =
+                        {
+                            .r = 255,
+                            .g = 0,
+                            .b = 0,
+                        },
+                },
+        },
     .window =
         {
             .padding =
@@ -110,12 +150,11 @@ const static struct {
                 {
                     .background =
                         {
-                            .r = 100,
-                            .g = 100,
-                            .b = 100,
+                            .r = 60,
+                            .g = 60,
+                            .b = 60,
                         },
                 },
-            .border = 0,
         },
     .toolbar =
         {
@@ -163,7 +202,21 @@ const static struct {
                                 },
                         },
                 },
-            .padding = {.x = 2, .y = 2,},
+            .color =
+                {
+                    .background =
+                        {
+                            .r = 30,
+                            .g = 30,
+                            .b = 30,
+                            .a = 255,
+                        },
+                },
+            .padding =
+                {
+                    .x = 2,
+                    .y = 2,
+                },
             .contextual =
                 {
                     .w = 150,
@@ -179,6 +232,18 @@ const static struct {
                     .w = 100,  // this is the delta
                     .h = 190,
                 },
+            .background =
+                {
+                    .color =
+                        {
+                            .r = 60,
+                            .g = 60,
+                            .b = 60,
+                        },
+                },
+            .font = {
+              .height = 25,
+            },
         },
     .button =
         {

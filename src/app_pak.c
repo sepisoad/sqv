@@ -198,7 +198,7 @@ sokol_main(int argc, char* argv[]) {
       .height = 480,  // TODO: hard coded
       .enable_dragndrop = true,
       .max_dropped_files = 1,
-      .window_title = "nuklear (sokol-app)",
+      .window_title = "SQV::PAK Manager",
       .ios_keyboard_resizes_canvas = true,
       .icon.sokol_default = true,
       .logger.func = slog_func,
@@ -255,12 +255,61 @@ app_pak_init_style(struct nk_style* s) {
   window->group_padding.x = STYLE.explorer.padding.x;
   window->group_padding.y = STYLE.explorer.padding.y;
 
-  window->border = STYLE.window.border;
-  window->group_border = STYLE.window.border;
+  window->border = STYLE.global.border.size;
+  window->combo_border = STYLE.global.border.size;
+  window->contextual_border = STYLE.global.border.size;
+  window->menu_border = STYLE.global.border.size;
+  window->group_border = STYLE.global.border.size;
+  window->tooltip_border = STYLE.global.border.size;
+  window->popup_border = STYLE.global.border.size;
+  window->min_row_height_padding = STYLE.global.border.size;
+  window->group_border = STYLE.global.border.size;
 
-  window->background.r = STYLE.window.color.background.r;
-  window->background.g = STYLE.window.color.background.g;
-  window->background.b = STYLE.window.color.background.b;
+  window->border_color.r = STYLE.global.border.color.r;
+  window->border_color.g = STYLE.global.border.color.g;
+  window->border_color.b = STYLE.global.border.color.b;
+  window->border_color.a = 255;
+
+  window->popup_border_color.r = STYLE.global.border.color.r;
+  window->popup_border_color.g = STYLE.global.border.color.g;
+  window->popup_border_color.b = STYLE.global.border.color.b;
+  window->popup_border_color.a = 255;
+
+  window->combo_border_color.r = STYLE.global.border.color.r;
+  window->combo_border_color.g = STYLE.global.border.color.g;
+  window->combo_border_color.b = STYLE.global.border.color.b;
+  window->combo_border_color.a = 255;
+
+  window->contextual_border_color.r = STYLE.global.border.color.r;
+  window->contextual_border_color.g = STYLE.global.border.color.g;
+  window->contextual_border_color.b = STYLE.global.border.color.b;
+  window->contextual_border_color.a = 255;
+
+  window->menu_border_color.r = STYLE.global.border.color.r;
+  window->menu_border_color.g = STYLE.global.border.color.g;
+  window->menu_border_color.b = STYLE.global.border.color.b;
+  window->menu_border_color.a = 255;
+
+  window->group_border_color.r = STYLE.global.border.color.r;
+  window->group_border_color.g = STYLE.global.border.color.g;
+  window->group_border_color.b = STYLE.global.border.color.b;
+  window->group_border_color.a = 255;
+
+  window->tooltip_border_color.r = STYLE.global.border.color.r;
+  window->tooltip_border_color.g = STYLE.global.border.color.g;
+  window->tooltip_border_color.b = STYLE.global.border.color.b;
+  window->tooltip_border_color.a = 255;
+
+  window->background.r = STYLE.dialog.background.color.r;
+  window->background.g = STYLE.dialog.background.color.g;
+  window->background.b = STYLE.dialog.background.color.b;
+  window->background.a = 255;
+
+  window->fixed_background.type = NK_STYLE_ITEM_COLOR;
+  window->fixed_background.data.color.r = STYLE.window.color.background.r;
+  window->fixed_background.data.color.g = STYLE.window.color.background.g;
+  window->fixed_background.data.color.b = STYLE.window.color.background.b;
+  window->fixed_background.data.color.a = 255;
 
   struct nk_style_button* button = &s->button;
 
@@ -390,7 +439,9 @@ app_pak_cleanup() {
   app_pak_cleanup_icons();
   snk_shutdown();
   sg_shutdown();
-  pak_unload(&S.pak);
+  if (APP_PAK_MODE_PAK_LOADED == S.mode) {
+    pak_unload(&S.pak);
+  }
   arena_destroy(S.arena);
 
   END_PROFILING();
@@ -400,6 +451,7 @@ static Nothing
 app_pak_cleanup_reload() {
   START_PROFILING(1);
 
+  AppPakMode old_mode = S.mode;
   S.mode = APP_PAK_MODE_EMPTY;
   S.is_extracting_requested = FALSE;
   S.is_packaging_requested = FALSE;
@@ -407,7 +459,9 @@ app_pak_cleanup_reload() {
 
   MemZeroArray(S.error_text);
   io_close_file(&S.input_node);
-  pak_unload(&S.pak);
+  if (APP_PAK_MODE_PAK_LOADED == old_mode) {
+    pak_unload(&S.pak);
+  }
   arena_clear(S.arena);
 
   END_PROFILING();
@@ -621,7 +675,7 @@ app_pak_draw(struct nk_context* ctx) {
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
   static char window_title[] = "SQV::Pak Explorer";
-  static nk_flags window_flags = 0;
+  static nk_flags window_flags = NK_WINDOW_BORDER;
 
   U32 window_width = sapp_width();
   U32 window_height = sapp_height();
@@ -744,7 +798,7 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
   /* === TOP REGION === */
   if (nk_begin(ctx, "loaded_mode_top_region",
                nk_rect(0, 0, window_width, STYLE.toolbar.height),
-               NK_WINDOW_NO_SCROLLBAR)) {
+               NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BORDER)) {
     nk_layout_row_template_begin(ctx, STYLE.toolbar.icon.height);
     nk_layout_row_template_push_static(ctx, STYLE.toolbar.icon.height);
     if (S.current_pak_tree_node != &S.pak.tree.root) {
@@ -781,10 +835,10 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
   struct nk_style_item bkg = {
       .type = NK_STYLE_ITEM_COLOR,
       .data = {.color = {
-                   .r = STYLE.explorer.icon.color.background.r,
-                   .g = STYLE.explorer.icon.color.background.g,
-                   .b = STYLE.explorer.icon.color.background.b,
-                   .a = STYLE.explorer.icon.color.background.a,
+                   .r = STYLE.explorer.color.background.r,
+                   .g = STYLE.explorer.color.background.g,
+                   .b = STYLE.explorer.color.background.b,
+                   .a = STYLE.explorer.color.background.a,
                }}};
 
   nk_style_push_style_item(ctx, &ctx->style.window.fixed_background, bkg);
@@ -792,7 +846,7 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
   if (nk_begin(
           ctx, "loaded_mode_middle_region",
           nk_rect(0, STYLE.toolbar.height, window_width, middle_region_height),
-          NK_WINDOW_SCROLL_AUTO_HIDE)) {
+          NK_WINDOW_SCROLL_AUTO_HIDE | NK_WINDOW_BORDER)) {
     const struct nk_user_font* font = ctx->style.font;
     F32 text_height = font->height;
     app_pak_draw_widget_pak_explorer_area(ctx, window_width,
@@ -807,8 +861,8 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
         .h = STYLE.dialog.rectangle.h,
     };
     if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, "Extract",
-                       NK_WINDOW_CLOSABLE | NK_WINDOW_NO_SCROLLBAR, s)) {
-      nk_layout_row_dynamic(ctx, 0, 1);
+                       NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BORDER, s)) {
+      nk_layout_row_dynamic(ctx, STYLE.dialog.font.height, 1);
       nk_label(ctx, "output path:", NK_TEXT_LEFT);
       nk_edit_string_zero_terminated(ctx, NK_EDIT_FIELD, S.export_path_buffer,
                                      APP_PAK_MAX_EXPORT_PATH_LENGTH,
@@ -881,7 +935,7 @@ app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
   /* === TOP REGION === */
   if (nk_begin(ctx, "loaded_mode_top_region",
                nk_rect(0, 0, window_width, STYLE.toolbar.height),
-               NK_WINDOW_NO_SCROLLBAR)) {
+               NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BORDER)) {
     nk_layout_row_template_begin(ctx, STYLE.toolbar.icon.height);
     if (S.current_dir_node == &S.input_node) {
       nk_layout_row_template_push_static(ctx, STYLE.toolbar.icon.height);
@@ -919,10 +973,10 @@ app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
   struct nk_style_item bkg = {
       .type = NK_STYLE_ITEM_COLOR,
       .data = {.color = {
-                   .r = STYLE.explorer.icon.color.background.r,
-                   .g = STYLE.explorer.icon.color.background.g,
-                   .b = STYLE.explorer.icon.color.background.b,
-                   .a = STYLE.explorer.icon.color.background.a,
+                   .r = STYLE.explorer.color.background.r,
+                   .g = STYLE.explorer.color.background.g,
+                   .b = STYLE.explorer.color.background.b,
+                   .a = STYLE.explorer.color.background.a,
                }}};
 
   nk_style_push_style_item(ctx, &ctx->style.window.fixed_background, bkg);
@@ -930,7 +984,7 @@ app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
   if (nk_begin(
           ctx, "loaded_mode_middle_region",
           nk_rect(0, STYLE.toolbar.height, window_width, middle_region_height),
-          NK_WINDOW_SCROLL_AUTO_HIDE)) {
+          NK_WINDOW_SCROLL_AUTO_HIDE | NK_WINDOW_BORDER)) {
     const struct nk_user_font* font = ctx->style.font;
     F32 text_height = font->height;
 
@@ -939,7 +993,40 @@ app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
   }
 
   if (S.is_packaging_requested) {
-    NotImplemented();
+    struct nk_rect s = {
+        .x = STYLE.dialog.rectangle.x,
+        .y = STYLE.dialog.rectangle.y,
+        .w = window_width - STYLE.dialog.rectangle.w,
+        .h = STYLE.dialog.rectangle.h,
+    };
+    if (nk_popup_begin(
+            ctx, NK_POPUP_DYNAMIC, "Genetate PAK",
+            NK_WINDOW_CLOSABLE | NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BORDER,
+            s)) {
+      nk_layout_row_dynamic(ctx, 0, 1);
+      nk_label(ctx, "output path:", NK_TEXT_LEFT);
+      nk_edit_string_zero_terminated(ctx, NK_EDIT_FIELD, S.export_path_buffer,
+                                     APP_PAK_MAX_EXPORT_PATH_LENGTH,
+                                     nk_filter_default);
+      nk_layout_row_dynamic(ctx, 0, 3);
+      if (nk_button_label(ctx, "ok")) {
+        PakError pakerr = pak_generate(&S.pak, &S.input_node);
+        if (PAK_ERR_SUCCESS != pakerr) {
+          snprintf(S.error_text, APP_PAK_MAX_ERROR_LENGTH,
+                   "failed to generate pak file from '%s'", S.input_path.cstr);
+          S.mode = APP_PAK_MODE_FAILED;
+        }
+        S.is_packaging_requested = FALSE;
+      }
+    }
+    nk_label(ctx, "", 0);
+    if (nk_button_label(ctx, "cancel")) {
+      S.is_packaging_requested = FALSE;
+    }
+
+    nk_popup_end(ctx);
+  } else {
+    S.is_packaging_requested = FALSE;
   }
 
   nk_end(ctx);
@@ -983,11 +1070,12 @@ app_pak_draw_widget_pak_explorer_area(struct nk_context* ctx,
   }
 
   if (actual_height < window_height) {
-    actual_height = window_height - row_height;
+    actual_height = window_height -
+                    ((STYLE.explorer.icon.gap + STYLE.explorer.padding.x) * 2);
   }
 
   nk_layout_row_dynamic(ctx, actual_height, 1);
-  if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR)) {
+  if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BORDER)) {
     nk_layout_row_dynamic(
         ctx,
         (STYLE.explorer.icon.image.height + STYLE.explorer.icon.text.height),
@@ -1039,7 +1127,8 @@ app_pak_draw_widget_dir_explorer_area(struct nk_context* ctx,
   }
 
   if (actual_height < window_height) {
-    actual_height = window_height - row_height;
+    actual_height = window_height -
+                    ((STYLE.explorer.icon.gap + STYLE.explorer.padding.x) * 2);
   }
 
   nk_layout_row_dynamic(ctx, actual_height, 1);
@@ -1081,7 +1170,9 @@ app_pak_draw_widget_explorer_pak_item(struct nk_context* ctx,
   // TODO:
   // use pre-computed Str8 for node->name instead of calling str8 function
 
-  if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_NO_INPUT)) {
+  if (nk_group_begin(
+          ctx, "",
+          NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_NO_INPUT | NK_WINDOW_BORDER)) {
     if (node->is_directory) {
       app_pak_draw_widget_explorer_pak_icon(
           ctx, node, TRUE, &ICONS.folder.icon_image, str8(node->item_name));
@@ -1101,7 +1192,9 @@ static Nothing
 app_pak_draw_widget_explorer_dir_item(struct nk_context* ctx, IONode* node) {
   START_PROFILING(1);
 
-  if (nk_group_begin(ctx, "", NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_NO_INPUT)) {
+  if (nk_group_begin(
+          ctx, "",
+          NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_NO_INPUT | NK_WINDOW_BORDER)) {
     if (node->is_directory) {
       app_pak_draw_widget_explorer_dir_icon(
           ctx, node, TRUE, &ICONS.folder.icon_image, node->name);

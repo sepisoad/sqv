@@ -94,7 +94,7 @@ PakError pak_extract_item(Pak* pak,
                           PakTreeNode* node,
                           IONode* ionode,
                           Str8 out_dir);
-
+PakError pak_generate(Pak* pak, IONode* node);
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
 /* ===================================================== */
@@ -493,7 +493,8 @@ pak_extract(Pak* pak, IONode* ionode, Str8 out_dir) {
 
       PakTreeNode* new_node = (PakTreeNode*)kv->v_rawptr;
       Str8 new_node_str = str8(new_node->name);
-      Str8 full_path_str = str8_join(scratch.arena, out_dir, new_node_str, IO_PATH_SEPARATOR);
+      Str8 full_path_str =
+          str8_join(scratch.arena, out_dir, new_node_str, IO_PATH_SEPARATOR);
 
       if (TRUE == new_node->is_directory) {
         stack_push(nodes, new_node);
@@ -529,7 +530,8 @@ pak_extract_item(Pak* pak, PakTreeNode* node, IONode* ionode, Str8 out_dir) {
   ArenaScratch scratch = arena_scratch_begin(pak->arena);
   Stack* nodes = stack_create(scratch.arena);
   Str8 node_str = str8(node->item_name);
-  Str8 full_path_str = str8_join(scratch.arena, out_dir, node_str, IO_PATH_SEPARATOR);
+  Str8 full_path_str =
+      str8_join(scratch.arena, out_dir, node_str, IO_PATH_SEPARATOR);
 
   if (FALSE == node->is_directory) {
     CBuf src_buffer = arena_push(scratch.arena, node->size, AlignOf(U8), TRUE);
@@ -570,7 +572,8 @@ pak_extract_item(Pak* pak, PakTreeNode* node, IONode* ionode, Str8 out_dir) {
 
       PakTreeNode* new_node = (PakTreeNode*)kv->v_rawptr;
       Str8 new_node_str = str8(new_node->name + start_index);
-      Str8 full_path_str = str8_join(scratch.arena, out_dir, new_node_str, IO_PATH_SEPARATOR);
+      Str8 full_path_str =
+          str8_join(scratch.arena, out_dir, new_node_str, IO_PATH_SEPARATOR);
 
       if (TRUE == new_node->is_directory) {
         stack_push(nodes, new_node);
@@ -593,6 +596,24 @@ pak_extract_item(Pak* pak, PakTreeNode* node, IONode* ionode, Str8 out_dir) {
 
 cleanup:
   arena_scratch_end(scratch);
+  END_PROFILING();
+  return err;
+}
+
+/* ===================================================== */
+
+PakError
+pak_generate(Pak* pak, IONode* node) {
+  START_PROFILING(1);
+
+  Assert(pak != 0);
+  Assert(node != 0);
+
+  PakError err = PAK_ERR_SUCCESS;
+
+
+
+cleanup:
   END_PROFILING();
   return err;
 }

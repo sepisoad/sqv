@@ -145,7 +145,7 @@ project "app_playground"
   files { "src/app_playground.c" }
 
   filter "system:macosx"
-    links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
+    links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework", "m" }
 
   filter "system:linux"
     links { "X11", "Xi", "Xcursor", "GL", "m" }
