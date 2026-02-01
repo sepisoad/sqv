@@ -2,18 +2,7 @@
 - [ ] create a generic tree data structur to abstract PAK and DIR
 - [ ] package DIR into PAK
 - [ ] replace the fixed size error buffer with Str8+Arena
-
-# CHALLENGING
-- [?] use Str8 everywhere it makes sense:
-      i made some good progress on this
-
-# REJECTED
-- [-] edit mode:
-      let's keep this tool simple, we only have these functionalities:
-      - view and extract items
-      - and create from scratch
-- [-] add save current pak as another name:
-      same as above
+- [*] use Str8 everywhere it makes sense:
 
 # DONE
 - [X] find why some .PAK files fail ro cause crash
