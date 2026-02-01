@@ -182,10 +182,11 @@ sokol_main(int argc, char* argv[]) {
 
   MemZero(&S, sizeof(S));
 
-  if (sargs_exists("-i"))
+  if (sargs_exists("-i")) {
     S.input_path = str8(sargs_value("-i"));
-  else if (sargs_exists("--input"))
+  } else if (sargs_exists("--input")) {
     S.input_path = str8(sargs_value("--input"));
+  }
 
   return (sapp_desc){
       .init_cb = app_pak_init,

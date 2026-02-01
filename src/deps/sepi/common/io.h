@@ -366,14 +366,14 @@ io_get_path_base_name(Str8 path, Str8* name) {
   Assert(name != 0);
 
   IOError err = IO_ERR_SUCCESS;
-  U32 last_index = path.length;
+  U32 last_index = path.length - 1; // index of the last character
   U32 last_segment_index = 0;
 
-  if (IO_PATH_SEPARATOR == last_index) {
+  if (IO_PATH_SEPARATOR == path.cstr[last_index]) {
     last_index--;
   }
-
-  for (U32 index = path.length; index >= 0; index--) {
+// /Users/sepi/Games/Quake1/lq/
+  for (U32 index = last_index; index >= 0; index--) {
     if (path.cstr[index] == IO_PATH_SEPARATOR) {
       last_segment_index = index + 1;
       break;
