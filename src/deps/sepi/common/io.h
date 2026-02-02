@@ -333,20 +333,22 @@ io_directory_nested_children(Arena* arena, Str8 path, IONode* node) {
   IONode* last = node;
 
   do {
-    for (U32 index = 0; index < last->children->offset; index++) {
-      IONode* child = array_get(last->children, index);
-      if (child->is_directory) {
-        Str8 new_path =
-            str8_join(arena, last->path, child->name, IO_PATH_SEPARATOR);
-        err = io_directory_children(arena, new_path, child);
-        if (IO_ERR_SUCCESS != err) {
-          goto cleanup;
+    if (last->children != NULL) {
+      for (U32 index = 0; index < last->children->offset; index++) {
+        IONode* child = array_get(last->children, index);
+        if (child->is_directory) {
+          Str8 new_path =
+              str8_join(arena, last->path, child->name, IO_PATH_SEPARATOR);
+          err = io_directory_children(arena, new_path, child);
+          if (IO_ERR_SUCCESS != err) {
+            goto cleanup;
+          }
+          stack_push(nodes, child);
         }
-        stack_push(nodes, child);
       }
     }
     last = stack_pop(nodes);
-  } while (last != 0 && last->is_directory);
+  } while (last != 0);
 
 cleanup:
   if (nodes) {
