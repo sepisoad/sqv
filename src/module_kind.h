@@ -87,9 +87,10 @@ typedef enum {
 /*                          API                          */
 /* ===================================================== */
 
+// KindError kind_guess_entry(UStr8 path, Kind* kind);
+KindError kind_guess_entry(Str, U32, Kind*);
 KindError kind_guess_file(CStr, Kind*);
 KindError kind_guess_buffer(CStr, Kind*);
-KindError kind_guess_entry(Str, U32, Kind*);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */

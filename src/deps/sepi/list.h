@@ -40,16 +40,16 @@ struct List {
 /*                          API                          */
 /* ===================================================== */
 
-List* list_create(Arena* a);
-Nothing list_destroy(List* l);
-ListNode* list_push_tail(List* l, RawPtr ptr);
-ListNode* list_push_head(List* l, RawPtr ptr);
-ListNode* list_push_after(List* l, ListNode* n, RawPtr ptr);
-ListNode* list_push_before(List* l, ListNode* n, RawPtr ptr);
-ListNode* list_pop_tail(List* l);
-ListNode* list_pop_head(List* l);
-ListNode* list_pop(List* l, ListNode* n);
-RawPtr list_get_at(List* l, U64 index);
+List* list_create(Arena* arena);
+Nothing list_destroy(List* list);
+ListNode* list_push_tail(List* list, RawPtr ptr);
+ListNode* list_push_head(List* list, RawPtr ptr);
+ListNode* list_push_after(List* list, ListNode* node, RawPtr ptr);
+ListNode* list_push_before(List* list, ListNode* node, RawPtr ptr);
+ListNode* list_pop_tail(List* list);
+ListNode* list_pop_head(List* list);
+ListNode* list_pop(List* list, ListNode* node);
+RawPtr list_get_at(List* list, U64 index);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -59,150 +59,160 @@ RawPtr list_get_at(List* l, U64 index);
 
 SLAVE_PROFILING_CONTEXT;
 
-List* list_create(Arena* a) {
+List*
+list_create(Arena* arena) {
   START_PROFILING(1);
 
-  Assert(a != 0);
+  Assert(arena != 0);
 
-  List* l = arena_push(a, sizeof(List), AlignOf(List), FALSE);
-  l->arena = a;
-  l->head = 0;
-  l->tail = 0;
-  l->length = 0;
+  List* list = arena_push(arena, sizeof(List), AlignOf(List), FALSE);
+  list->arena = arena;
+  list->head = 0;
+  list->tail = 0;
+  list->length = 0;
 
   END_PROFILING();
-  return l;
+  return list;
 }
 
-Nothing list_destroy(List* l) {
+Nothing
+list_destroy(List* list) {
   START_PROFILING(1);
 
-  Assert(l != 0);
+  Assert(list != 0);
 
-  for(; l->length > 0; ) {
-    list_pop_tail(l);
+  for (; list->length > 0;) {
+    list_pop_tail(list);
   }
 
   END_PROFILING();
 }
 
-ListNode* list_push_tail(List* l, RawPtr ptr) {
+ListNode*
+list_push_tail(List* list, RawPtr ptr) {
   START_PROFILING(1);
 
-  Assert(l != 0);
+  Assert(list != 0);
   Assert(ptr != 0);
 
-  ListNode* n = arena_push(l->arena, sizeof(ListNode), AlignOf(ListNode), TRUE);
-  n->ptr = ptr;
-  l->length++;
+  ListNode* node =
+      arena_push(list->arena, sizeof(ListNode), AlignOf(ListNode), TRUE);
+  node->ptr = ptr;
+  list->length++;
 
-  if(!l->tail) {
-    l->tail = n;
-    l->head = n;
+  if (!list->tail) {
+    list->tail = node;
+    list->head = node;
   } else {
-    n->previous = l->tail;
-    l->tail->next = n;
-    l->tail = n;
+    node->previous = list->tail;
+    list->tail->next = node;
+    list->tail = node;
   }
 
   END_PROFILING();
 
-  return n;
+  return node;
 }
 
-ListNode* list_push_head(List* l, RawPtr ptr) {
+ListNode*
+list_push_head(List* list, RawPtr ptr) {
   START_PROFILING(1);
 
-  Assert(l != 0);
+  Assert(list != 0);
   Assert(ptr != 0);
 
-  ListNode* n = arena_push(l->arena, sizeof(ListNode), AlignOf(ListNode), TRUE);
-  n->ptr = ptr;
-  l->length++;
+  ListNode* node =
+      arena_push(list->arena, sizeof(ListNode), AlignOf(ListNode), TRUE);
+  node->ptr = ptr;
+  list->length++;
 
-  if(!l->head) {
-    l->tail = n;
-    l->head = n;
+  if (!list->head) {
+    list->tail = node;
+    list->head = node;
   } else {
-    n->next = l->head;
-    l->head->previous = n;
-    l->head = n;
+    node->next = list->head;
+    list->head->previous = node;
+    list->head = node;
   }
 
   END_PROFILING();
-  return n;
+  return node;
 }
 
-ListNode* list_push_after(List* l, ListNode* n, RawPtr ptr) {
+ListNode*
+list_push_after(List* list, ListNode* node, RawPtr ptr) {
   START_PROFILING(1);
 
-  Assert(l != 0);
-  Assert(n != 0);
+  Assert(list != 0);
+  Assert(node != 0);
   Assert(ptr != 0);
 
-  ListNode* nn = arena_push(l->arena, sizeof(ListNode), AlignOf(ListNode), TRUE);
-  nn->ptr = ptr;
-  if (n->next) {
-    n->next->previous = nn;
+  ListNode* new_node =
+      arena_push(list->arena, sizeof(ListNode), AlignOf(ListNode), TRUE);
+  new_node->ptr = ptr;
+  if (node->next) {
+    node->next->previous = new_node;
   }
-  nn->next = n->next;
-  nn->previous = n;
-  n->next = nn;
+  new_node->next = node->next;
+  new_node->previous = node;
+  node->next = new_node;
 
-  l->length++;
+  list->length++;
 
   END_PROFILING();
 
-  return nn;
+  return new_node;
 }
 
-ListNode* list_push_before(List* l, ListNode* n, RawPtr ptr) {
+ListNode*
+list_push_before(List* list, ListNode* node, RawPtr ptr) {
   START_PROFILING(1);
 
-  Assert(l != 0);
-  Assert(n != 0);
+  Assert(list != 0);
+  Assert(node != 0);
   Assert(ptr != 0);
 
-  ListNode* nn = arena_push(l->arena, sizeof(ListNode), AlignOf(ListNode), TRUE);
-  nn->ptr = ptr;
-  nn->next = n;
-  if (n->previous) {
-    nn->previous = n->previous;
-    n->previous->next = nn;
+  ListNode* new_node =
+      arena_push(list->arena, sizeof(ListNode), AlignOf(ListNode), TRUE);
+  new_node->ptr = ptr;
+  new_node->next = node;
+  if (node->previous) {
+    new_node->previous = node->previous;
+    node->previous->next = new_node;
   } else {
-    l->head = nn;
+    list->head = new_node;
   }
 
-  n->previous = nn;
+  node->previous = new_node;
 
-  l->length++;
+  list->length++;
 
   END_PROFILING();
 
-  return nn;
+  return new_node;
 }
 
-ListNode* list_pop_tail(List* l) {
+ListNode*
+list_pop_tail(List* list) {
   START_PROFILING(1);
 
-  Assert(l != 0);
+  Assert(list != 0);
 
   ListNode* res = 0;
 
-  if(!l->tail) {
+  if (!list->tail) {
     goto cleanup;
   }
 
-  l->length--;
-  res = l->tail;
+  list->length--;
+  res = list->tail;
 
-  if(!l->tail->previous) {
+  if (!list->tail->previous) {
     goto cleanup;
   }
 
-  l->tail = l->tail->previous;
-  l->tail->next = 0;
-
+  list->tail = list->tail->previous;
+  list->tail->next = 0;
 
 cleanup:
   END_PROFILING();
@@ -210,27 +220,27 @@ cleanup:
   return res;
 }
 
-ListNode* list_pop_head(List* l) {
+ListNode*
+list_pop_head(List* list) {
   START_PROFILING(1);
 
-  Assert(l != 0);
+  Assert(list != 0);
 
   ListNode* res = 0;
 
-  if(!l->head) {
+  if (!list->head) {
     goto cleanup;
   }
 
-  l->length--;
-  res = l->head;
+  list->length--;
+  res = list->head;
 
-  if(!l->head->next) {
+  if (!list->head->next) {
     goto cleanup;
   }
 
-  l->head = l->head->next;
-  l->head->previous = 0;
-
+  list->head = list->head->next;
+  list->head->previous = 0;
 
 cleanup:
   END_PROFILING();
@@ -238,34 +248,35 @@ cleanup:
   return res;
 }
 
-ListNode* list_pop(List* l, ListNode* n) {
+ListNode*
+list_pop(List* list, ListNode* node) {
   START_PROFILING(1);
 
-  Assert(l != 0);
-  Assert(n != 0);
+  Assert(list != 0);
+  Assert(node != 0);
 
   ListNode* res = 0;
 
-  if (!l->head || !n) {
+  if (!list->head || !node) {
     goto cleanup;
   }
 
-  if (n == l->tail) {
-    res = list_pop_tail(l);
+  if (node == list->tail) {
+    res = list_pop_tail(list);
     goto cleanup;
   }
 
-  if (n == l->head) {
-    res = list_pop_head(l);
+  if (node == list->head) {
+    res = list_pop_head(list);
     goto cleanup;
   }
 
-  l->length--;
-  n->previous->next = n->next;
-  n->next->previous = n->previous;
-  n->next = 0;
-  n->previous = 0;
-  res = n;
+  list->length--;
+  node->previous->next = node->next;
+  node->next->previous = node->previous;
+  node->next = 0;
+  node->previous = 0;
+  res = node;
 
 cleanup:
   END_PROFILING();
@@ -273,33 +284,33 @@ cleanup:
   return res;
 }
 
-RawPtr list_get_at(List* l, U64 index) {
+RawPtr
+list_get_at(List* list, U64 index) {
   START_PROFILING(1);
 
-  Assert(l != 0);
+  Assert(list != 0);
 
   ListNode* res = 0;
 
-  if (!l->head) {
+  if (!list->head) {
     goto cleanup;
   }
 
-  if (index >= l->length) {
+  if (index >= list->length) {
     goto cleanup;
   }
 
-  res = l->head;
+  res = list->head;
   U64 pos = 0;
 
-  for( ; pos != index ; res = res->next, pos++);
+  for (; pos != index; res = res->next, pos++)
+    ;
 
 cleanup:
   END_PROFILING();
 
   return res->ptr;
 }
-
-
 
 /* ===================================================== */
 /*                          END                          */

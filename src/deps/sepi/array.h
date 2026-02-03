@@ -42,6 +42,8 @@ struct Array {
   RawPtr segments[ARRAY_MAX_SEGMENT];
 };
 
+#define ArrayOf(T) Array*
+
 /* ===================================================== */
 /*                          API                          */
 /* ===================================================== */
@@ -51,7 +53,6 @@ RawPtr array_push(Array* array, RawPtr ptr);
 RawPtr array_get(Array* array, U64 index);
 U64 array_length(Array* array);
 
-#define ArrayOf(T) Array*
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */

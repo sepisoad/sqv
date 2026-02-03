@@ -53,14 +53,14 @@ IOError
 io_is_file(Str8 path, Bool* is_file) {
   START_PROFILING(1);
 
-  Assert(path.cstr != 0);
-  Assert(path.length > 0);
+  Assert(CS(path) != 0);
+  Assert(SL(path) > 0);
   Assert(is_file != 0);
 
   IOError err = IO_ERR_SUCCESS;
 
   struct stat info = {0};
-  if (-1 == stat(path.cstr, &info)) {
+  if (-1 == stat(CS(path), &info)) {
     err = IO_ERR_STAT;
     goto cleanup;
   }
@@ -80,14 +80,14 @@ IOError
 io_is_directory(Str8 path, Bool* is_dir) {
   START_PROFILING(1);
 
-  Assert(path.cstr != 0);
-  Assert(path.length > 0);
+  Assert(CS(path) != 0);
+  Assert(SL(path) > 0);
   Assert(is_dir != 0);
 
   IOError err = IO_ERR_SUCCESS;
 
   struct stat info = {0};
-  if (-1 == stat(path.cstr, &info)) {
+  if (-1 == stat(CS(path), &info)) {
     err = IO_ERR_STAT;
     goto cleanup;
   }
@@ -108,8 +108,8 @@ io_directory_children(Arena* arena, Str8 path, IONode* node) {
   START_PROFILING(1);
 
   Assert(arena != 0);
-  Assert(path.cstr != 0);
-  Assert(path.length > 0);
+  Assert(CS(path) != 0);
+  Assert(SL(path) > 0);
   Assert(node != 0);
   Assert(node->children == 0);
 
@@ -123,7 +123,7 @@ io_directory_children(Arena* arena, Str8 path, IONode* node) {
     goto cleanup;
   }
 
-  dir = opendir(path.cstr);
+  dir = opendir(CS(path));
   if (0 == dir) {
     err = IO_ERR_OPENDIR;
     goto cleanup;
@@ -131,8 +131,8 @@ io_directory_children(Arena* arena, Str8 path, IONode* node) {
 
   node->children = array_create(arena, sizeof(IONode), AlignOf(IONode));
 
-  Str8 dot_node_name = str8(".");
-  Str8 dot_dot_node_name = str8("..");
+  Str8 dot_node_name = S(".");
+  Str8 dot_dot_node_name = S("..");
 
   do {
     struct dirent* ent = readdir(dir);
@@ -146,14 +146,14 @@ io_directory_children(Arena* arena, Str8 path, IONode* node) {
       continue;
     }
 
-    if (str8_is_equal(dot_node_name, str8(ent->d_name)) ||
-        str8_is_equal(dot_dot_node_name, str8(ent->d_name))) {
+    if (str8_is_equal(dot_node_name, S(ent->d_name)) ||
+        str8_is_equal(dot_dot_node_name, S(ent->d_name))) {
       continue;
     }
 
     IONode* child = arena_push(arena, sizeof(IONode), AlignOf(IONode), TRUE);
-    child->name = str8_clone(arena, str8(ent->d_name));
-    child->path = str8_join(arena, path, str8(ent->d_name), IO_PATH_SEPARATOR);
+    child->name = str8_clone(arena, S(ent->d_name));
+    child->path = str8_join(arena, path, S(ent->d_name), IO_PATH_SEPARATOR);
     child->is_directory = (DT_DIR == ent->d_type);
     child->parent = node;
 
@@ -183,12 +183,12 @@ IOError
 io_make_directory(Str8 path) {
   START_PROFILING(1);
 
-  Assert(path.cstr != 0);
+  Assert(CS(path) != 0);
 
   IOError err = IO_ERR_SUCCESS;
 
   // NOTE: is this an error!?
-  if (path.length <= 0) {
+  if (SL(path) <= 0) {
     goto cleanup;
   }
 
@@ -201,7 +201,7 @@ io_make_directory(Str8 path) {
     goto cleanup;
   }
 
-  if (mkdir((char*)path.cstr, 0755) == -1) {
+  if (mkdir((char*)CS(path), 0755) == -1) {
     if (EEXIST != errno) {
       err = IO_ERR_MKDIR;
       goto cleanup;

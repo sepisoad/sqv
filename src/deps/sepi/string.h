@@ -23,10 +23,11 @@ enum {
   StringCompareFlag_SlashInsensitive = (1 << 2),
 };
 
-typedef struct {
+typedef struct Str8 Str8;
+struct Str8 {
   CStr cstr;
   Sz length;
-} Str8;
+};
 
 typedef struct {
   CBuf cbuf;
@@ -37,38 +38,56 @@ typedef struct {
 /*                          API                          */
 /* ===================================================== */
 
+// Str8
 Str8 str8(CStr cstr);
 Str8 str8_raw(RawPtr rptr, Sz length);
 Str8 str8_clone(Arena* a, Str8 str);
 Str8 str8_zero(void);
-Str8 str8_join(Arena* a, Str8 str_a, Str8 str_b, char separator);
+Str8 str8_join(Arena* arena, Str8 str_a, Str8 str_b, char separator);
 Nothing str8_reset(Str8* ptr);
 Bool str8_is_equal(Str8 a, Str8 b);
-Bool is_space_char(U8 c);
-Bool is_upper_char(U8 c);
-Bool is_lower_char(U8 c);
-Bool is_alpha_char(U8 c);
-Bool is_slash_char(U8 c);
-Bool is_digit_char(U8 c, U32 base);
-U8 to_lower_char(U8 c);
-U8 to_upper_char(U8 c);
-U8 correct_slash_from_char(U8 c);
+I32 str8_find_first(Str8 str, I8 chr);
+I32 str8_find_last(Str8 str, I8 chr);
+Bool str8_cmp(Str8 str_a, Str8 str_b, StringCompareFlags flags);
 
+// Buf8
 Buf8 buf8(CBuf cbuf, Sz size);
 
+// Macros
 #define CS(str) (str).cstr
-#define S(x)                                                           \
-  _Generic((x),                                                        \
-      Str8: (x),                                                       \
-      default: ChooseExpr(TypesCompatible(TypeOf(x), char[sizeof(x)]), \
-                          ((Str8){(CStr)(x), sizeof(x) - 1}),          \
-                          str8((CStr)(x))))
+#define S(cstr)                \
+  _Generic((cstr),             \
+      Str8: (cstr),            \
+      Str: str8((CStr)(cstr)), \
+      CStr: str8((cstr)),      \
+      default: str8((CStr)(cstr)))
+#define SL(str) (str).length
+
+#define IsWhiteSpaceChar(c)                                                  \
+  ((c) == ' ' || (c) == '\n' || (c) == '\t' || (c) == '\r' || (c) == '\f' || \
+   (c) == '\v')
+
+#define IsUpperCaseChar(c) ('A' <= (c) && (c) <= 'Z')
+
+#define IsLowerCaseChar(c) ('a' <= (c) && (c) <= 'z')
+
+#define is_alpha_char(c) (IsUpperCaseChar((c)) || IsLowerCaseChar((c)))
+
+#define IsSlashChar(c) ((c) == '/' || (c) == '\\')
+
+#define IsDigitChar(c) ('0' <= (c) && (c) <= '9')
+
+#define ToLowerChar(c) (IsUpperCaseChar(c) ? ((c) + ('a' - 'A')) : (c))
+
+#define ToUpperChar(c) (IsLowerCaseChar(c) ? ((c) + ('A' - 'a')) : (c))
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
 /* ===================================================== */
 
 #ifdef SEPI_STRING_IMPLEMENTATION
+
+SLAVE_PROFILING_CONTEXT;
 
 static U8 integer_symbol_reverse[128] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -84,45 +103,66 @@ static U8 integer_symbol_reverse[128] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 };
 
+// TODO:
+// add profiling to these functions!
+
 Str8
 str8(CStr cstr) {
+  START_PROFILING(1);
+
   Assert(cstr != 0);
   Assert(strlen(cstr) > 0);
 
   Str8 result = {cstr, (Sz)strlen(cstr)};
+
+  END_PROFILING();
   return result;
 }
 
 Str8
 str8_raw(RawPtr rptr, Sz length) {
+  START_PROFILING(1);
+
   Assert(rptr != 0);
   Assert(length > 0);
 
   Str8 result = {(CStr)rptr, length};
+
+  END_PROFILING();
   return result;
 }
 
 Str8
-str8_clone(Arena* a, Str8 str) {
-  Assert(a != 0);
-  Assert(str.cstr != 0);
-  Assert(strlen(str.cstr) > 0);
+str8_clone(Arena* arena, Str8 str) {
+  START_PROFILING(1);
 
-  Str copy = arena_push(a, sizeof(I8) * (str.length + 1), AlignOf(I8), TRUE);
+  Assert(arena != 0);
+  Assert(str.cstr != 0);
+  Assert(str.length > 0);
+
+  Str copy = arena_push(arena, sizeof(I8) * (str.length + 1), AlignOf(I8), TRUE);
   MemCopy(copy, str.cstr, str.length);
   Str8 result = {copy, str.length};
+
+  END_PROFILING();
   return result;
 }
 
 Str8
 str8_zero(void) {
+  START_PROFILING(1);
+
   Str8 result = {0};
+
+  END_PROFILING();
   return result;
 }
 
 Str8
-str8_join(Arena* a, Str8 s1, Str8 s2, char separator) {
-  Assert(a != 0);
+str8_join(Arena* arena, Str8 s1, Str8 s2, char separator) {
+  START_PROFILING(1);
+
+  Assert(arena != 0);
   Assert(s1.cstr != 0);
   Assert(s1.length > 0);
   Assert(s2.cstr != 0);
@@ -130,105 +170,107 @@ str8_join(Arena* a, Str8 s1, Str8 s2, char separator) {
   Assert(separator != 0);
 
   Sz length = s1.length + s2.length + 1; /*/*/
-  Str str = arena_push(a, sizeof(I8) * (length + 1 /*0*/), AlignOf(I8), TRUE);
+  Str str = arena_push(arena, sizeof(I8) * (length + 1 /*0*/), AlignOf(I8), TRUE);
 
   memcpy(str, s1.cstr, s1.length);
   str[s1.length] = separator;
   memcpy(str + s1.length + 1, s2.cstr, s2.length);
 
+
+  END_PROFILING();
   return (Str8){str, length};
 }
 
 Nothing
 str8_reset(Str8* ptr) {
+  START_PROFILING(1);
+
   ptr->cstr = 0;
   ptr->length = 0;
+
+  END_PROFILING();
 }
 
 Bool
 str8_is_equal(Str8 str_a, Str8 str_b) {
+  START_PROFILING(1);
+
   Assert(str_a.cstr != 0);
   Assert(str_a.length > 0);
   Assert(str_b.cstr != 0);
   Assert(str_b.length > 0);
 
+  Bool result = TRUE;
+
   if (str_a.length != str_b.length) {
-    return FALSE;
+    result = FALSE;
+    goto cleanup;
   }
 
   for (U32 index = 0; index < str_a.length; index++) {
     if (str_a.cstr[index] != str_b.cstr[index]) {
-      return FALSE;
+      result = FALSE;
+      goto cleanup;
     }
   }
 
-  return TRUE;
-}
-
-Bool
-is_space_char(U8 c) {
-  return (c == ' ' || c == '\n' || c == '\t' || c == '\r' || c == '\f' ||
-          c == '\v');
-}
-
-Bool
-is_upper_char(U8 c) {
-  return ('A' <= c && c <= 'Z');
-}
-
-Bool
-is_lower_char(U8 c) {
-  return ('a' <= c && c <= 'z');
-}
-
-Bool
-is_alpha_char(U8 c) {
-  return (is_upper_char(c) || is_lower_char(c));
-}
-
-Bool
-is_slash_char(U8 c) {
-  return (c == '/' || c == '\\');
-}
-
-Bool
-is_digit_char(U8 c, U32 base) {
-  Bool result = FALSE;
-  if (0 < base && base <= 16) {
-    U8 val = integer_symbol_reverse[c];
-    if (val < base) {
-      result = 1;
-    }
-  }
+cleanup:
+  END_PROFILING();
   return result;
 }
 
-U8
-to_lower_char(U8 c) {
-  if (is_upper_char(c)) {
-    c += ('a' - 'A');
+I32
+str8_find_first(Str8 str, I8 chr) {
+  START_PROFILING(1);
+
+  Assert(str.cstr != 0);
+  Assert(str.length > 0);
+
+  I32 index = 0;
+  Bool found = FALSE;
+
+  for (; index < str.length; index++) {
+    if (str.cstr[index] == chr) {
+      found = TRUE;
+      break;
+    }
   }
-  return c;
+
+  END_PROFILING();
+
+  if (found)
+    return index;
+  return -1;
 }
 
-U8
-to_upper_char(U8 c) {
-  if (is_lower_char(c)) {
-    c += ('A' - 'a');
-  }
-  return c;
-}
+I32
+str8_find_last(Str8 str, I8 chr) {
+  START_PROFILING(1);
 
-U8
-correct_slash_from_char(U8 c) {
-  if (is_slash_char(c)) {
-    c = '/';
+  Assert(str.cstr != 0);
+  Assert(str.length > 0);
+
+  I32 index = str.length;
+  Bool found = FALSE;
+
+  for (; index > 0; index--) {
+    if (str.cstr[index] == chr) {
+      found = TRUE;
+      break;
+    }
   }
-  return c;
+
+  END_PROFILING();
+
+  if (found)
+    return index;
+  return -1;
 }
 
 Bool
 str8_cmp(Str8 str_a, Str8 str_b, StringCompareFlags flags) {
+  START_PROFILING(1);
+
   Assert(str_a.cstr != 0);
   Assert(str_a.length > 0);
   Assert(str_b.cstr != 0);
@@ -249,12 +291,12 @@ str8_cmp(Str8 str_a, Str8 str_b, StringCompareFlags flags) {
       U8 char_a = str_a.cstr[i];
       U8 char_b = str_b.cstr[i];
       if (case_insensitive) {
-        char_a = to_upper_char(char_a);
-        char_b = to_upper_char(char_b);
+        char_a = ToUpperChar(char_a);
+        char_b = ToUpperChar(char_b);
       }
       if (slash_insensitive) {
-        char_a = correct_slash_from_char(char_a);
-        char_b = correct_slash_from_char(char_b);
+        char_a = IsSlashChar(char_a) ? '/' : char_a;
+        char_b = IsSlashChar(char_b) ? '/' : char_b;
       }
       if (char_a != char_b) {
         result = 0;
@@ -262,15 +304,21 @@ str8_cmp(Str8 str_a, Str8 str_b, StringCompareFlags flags) {
       }
     }
   }
+
+  END_PROFILING();
   return result;
 }
 
 Buf8
 buf8(CBuf cbuf, Sz size) {
+  START_PROFILING(1);
+
   Assert(cbuf != 0);
   Assert(size > 0);
 
   Buf8 result = {cbuf, size};
+
+  END_PROFILING();
   return result;
 }
 

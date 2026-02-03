@@ -51,13 +51,13 @@ IOError
 io_is_file(Str8 path, Bool* is_file) {
   START_PROFILING(1);
 
-  Assert(path.cstr != 0);
+  Assert(CS(path) != 0);
   Assert(path.size > 0);
   Assert(is_file != 0);
 
   IOError err = IO_ERR_SUCCESS;
 
-  DWORD attr = GetFileAttributesW((WCHAR*)path.cstr);
+  DWORD attr = GetFileAttributesW((WCHAR*)CS(path));
   if (attr == INVALID_FILE_ATTRIBUTES) {
     return IO_ERR_STAT;
   }
@@ -73,13 +73,13 @@ IOError
 io_is_directory(Str8 path, Bool* is_dir) {
   START_PROFILING(1);
 
-  Assert(path.cstr != 0);
+  Assert(CS(path) != 0);
   Assert(path.size > 0);
   Assert(is_dir != 0);
 
   IOError err = IO_ERR_SUCCESS;
 
-  DWORD attr = GetFileAttributesW((WCHAR*)path.cstr);
+  DWORD attr = GetFileAttributesW((WCHAR*)CS(path));
   if (attr == INVALID_FILE_ATTRIBUTES) {
     return IO_ERR_STAT;
   }
@@ -95,17 +95,17 @@ IOError
 io_make_directory(Str8 path) {
   START_PROFILING(1);
 
-  Assert(path.cstr != 0);
+  Assert(CS(path) != 0);
   Assert(path.size > 0);
 
   IOError err = IO_ERR_SUCCESS;
 
   WIN32_FILE_ATTRIBUTE_DATA attributes = {0};
-  GetFileAttributesExW((WCHAR*)path.cstr, GetFileExInfoStandard, &attributes);
+  GetFileAttributesExW((WCHAR*)CS(path), GetFileExInfoStandard, &attributes);
   if (attributes.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
     err = IO_ERR_MKDIR;
     goto cleanup;
-  } else if (CreateDirectoryW((WCHAR*)path.cstr, 0)) {
+  } else if (CreateDirectoryW((WCHAR*)CS(path), 0)) {
     err = IO_ERR_MKDIR;
     goto cleanup;
   }
@@ -119,7 +119,7 @@ IOError
 io_directory_children(Arena* arena, Str8 path, HashMap* children) {
   START_PROFILING(1);
 
-  Assert(path.cstr != 0);
+  Assert(CS(path) != 0);
   Assert(path.size > 0);
   Assert(children != 0);
   NotImplemented();

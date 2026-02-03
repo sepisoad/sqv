@@ -39,6 +39,8 @@ struct Tree {
   } meta;
 };
 
+#define TreeOf(T) Tree*
+
 /* ===================================================== */
 /*                          API                          */
 /* ===================================================== */
@@ -46,6 +48,11 @@ struct Tree {
 Tree* tree_create(Arena* arena, RawPtr data, Sz item_size, Sz item_alignment);
 Nothing tree_destroy(Tree* tree);
 TreeNode* tree_push(Tree* tree, TreeNode* node, RawPtr data);
+
+#define tree_node_length(node) (node)->children->offset
+#define tree_node_get(node, index)  array_get((node)->children, (index))
+#define tree_root(tree) (tree)->root
+#define tree_root_data(tree) (tree)->root->data
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -71,7 +78,7 @@ tree_create(Arena* arena, RawPtr data, Sz item_size, Sz item_alignment) {
   tree->root->data = data;
   tree->root->parent = 0;
   tree->root->children = array_create(tree->arena, tree->meta.item_size,
-                                tree->meta.item_alignment);
+                                      tree->meta.item_alignment);
 
   END_PROFILING();
   return tree;

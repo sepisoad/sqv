@@ -15,6 +15,7 @@
 
 #include "deps/sepi/arena.h"
 #include "deps/sepi/endian.h"
+#include "deps/sepi/tree.h"
 #include "deps/sepi/stack.h"
 #include "deps/sepi/hashmap.h"
 #include "deps/sepi/string.h"
@@ -44,41 +45,52 @@ typedef enum {
   PAK_ERR__COUNT,
 } PakError;
 
-typedef struct {
+typedef struct PakRawEntry PakRawEntry;
+struct PakRawEntry {
   char name[PAK_ENTRY_NAME_LEN];
   I32 offset;
   I32 size;
-} PakRawEntry;
+};
 
-typedef struct {
+typedef struct PakDetails PakDetails;
+struct PakDetails {
   U32 entries_count;
-} PakDetails;
+};
 
-typedef struct {
+typedef struct PakEntry PakEntry;
+struct PakEntry {
   char name[PAK_ENTRY_NAME_LEN];
   Kind kind;
-} PakEntry;
+};
 
-typedef struct PakTreeNode PakTreeNode;
-
-struct PakTreeNode {
+typedef struct PakTreeNodeOld PakTreeNodeOld;
+struct PakTreeNodeOld {
   char name[PAK_ENTRY_NAME_LEN];
   char item_name[PAK_ENTRY_NAME_LEN];
   Sz size;
   U32 offset;
   Bool is_directory;
-  PakTreeNode* parent;
+  PakTreeNodeOld* parent;
   HashMap* children;
 };
 
 typedef struct {
-  PakTreeNode root;
-} PakTree;
+  PakTreeNodeOld root;
+} PakTreeOld;
+
+typedef struct PakNode PakNode;
+struct PakNode {
+  Str8 name;
+  Str8 path;
+  Sz data_size;
+  U64 data_offset;
+};
 
 typedef struct {
   PakDetails details;
   PakEntry* entries;
-  PakTree tree;
+  PakTreeOld tree_old;
+  TreeOf(PackNode) tree;
   char error_text[PAK_MAX_ERROR_LENGTH];
   Arena* arena;
 } Pak;
@@ -91,7 +103,7 @@ PakError pak_load_from_file(Pak* pak, IONode* node);
 Nothing pak_unload(Pak* pak);
 PakError pak_extract(Pak* pak, IONode* node, Str8 out_dir);
 PakError pak_extract_item(Pak* pak,
-                          PakTreeNode* node,
+                          PakTreeNodeOld* node,
                           IONode* ionode,
                           Str8 out_dir);
 PakError pak_generate(Pak* pak, IONode* node);
@@ -239,10 +251,14 @@ pak_read_entries_from_memory(Pak* pak, NDBuffer* ndb) {
       goto cleanup;
     }
 
-    PakTreeNode* node = &pak->tree.root;
+    PakTreeNodeOld* node = &pak->tree_old.root;
+    PakNode* node_v2 = tree_root_data(pak->tree);
     for (U32 depth_index = 0; depth_index < depth + 1; depth_index++) {
       char name[PAK_ENTRY_NAME_LEN] = {0};
       char item_name[PAK_ENTRY_NAME_LEN] = {0};
+
+      Str8 name_v2 = {0};
+      Str8 path_v2 = {0};
 
       err = pak_get_path_at_depth(entry->name, PAK_ENTRY_NAME_LEN,
                                   depth_index + 1, &name[0]);
@@ -262,22 +278,21 @@ pak_read_entries_from_memory(Pak* pak, NDBuffer* ndb) {
         goto cleanup;
       }
 
-      HashMapKV* kv = hashmap_find(node->children, str8(name));
+      HashMapKV* kv = hashmap_find(node->children, S(name));
       if (kv) {
-        node = (PakTreeNode*)kv->v_rawptr;
+        node = (PakTreeNodeOld*)kv->v_rawptr;
         continue;
       }
 
-      PakTreeNode* child =
-          arena_push(arena, sizeof(PakTreeNode), AlignOf(PakTreeNode), TRUE);
+      PakTreeNodeOld* child = arena_push(arena, sizeof(PakTreeNodeOld),
+                                         AlignOf(PakTreeNodeOld), TRUE);
       if (child != 0)
         ;
 
       memcpy(child->name, name, PAK_ENTRY_NAME_LEN);
       memcpy(child->item_name, item_name, PAK_ENTRY_NAME_LEN);
 
-      hashmap_push_rawptr(arena, node->children, str8(child->name),
-                          (RawPtr)child);
+      hashmap_push_rawptr(arena, node->children, S(child->name), (RawPtr)child);
 
       if (depth_index >= depth) {
         child->is_directory = FALSE;
@@ -342,7 +357,7 @@ pak_read_entries_from_file(Pak* pak, IONode* node) {
       goto cleanup;
     }
 
-    PakTreeNode* node = &pak->tree.root;
+    PakTreeNodeOld* node = &pak->tree_old.root;
     for (U32 depth_index = 0; depth_index < depth + 1; depth_index++) {
       char name[PAK_ENTRY_NAME_LEN] = {0};
       char item_name[PAK_ENTRY_NAME_LEN] = {0};
@@ -365,22 +380,21 @@ pak_read_entries_from_file(Pak* pak, IONode* node) {
         goto cleanup;
       }
 
-      HashMapKV* kv = hashmap_find(node->children, str8(name));
+      HashMapKV* kv = hashmap_find(node->children, S(name));
       if (kv) {
-        node = (PakTreeNode*)kv->v_rawptr;
+        node = (PakTreeNodeOld*)kv->v_rawptr;
         continue;
       }
 
-      PakTreeNode* child =
-          arena_push(arena, sizeof(PakTreeNode), AlignOf(PakTreeNode), TRUE);
+      PakTreeNodeOld* child = arena_push(arena, sizeof(PakTreeNodeOld),
+                                         AlignOf(PakTreeNodeOld), TRUE);
       if (child != 0)
         ;
 
       memcpy(child->name, name, PAK_ENTRY_NAME_LEN);
       memcpy(child->item_name, item_name, PAK_ENTRY_NAME_LEN);
 
-      hashmap_push_rawptr(arena, node->children, str8(child->name),
-                          (RawPtr)child);
+      hashmap_push_rawptr(arena, node->children, S(child->name), (RawPtr)child);
 
       if (depth_index >= depth) {
         child->is_directory = FALSE;
@@ -433,11 +447,11 @@ pak_load_from_file(Pak* pak, IONode* node) {
 
   pak->details.entries_count = size / sizeof(PakRawEntry);
 
-  pak->tree.root.parent = 0;
-  pak->tree.root.children = hashmap_init(pak->arena, 64);
-  pak->tree.root.is_directory = TRUE;
-  MemZero(pak->tree.root.name, PAK_ENTRY_NAME_LEN);
-  pak->tree.root.name[0] = ' ';
+  pak->tree_old.root.parent = 0;
+  pak->tree_old.root.children = hashmap_init(pak->arena, 64);
+  pak->tree_old.root.is_directory = TRUE;
+  MemZero(pak->tree_old.root.name, PAK_ENTRY_NAME_LEN);
+  pak->tree_old.root.name[0] = ' ';
 
   err = pak_read_entries_from_file(pak, node);
   if (err != PAK_ERR_SUCCESS) {
@@ -469,20 +483,20 @@ pak_extract(Pak* pak, IONode* ionode, Str8 out_dir) {
   START_PROFILING(1);
 
   PakError err = PAK_ERR_SUCCESS;
-  PakTreeNode* node = &pak->tree.root;
+  PakTreeNodeOld* node = &pak->tree_old.root;
 
   // TODO: either use scratch arena for all allocation or use the main arena
   ArenaScratch scratch = arena_scratch_begin(pak->arena);
   Stack* nodes = stack_create(scratch.arena);
 
-  stack_push(nodes, &pak->tree.root);
+  stack_push(nodes, &pak->tree_old.root);
 
   while (nodes->length > 0) {
     RawPtr raw_data = stack_pop(nodes);
     if (0 == raw_data) {
       break;
     }
-    node = (PakTreeNode*)raw_data;
+    node = (PakTreeNodeOld*)raw_data;
 
     for (U32 index = 0; index < node->children->count; index++) {
       HashMapKV* kv = hashmap_key_at(node->children, index);
@@ -491,8 +505,8 @@ pak_extract(Pak* pak, IONode* ionode, Str8 out_dir) {
         goto cleanup;
       }
 
-      PakTreeNode* new_node = (PakTreeNode*)kv->v_rawptr;
-      Str8 new_node_str = str8(new_node->name);
+      PakTreeNodeOld* new_node = (PakTreeNodeOld*)kv->v_rawptr;
+      Str8 new_node_str = S(new_node->name);
       Str8 full_path_str =
           str8_join(scratch.arena, out_dir, new_node_str, IO_PATH_SEPARATOR);
 
@@ -524,12 +538,12 @@ cleanup:
 /* ===================================================== */
 
 PakError
-pak_extract_item(Pak* pak, PakTreeNode* node, IONode* ionode, Str8 out_dir) {
+pak_extract_item(Pak* pak, PakTreeNodeOld* node, IONode* ionode, Str8 out_dir) {
   START_PROFILING(1);
   PakError err = PAK_ERR_SUCCESS;
   ArenaScratch scratch = arena_scratch_begin(pak->arena);
   Stack* nodes = stack_create(scratch.arena);
-  Str8 node_str = str8(node->item_name);
+  Str8 node_str = S(node->item_name);
   Str8 full_path_str =
       str8_join(scratch.arena, out_dir, node_str, IO_PATH_SEPARATOR);
 
@@ -549,7 +563,7 @@ pak_extract_item(Pak* pak, PakTreeNode* node, IONode* ionode, Str8 out_dir) {
   }
 
   U32 start_index = 0;
-  if (node->parent != &pak->tree.root) {
+  if (node->parent != &pak->tree_old.root) {
     start_index = strlen(node->parent->name);
   }
 
@@ -561,7 +575,7 @@ pak_extract_item(Pak* pak, PakTreeNode* node, IONode* ionode, Str8 out_dir) {
       break;
     }
 
-    node = (PakTreeNode*)raw_data;
+    node = (PakTreeNodeOld*)raw_data;
 
     for (U32 index = 0; index < node->children->count; index++) {
       HashMapKV* kv = hashmap_key_at(node->children, index);
@@ -570,8 +584,8 @@ pak_extract_item(Pak* pak, PakTreeNode* node, IONode* ionode, Str8 out_dir) {
         goto cleanup;
       }
 
-      PakTreeNode* new_node = (PakTreeNode*)kv->v_rawptr;
-      Str8 new_node_str = str8(new_node->name + start_index);
+      PakTreeNodeOld* new_node = (PakTreeNodeOld*)kv->v_rawptr;
+      Str8 new_node_str = S(new_node->name + start_index);
       Str8 full_path_str =
           str8_join(scratch.arena, out_dir, new_node_str, IO_PATH_SEPARATOR);
 
@@ -610,8 +624,6 @@ pak_generate(Pak* pak, IONode* node) {
   Assert(node != 0);
 
   PakError err = PAK_ERR_SUCCESS;
-
-
 
 cleanup:
   END_PROFILING();

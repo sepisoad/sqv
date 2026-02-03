@@ -126,8 +126,8 @@ IOError
 io_open_file(Arena* arena, Str8 path, IONode* node) {
   START_PROFILING(1);
 
-  Assert(path.cstr != 0);
-  Assert(path.length > 0);
+  Assert(CS(path) != 0);
+  Assert(SL(path) > 0);
   Assert(node != 0);
 
   IOError err = IO_ERR_SUCCESS;
@@ -140,7 +140,7 @@ io_open_file(Arena* arena, Str8 path, IONode* node) {
     goto cleanup;
   }
 
-  node->file = fopen(path.cstr, "rb");
+  node->file = fopen(CS(path), "rb");
   if (0 == node->file) {
     err = IO_ERR_FILE_OPEN;
     goto cleanup;
@@ -188,8 +188,8 @@ io_load_file(Arena* arena, Str8 path, IONode* node) {
   START_PROFILING(1);
 
   Assert(arena != 0);
-  Assert(path.cstr != 0);
-  Assert(path.length > 0);
+  Assert(CS(path) != 0);
+  Assert(SL(path) > 0);
   Assert(node != 0);
 
   IOError err = IO_ERR_SUCCESS;
@@ -202,7 +202,7 @@ io_load_file(Arena* arena, Str8 path, IONode* node) {
     goto cleanup;
   }
 
-  node->file = fopen(path.cstr, "rb");
+  node->file = fopen(CS(path), "rb");
   if (0 == node->file) {
     err = IO_ERR_FILE_OPEN;
     goto cleanup;
@@ -249,14 +249,14 @@ IOError
 io_dump(Str8 path, Buf8 data) {
   START_PROFILING(1);
 
-  Assert(path.cstr != 0);
-  Assert(path.length > 0);
+  Assert(CS(path) != 0);
+  Assert(SL(path) > 0);
   Assert(data.cbuf != 0);
   Assert(data.size > 0);
 
   IOError err = IO_ERR_SUCCESS;
 
-  FILE* f = fopen(path.cstr, "wb");
+  FILE* f = fopen(CS(path), "wb");
   if (0 == f) {
     err = IO_ERR_MKFILE;
     goto cleanup;
@@ -282,19 +282,19 @@ IOError
 io_make_nested_directory(Str8 path) {
   START_PROFILING(1);
 
-  Assert(path.cstr != 0);
-  Assert(path.length > 0);
+  Assert(CS(path) != 0);
+  Assert(SL(path) > 0);
 
   IOError err = IO_ERR_SUCCESS;
-  U32 original_length = path.length;
+  U32 original_length = SL(path);
 
-  for (U32 index = 0; index < path.length; index++) {
-    if (path.cstr[index] == IO_PATH_SEPARATOR) {
-      path.length = index;
-      Str hack = (Str)&path.cstr[index];
+  for (U32 index = 0; index < SL(path); index++) {
+    if (CS(path)[index] == IO_PATH_SEPARATOR) {
+      SL(path) = index;
+      Str hack = (Str)&CS(path)[index];
       *hack = 0;
       err = io_make_directory(path);
-      path.length = original_length;
+      SL(path) = original_length;
       *hack = IO_PATH_SEPARATOR;
       if (IO_ERR_SUCCESS != err) {
         err = IO_ERR_MKDIR_RECUR;
@@ -319,8 +319,8 @@ io_directory_nested_children(Arena* arena, Str8 path, IONode* node) {
   START_PROFILING(1);
 
   Assert(arena != 0);
-  Assert(path.cstr != 0);
-  Assert(path.length > 0);
+  Assert(CS(path) != 0);
+  Assert(SL(path) > 0);
 
   IOError err = IO_ERR_SUCCESS;
   StackOf(IONode*) nodes = stack_create(arena);
@@ -363,26 +363,26 @@ IOError
 io_get_path_base_name(Str8 path, Str8* name) {
   START_PROFILING(1);
 
-  Assert(path.cstr != 0);
-  Assert(path.length > 0);
+  Assert(CS(path) != 0);
+  Assert(SL(path) > 0);
   Assert(name != 0);
 
   IOError err = IO_ERR_SUCCESS;
-  U32 last_index = path.length - 1; // index of the last character
+  U32 last_index = SL(path) - 1; // index of the last character
   U32 last_segment_index = 0;
 
-  if (IO_PATH_SEPARATOR == path.cstr[last_index]) {
+  if (IO_PATH_SEPARATOR == CS(path)[last_index]) {
     last_index--;
   }
 // /Users/sepi/Games/Quake1/lq/
   for (U32 index = last_index; index >= 0; index--) {
-    if (path.cstr[index] == IO_PATH_SEPARATOR) {
+    if (CS(path)[index] == IO_PATH_SEPARATOR) {
       last_segment_index = index + 1;
       break;
     }
   }
 
-  name->cstr = &path.cstr[last_segment_index];
+  name->cstr = &CS(path)[last_segment_index];
   name->length = strlen(name->cstr);
 
 cleanup:

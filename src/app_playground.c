@@ -59,7 +59,7 @@ init(void) {
   S.arena = arena_create();
 
   // load default Md1 file
-  Str8 path = str8(sapp_userdata());
+  Str8 path = S(sapp_userdata());
 
   // NDBuffer ndb = {0};
   IONode node = {0};
