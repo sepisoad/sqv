@@ -49,6 +49,7 @@ struct Array {
 Array* array_create(Arena* arena, Sz item_size, Sz item_alignment);
 RawPtr array_push(Array* array, RawPtr ptr);
 RawPtr array_get(Array* array, U64 index);
+U64 array_length(Array* array);
 
 #define ArrayOf(T) Array*
 
@@ -103,11 +104,11 @@ array_push(Array* array, RawPtr ptr) {
     array->capacity = ARRAY_SEGMENT_CAPACITY(array->used_segments);
   }
 
-  // TODO:
-  // it's late night and i came across this line of code
-  // and i don't remember why i added it! my brain is not
-  // working ATM, but i would like to come back to this
-  // line later and remember what the fuck is going on!
+  // NOTE:
+  // i keep forgetting the logic behind this line:
+  // when we push an item to array we need its actual
+  // memory adress and we need to compute it using
+  // array_get function! OKAY?
   RawPtr res = array_get(array, array->offset);
   MemCopy(res, ptr, array->meta.item_size);
   array->offset++;
@@ -132,6 +133,13 @@ array_get(Array* array, U64 index) {
   END_PROFILING();
 
   return res;
+}
+
+U64 array_length(Array* array) {
+  START_PROFILING(1);
+  Assert(array != 0);
+  END_PROFILING();
+  return array->offset;
 }
 
 /* ===================================================== */

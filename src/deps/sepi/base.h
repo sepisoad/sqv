@@ -35,11 +35,10 @@ typedef const intptr_t CIPtr;
 typedef const uintptr_t CPtr;
 typedef ptrdiff_t PtrDiff;
 
-typedef U8*         Buf;
-typedef const U8*   CBuf;
-typedef char*       Str;
+typedef U8* Buf;
+typedef const U8* CBuf;
+typedef char* Str;
 typedef const char* CStr;
-
 
 /* ===================================================== */
 /*                       KEYWORDS                        */
@@ -83,7 +82,8 @@ typedef const char* CStr;
 #endif
 
 /* CPU ARCHITECTURE */
-#if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64)
+#if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || \
+    defined(__x86_64)
 #define CPU_X64 1
 #elif defined(i386) || defined(__i386) || defined(__i386__)
 #define CPU_X86 1
@@ -128,22 +128,24 @@ typedef const char* CStr;
 #ifdef ASAN_ENABLED
 void __asan_poison_memory_region(void const volatile* addr, size_t size);
 void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
-# define AsanPoisonMemoryRegion(addr, size)   __asan_poison_memory_region((addr), (size))
-# define AsanUnpoisonMemoryRegion(addr, size) __asan_unpoison_memory_region((addr), (size))
+#define AsanPoisonMemoryRegion(addr, size) \
+  __asan_poison_memory_region((addr), (size))
+#define AsanUnpoisonMemoryRegion(addr, size) \
+  __asan_unpoison_memory_region((addr), (size))
 #else
-# define AsanPoisonMemoryRegion(addr, size)   ((void)(addr), (void)(size))
-# define AsanUnpoisonMemoryRegion(addr, size) ((void)(addr), (void)(size))
+#define AsanPoisonMemoryRegion(addr, size) ((void)(addr), (void)(size))
+#define AsanUnpoisonMemoryRegion(addr, size) ((void)(addr), (void)(size))
 #endif /* DEBUG_MODE */
 
-#define MemZero(ptr,size) memset((ptr),0,(size))
-#define MemZeroStruct(ptr) MemZero((ptr),sizeof(*(ptr)))
-#define MemZeroArray(ptr) MemZero((ptr),sizeof(ptr))
-#define MemZeroTyped(ptr,count) MemZero((ptr),sizeof(*(ptr))*(count))
+#define MemZero(ptr, size) memset((ptr), 0, (size))
+#define MemZeroStruct(ptr) MemZero((ptr), sizeof(*(ptr)))
+#define MemZeroArray(ptr) MemZero((ptr), sizeof(ptr))
+#define MemZeroTyped(ptr, count) MemZero((ptr), sizeof(*(ptr)) * (count))
 #define MemCopy(SRC, DST, SZ) memcpy((SRC), (DST), (SZ))
 #define MemoryCompare(a, b, size) memcmp((a), (b), (size))
-#define MemoryEq(a,b,z) (MemoryCompare((a),(b),(z)) == 0)
-#define StructEq(a,b) MemoryEq((a),(b),sizeof(*(a)))
-#define ArrayEq(a,b) MemoryEq((a),(b),sizeof(a))
+#define MemoryEq(a, b, z) (MemoryCompare((a), (b), (z)) == 0)
+#define StructEq(a, b) MemoryEq((a), (b), sizeof(*(a)))
+#define ArrayEq(a, b) MemoryEq((a), (b), sizeof(a))
 
 /* ===================================================== */
 /*                         UNITS                         */
@@ -153,9 +155,9 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 #define MB(n) (((U64)(n)) << 20)
 #define GB(n) (((U64)(n)) << 30)
 #define TB(n) (((U64)(n)) << 40)
-#define Thousand(n) ((n)*1000)
-#define Million(n) ((n)*1000000)
-#define Billion(n) ((n)*1000000000)
+#define Thousand(n) ((n) * 1000)
+#define Million(n) ((n) * 1000000)
+#define Billion(n) ((n) * 1000000000)
 
 /* ===================================================== */
 /*                         UTILS                         */
@@ -166,22 +168,40 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 #define Ignore(_V) ((void)(_V))
 
 /* MATH MACROS */
-#define IsPow2(X) ((X) != 0 && ((X) & ((X) -1 )) ==0 )
+#define IsPow2(X) ((X) != 0 && ((X) & ((X) - 1)) == 0)
 #define IsPow2OrZero(X) ((((X) - 1) & (X)) == 0)
 #define Max(A, B) ((A) > (B) ? (A) : (B))
 #define Min(A, B) ((A) < (B) ? (A) : (B))
 
-#if CC_MSVC
+#if defined(CC_MSVC)
 #define AlignOf(T) __alignof(T)
-#define LeadingZeroBits(T) _BitScanReverse64(0, T) // TODO: not tested!
-#elif CC_CLANG
+#define LeadingZeroBits(T) _BitScanReverse64(0, T)  // TODO: not tested!
+#elif defined(CC_GCC) || defined(CC_CLANG)
 #define AlignOf(T) __alignof(T)
 #define LeadingZeroBits(T) __builtin_clzll(T)
-#elif CC_GCC
-#define AlignOf(T) __alignof__(T)
-#define LeadingZeroBits(T) __builtin_clzll(T)
+#else
+#error "AlignOf macro not supported on this compiler"
 #endif
 
+#if defined(CC_GCC) || defined(CC_CLANG)
+#define TypeOf(x) __typeof__(x)
+#else
+#error "TypeOf macro not supported on this compiler"
+#endif
+
+#if defined(CC_GCC) || defined(CC_CLANG)
+#define TypesCompatible(T1, T2) __builtin_types_compatible_p(T1, T2)
+#else
+#error "TypesCompatible macro not supported on this compiler"
+#endif
+
+#if defined(CC_GCC) || defined(CC_CLANG)
+#define ChooseExpr(condition, expr_true, expr_false) \
+  __builtin_choose_expr(condition, expr_true, expr_false)
+#else
+#define ChooseExpr(condition, expr_true, expr_false) \
+  ((condition) ? (expr_true) : (expr_false))
+#endif
 
 #define NATIVE_ALIGNMENT \
   Max(AlignOf(int),      \
@@ -190,13 +210,13 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 
 #define AlignUp(V, B) (((V) + (B) - 1) & (~((B) - 1)))
 #define AlignDown(V, B) ((V) & (~((B) - 1)))
-#define AlignUpPad(X, B)  ((0 - (X)) & ((B) - 1))
+#define AlignUpPad(X, B) ((0 - (X)) & ((B) - 1))
 
 #define ToString_(X) #X
 #define ToString(X) ToString_(X)
 
-#define Glue_(A,B) A##B
-#define Glue(A,B) Glue_(A,B)
+#define Glue_(A, B) A##B
+#define Glue(A, B) Glue_(A, B)
 
 /* ===================================================== */
 /*                      ASSERTIONS                       */
@@ -210,21 +230,26 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 #error unsupported compiler
 #endif
 
-#define StaticAssert(COND, ID) typedef char Glue(ID, __LINE__)[(COND)?1:-1]
+#define StaticAssert(COND, ID) typedef char Glue(ID, __LINE__)[(COND) ? 1 : -1]
 
 #ifdef DEBUG_MODE
-# define AssertAlways(COND) \
-  do { \
-    if(!(COND)) { \
-      fprintf(stderr, "Assert: (%s)\n", #COND); \
+#define AssertAlways(COND)                                \
+  do {                                                    \
+    if (!(COND)) {                                        \
+      fprintf(stderr, "Assert: (%s)\n", #COND);           \
       fprintf(stderr, "At: %s:%d\n", __FILE__, __LINE__); \
-      Trap(); \
-    } \
-  }while(0)
-# define Assert(x) AssertAlways(x)
+      Trap();                                             \
+    }                                                     \
+  } while (0)
+#define Assert(x) AssertAlways(x)
 #else /* DEBUG_MODE */
-# define AssertAlways(COND) do {if(!(COND)) {Trap();} }while(0)
-# define Assert(x) (void)(x)
+#define AssertAlways(COND) \
+  do {                     \
+    if (!(COND)) {         \
+      Trap();              \
+    }                      \
+  } while (0)
+#define Assert(x) (void)(x)
 #endif
 
 #define Abort(msg) AssertAlways(!#msg)
@@ -236,7 +261,11 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 
 #ifdef DEBUG_MODE
 #include <stdio.h>
-#define Dbg(msg, ...) do { printf(msg, ##__VA_ARGS__); printf("\n"); } while(0);
+#define Dbg(msg, ...)           \
+  do {                          \
+    printf(msg, ##__VA_ARGS__); \
+    printf("\n");               \
+  } while (0);
 #else
 #define Dbg(msg, ...)
 #endif /* DEBUG_MODE */
@@ -261,7 +290,6 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 #define START_MEMORY_PROFILING(PTR, SIZE)
 #define END_MEMORY_PROFILING(PTR)
 #endif /* PROFILING */
-
 
 /* ===================================================== */
 /*                          END                          */

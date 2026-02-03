@@ -56,6 +56,14 @@ U8 correct_slash_from_char(U8 c);
 
 Buf8 buf8(CBuf cbuf, Sz size);
 
+#define CS(str) (str).cstr
+#define S(x)                                                           \
+  _Generic((x),                                                        \
+      Str8: (x),                                                       \
+      default: ChooseExpr(TypesCompatible(TypeOf(x), char[sizeof(x)]), \
+                          ((Str8){(CStr)(x), sizeof(x) - 1}),          \
+                          str8((CStr)(x))))
+
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
 /* ===================================================== */
@@ -81,7 +89,7 @@ str8(CStr cstr) {
   Assert(cstr != 0);
   Assert(strlen(cstr) > 0);
 
-  Str8 result = {cstr, strlen(cstr)};
+  Str8 result = {cstr, (Sz)strlen(cstr)};
   return result;
 }
 
@@ -131,7 +139,8 @@ str8_join(Arena* a, Str8 s1, Str8 s2, char separator) {
   return (Str8){str, length};
 }
 
-Nothing str8_reset(Str8* ptr) {
+Nothing
+str8_reset(Str8* ptr) {
   ptr->cstr = 0;
   ptr->length = 0;
 }
