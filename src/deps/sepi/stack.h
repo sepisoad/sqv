@@ -15,9 +15,6 @@
 /*                       CONSTANTS                       */
 /* ===================================================== */
 
-#define STACK_DEFAULT_RESERVE_SIZE MB(64)
-#define STACK_DEFAULT_COMMIT_SIZE MB(64)
-
 /* ===================================================== */
 /*                         TYPES                         */
 /* ===================================================== */
@@ -40,10 +37,10 @@ struct Stack {
 /*                          API                          */
 /* ===================================================== */
 
-Stack* stack_create(Arena* a);
-Nothing stack_destroy(Stack* s);
-Nothing stack_push(Stack* s, RawPtr ptr);
-RawPtr stack_pop(Stack* s);
+Stack* stack_create(Arena* arena);
+Nothing stack_destroy(Stack* stack);
+Nothing stack_push(Stack* stack, RawPtr ptr);
+RawPtr stack_pop(Stack* stack);
 
 #define StackOf(T) Stack*
 
@@ -56,65 +53,67 @@ RawPtr stack_pop(Stack* s);
 SLAVE_PROFILING_CONTEXT;
 
 Stack*
-stack_create(Arena* a) {
+stack_create(Arena* arena) {
   START_PROFILING(1);
 
-  Stack* s = arena_push(a, sizeof(Stack), AlignOf(Stack), FALSE);
-  s->arena = a;
-  s->length = 0;
-  s->bottom = 0;
-  s->top = 0;
+  Stack* stack = arena_push(arena, sizeof(Stack), AlignOf(Stack), FALSE);
+  stack->arena = arena;
+  stack->length = 0;
+  stack->bottom = 0;
+  stack->top = 0;
 
   END_PROFILING();
-  return s;
+  return stack;
 }
 
 Nothing
-stack_destroy(Stack* s) {
+stack_destroy(Stack* stack) {
   START_PROFILING(1);
 
-  for (; s->length > 0;) {
-    stack_pop(s);
+  for (; stack->length > 0;) {
+    stack_pop(stack);
   }
 
-  s->arena = 0;
-  s->length = 0;
-  s->bottom = 0;
-  s->top = 0;
+  stack->arena = 0;
+  stack->length = 0;
+  stack->bottom = 0;
+  stack->top = 0;
 
   END_PROFILING();
 }
 
 Nothing
-stack_push(Stack* s, RawPtr ptr) {
+stack_push(Stack* stack, RawPtr ptr) {
   START_PROFILING(1);
 
   StackNode* node =
-      arena_push(s->arena, sizeof(StackNode), AlignOf(StackNode), FALSE);
+      arena_push(stack->arena, sizeof(StackNode), AlignOf(StackNode), FALSE);
   node->ptr = ptr;
-  node->previous = s->top;
-  s->top = node;
-  s->length++;
+  node->previous = stack->top;
+  stack->top = node;
+  stack->length++;
 
   END_PROFILING();
 }
 
 RawPtr
-stack_pop(Stack* s) {
+stack_pop(Stack* stack) {
   START_PROFILING(1);
 
-  if (!s->length) {
+  RawPtr ptr = 0;
+
+  if (!stack->length) {
     goto cleanup;
   }
 
-  StackNode* old_top = s->top;
-  RawPtr ptr = old_top->ptr;
+  StackNode* old_top = stack->top;
+  ptr = old_top->ptr;
 
-  s->top = old_top->previous;
+  stack->top = old_top->previous;
   old_top->previous = 0;
   old_top->ptr = 0;
 
-  s->length--;
+  stack->length--;
 
 cleanup:
   END_PROFILING();

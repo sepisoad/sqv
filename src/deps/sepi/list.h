@@ -70,7 +70,7 @@ List* list_create(Arena* a) {
   l->tail = 0;
   l->length = 0;
 
-  TracyCZoneEnd(tracyctx);
+  END_PROFILING();
   return l;
 }
 
@@ -83,7 +83,7 @@ Nothing list_destroy(List* l) {
     list_pop_tail(l);
   }
 
-  TracyCZoneEnd(tracyctx);
+  END_PROFILING();
 }
 
 ListNode* list_push_tail(List* l, RawPtr ptr) {
@@ -105,7 +105,7 @@ ListNode* list_push_tail(List* l, RawPtr ptr) {
     l->tail = n;
   }
 
-  TracyCZoneEnd(tracyctx);
+  END_PROFILING();
 
   return n;
 }
@@ -129,7 +129,7 @@ ListNode* list_push_head(List* l, RawPtr ptr) {
     l->head = n;
   }
 
-  TracyCZoneEnd(tracyctx);
+  END_PROFILING();
   return n;
 }
 
@@ -151,7 +151,7 @@ ListNode* list_push_after(List* l, ListNode* n, RawPtr ptr) {
 
   l->length++;
 
-  TracyCZoneEnd(tracyctx);
+  END_PROFILING();
 
   return nn;
 }
@@ -177,7 +177,7 @@ ListNode* list_push_before(List* l, ListNode* n, RawPtr ptr) {
 
   l->length++;
 
-  TracyCZoneEnd(tracyctx);
+  END_PROFILING();
 
   return nn;
 }
@@ -205,7 +205,7 @@ ListNode* list_pop_tail(List* l) {
 
 
 cleanup:
-  TracyCZoneEnd(tracyctx);
+  END_PROFILING();
 
   return res;
 }
@@ -233,7 +233,7 @@ ListNode* list_pop_head(List* l) {
 
 
 cleanup:
-  TracyCZoneEnd(tracyctx);
+  END_PROFILING();
 
   return res;
 }
@@ -268,7 +268,7 @@ ListNode* list_pop(List* l, ListNode* n) {
   res = n;
 
 cleanup:
-  TracyCZoneEnd(tracyctx);
+  END_PROFILING();
 
   return res;
 }
@@ -294,7 +294,7 @@ RawPtr list_get_at(List* l, U64 index) {
   for( ; pos != index ; res = res->next, pos++);
 
 cleanup:
-  TracyCZoneEnd(tracyctx);
+  END_PROFILING();
 
   return res->ptr;
 }
