@@ -33,6 +33,8 @@ struct Stack {
   StackNode* bottom;
 };
 
+#define StackOf(T) Stack*
+
 /* ===================================================== */
 /*                          API                          */
 /* ===================================================== */
@@ -42,7 +44,7 @@ Nothing stack_destroy(Stack* stack);
 Nothing stack_push(Stack* stack, RawPtr ptr);
 RawPtr stack_pop(Stack* stack);
 
-#define StackOf(T) Stack*
+#define stack_length(s) (s)->length
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */

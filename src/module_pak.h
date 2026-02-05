@@ -36,24 +36,6 @@
 /*                         TYPES                         */
 /* ===================================================== */
 
-// ========== TO BE DELETED ===============
-typedef struct DELETE_Pak_Tree_Node DELETE_Pak_Tree_Node;
-struct DELETE_Pak_Tree_Node {
-  char name[PAK_ENTRY_NAME_LEN];
-  char item_name[PAK_ENTRY_NAME_LEN];
-  Sz size;
-  U32 offset;
-  Bool is_directory;
-  DELETE_Pak_Tree_Node* parent;
-  HashMap* children;
-};
-
-typedef struct DELETE_Pak_Tree DELETE_Pak_Tree;
-struct DELETE_Pak_Tree {
-  DELETE_Pak_Tree_Node root;
-};
-// ========================================
-
 typedef enum {
   PAK_ERR_SUCCESS,
   PAK_ERR_MALFORMED,
@@ -87,33 +69,20 @@ struct PakNode {
 typedef struct Pak Pak;
 struct Pak {
   PakMeta meta;
-
-  // TODO:
-  // do i need this 'flat_entries' field?
-  PakRawEntry* flat_entries;
-  TreeOf(PackNode) tree;
-
-  // TODO:
-  // use Str8
-  char error_text[PAK_MAX_ERROR_LENGTH];
+  TreeOf(PakNode) tree;
   Arena* arena;
-
-  // TODO:
-  // delete this
-  DELETE_Pak_Tree DELETE_tree;
 };
 
 /* ===================================================== */
 /*                          API                          */
 /* ===================================================== */
 
-PakError DELETE_pak_load_from_file(Pak* pak, IONode* node);
 PakError pak_load_from_file(Pak* pak, IONode* node);
 Nothing pak_unload(Pak* pak);
 PakError pak_extract(Pak* pak, IONode* node, Str8 out_dir);
 PakError pak_extract_item(Pak* pak,
-                          PakNode* node,
-                          IONode* ionode,
+                          TreeNode* tree_node,
+                          IONode* io_node,
                           Str8 out_dir);
 PakError pak_generate(Pak* pak, IONode* node);
 
@@ -219,225 +188,6 @@ pak_get_name_at_depth(CStr path,
 /* ===================================================== */
 
 static PakError
-pak_read_entries_from_memory(Pak* pak, NDBuffer* ndb) {
-  START_PROFILING(1);
-
-  Assert(pak != 0);
-  Assert(ndb != 0);
-
-  PakError err = PAK_ERR_SUCCESS;
-
-  Arena* arena = pak->arena;
-  Sz sz = sizeof(PakRawEntry) * pak->meta.entries_count;
-  PakRawEntry* flat_entries =
-      (PakRawEntry*)arena_push(arena, sz, AlignOf(PakRawEntry), TRUE);
-
-  pak->flat_entries = flat_entries;
-
-  for (U32 index = 0; index < pak->meta.entries_count; index++) {
-    PakRawEntry* entry = flat_entries + index;
-    U32 size = 0;
-    U32 offset = 0;
-
-    // NOTE:
-    // i was under impression the the name buffer is filled with zeros
-    // after the last character, but i was proven wrong when i tested
-    // https://www.slipseer.com/index.php?resources/dwell.21/
-    // unfortunately using memcpy here is not that safe
-    // so i had to compromise and use strncpy instead which is slower!
-    // ---
-    // memcpy(entry->name, ND_ADDR(ndb), PAK_ENTRY_NAME_LEN);
-
-    strncpy(entry->name, (CStr)ND_ADDR(ndb), PAK_ENTRY_NAME_LEN);
-    ND_MOVE(ndb, PAK_ENTRY_NAME_LEN);
-    ND_I32(ndb, &offset);
-    ND_I32(ndb, &size);
-
-    // KindError kerr = kind_guess_entry(S(entry->name), &entry->kind);
-    // if (kerr != KIND_ERR_SUCCESS) {
-    //   err = PAK_ERR_MALFORMED;
-    //   snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH,
-    //            "failed to guess item '%s' kind", entry->name);
-    //   goto cleanup;
-    // }
-
-    U32 depth = 0;
-    err = pak_get_path_depth(entry->name, PAK_ENTRY_NAME_LEN, &depth);
-    if (err != PAK_ERR_SUCCESS) {
-      snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH,
-               "failed to get path '%s' depth", entry->name);
-      goto cleanup;
-    }
-
-    DELETE_Pak_Tree_Node* node = &pak->DELETE_tree.root;
-    PakNode* node_v2 = tree_root_data(pak->tree);
-    for (U32 depth_index = 0; depth_index < depth + 1; depth_index++) {
-      char name[PAK_ENTRY_NAME_LEN] = {0};
-      char item_name[PAK_ENTRY_NAME_LEN] = {0};
-
-      Str8 name_v2 = {0};
-      Str8 path_v2 = {0};
-
-      err = pak_get_path_at_depth(entry->name, PAK_ENTRY_NAME_LEN,
-                                  depth_index + 1, &name[0]);
-      if (err != PAK_ERR_SUCCESS) {
-        snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH,
-                 "failed to get path '%s' at depth '%d'", entry->name,
-                 depth_index);
-        goto cleanup;
-      }
-
-      err =
-          pak_get_name_at_depth(name, strlen(name), depth_index, &item_name[0]);
-      if (err != PAK_ERR_SUCCESS) {
-        snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH,
-                 "failed to get item '%s' name at depth '%d'", name,
-                 depth_index);
-        goto cleanup;
-      }
-
-      HashMapKV* kv = hashmap_find(node->children, S(name));
-      if (kv) {
-        node = (DELETE_Pak_Tree_Node*)kv->v_rawptr;
-        continue;
-      }
-
-      DELETE_Pak_Tree_Node* child =
-          arena_push(arena, sizeof(DELETE_Pak_Tree_Node),
-                     AlignOf(DELETE_Pak_Tree_Node), TRUE);
-      if (child != 0)
-        ;
-
-      memcpy(child->name, name, PAK_ENTRY_NAME_LEN);
-      memcpy(child->item_name, item_name, PAK_ENTRY_NAME_LEN);
-
-      hashmap_push_rawptr(arena, node->children, S(child->name), (RawPtr)child);
-
-      if (depth_index >= depth) {
-        child->is_directory = FALSE;
-        child->size = size;
-        child->offset = offset;
-        continue;
-      }
-
-      child->is_directory = TRUE;
-      child->children = hashmap_init(arena, 64);
-      child->parent = node;
-      node = child;
-    }
-  }
-
-cleanup:
-  END_PROFILING();
-  return err;
-}
-
-/* ===================================================== */
-
-static PakError
-DELETE_pak_read_entries_from_file(Pak* pak, IONode* node) {
-  START_PROFILING(1);
-
-  Assert(pak != 0);
-  Assert(node != 0);
-  Assert(node->file != 0);
-
-  PakError err = PAK_ERR_SUCCESS;
-
-  Arena* arena = pak->arena;
-  Sz sz = sizeof(PakRawEntry) * pak->meta.entries_count;
-  PakRawEntry* flat_entries =
-      (PakRawEntry*)arena_push(arena, sz, AlignOf(PakRawEntry), TRUE);
-
-  pak->flat_entries = flat_entries;
-
-  for (U32 index = 0; index < pak->meta.entries_count; index++) {
-    PakRawEntry* entry = flat_entries + index;
-    U32 size = 0;
-    U32 offset = 0;
-
-    IO_BUF(node, PAK_ENTRY_NAME_LEN, entry->name);
-    IO_I32(node, &offset);
-    IO_I32(node, &size);
-
-    // KindError kerr = kind_guess_entry(S(entry->name), &entry->kind);
-    // if (kerr != KIND_ERR_SUCCESS) {
-    //   err = PAK_ERR_MALFORMED;
-    //   snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH,
-    //            "failed to guess item '%s' kind", entry->name);
-    //   goto cleanup;
-    // }
-
-    U32 depth = 0;
-    err = pak_get_path_depth(entry->name, PAK_ENTRY_NAME_LEN, &depth);
-    if (err != PAK_ERR_SUCCESS) {
-      snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH,
-               "failed to get path '%s' depth", entry->name);
-      goto cleanup;
-    }
-
-    DELETE_Pak_Tree_Node* node = &pak->DELETE_tree.root;
-    for (U32 depth_index = 0; depth_index < depth + 1; depth_index++) {
-      char name[PAK_ENTRY_NAME_LEN] = {0};
-      char item_name[PAK_ENTRY_NAME_LEN] = {0};
-
-      err = pak_get_path_at_depth(entry->name, PAK_ENTRY_NAME_LEN,
-                                  depth_index + 1, &name[0]);
-      if (err != PAK_ERR_SUCCESS) {
-        snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH,
-                 "failed to get path '%s' at depth '%d'", entry->name,
-                 depth_index);
-        goto cleanup;
-      }
-
-      err =
-          pak_get_name_at_depth(name, strlen(name), depth_index, &item_name[0]);
-      if (err != PAK_ERR_SUCCESS) {
-        snprintf(pak->error_text, PAK_MAX_ERROR_LENGTH,
-                 "failed to get item '%s' name at depth '%d'", name,
-                 depth_index);
-        goto cleanup;
-      }
-
-      HashMapKV* kv = hashmap_find(node->children, S(name));
-      if (kv) {
-        node = (DELETE_Pak_Tree_Node*)kv->v_rawptr;
-        continue;
-      }
-
-      DELETE_Pak_Tree_Node* child =
-          arena_push(arena, sizeof(DELETE_Pak_Tree_Node),
-                     AlignOf(DELETE_Pak_Tree_Node), TRUE);
-      if (child != 0)
-        ;
-
-      memcpy(child->name, name, PAK_ENTRY_NAME_LEN);
-      memcpy(child->item_name, item_name, PAK_ENTRY_NAME_LEN);
-
-      hashmap_push_rawptr(arena, node->children, S(child->name), (RawPtr)child);
-
-      if (depth_index >= depth) {
-        child->is_directory = FALSE;
-        child->size = size;
-        child->offset = offset;
-        continue;
-      }
-
-      child->is_directory = TRUE;
-      child->children = hashmap_init(arena, 64);
-      child->parent = node;
-      node = child;
-    }
-  }
-
-cleanup:
-  END_PROFILING();
-  return err;
-}
-
-/* ===================================================== */
-
-static PakError
 pak_read_entries_from_file(Pak* pak, IONode* node) {
   START_PROFILING(1);
 
@@ -451,14 +201,12 @@ pak_read_entries_from_file(Pak* pak, IONode* node) {
   PakRawEntry pak_raw_entry = {0};
   U32 entry_size = 0;
   U32 entry_offset = 0;
-  PakNode* pak_node_root = arena_push(arena, sizeof(PakNode), AlignOf(PakNode), TRUE);
+  PakNode* pak_node_root =
+      arena_push(arena, sizeof(PakNode), AlignOf(PakNode), TRUE);
 
   pak_node_root->name = str8_clone(arena, S(".")),
-  pak_node_root->path = str8_clone(arena, S(".")),
-  pak_node_root->data_size = 0,
-  pak_node_root->data_offset = 0,
-  pak_node_root->is_directory = TRUE,
-
+  pak_node_root->path = str8_clone(arena, S(".")), pak_node_root->data_size = 0,
+  pak_node_root->data_offset = 0, pak_node_root->is_directory = TRUE,
 
   pak->tree =
       tree_create(arena, pak_node_root, sizeof(PakNode), AlignOf(PakNode));
@@ -506,7 +254,8 @@ pak_read_entries_from_file(Pak* pak, IONode* node) {
 
       TreeNode* new_tree_node =
           tree_push(pak->tree, current_tree_node, new_pak_node);
-      hashmap_push_rawptr(arena, map, new_pak_node->path, (RawPtr)new_tree_node);
+      hashmap_push_rawptr(arena, map, new_pak_node->path,
+                          (RawPtr)new_tree_node);
 
       if (depth_index >= entry_depth) {
         new_pak_node->data_size = entry_size;
@@ -517,53 +266,6 @@ pak_read_entries_from_file(Pak* pak, IONode* node) {
       current_tree_node = new_tree_node;
       new_pak_node->is_directory = TRUE;
     }
-  }
-
-cleanup:
-  END_PROFILING();
-  return err;
-}
-
-/* ===================================================== */
-
-PakError
-DELETE_pak_load_from_file(Pak* pak, IONode* node) {
-  START_PROFILING(1);
-
-  Assert(pak != 0);
-  Assert(node != 0);
-
-  PakError err = PAK_ERR_SUCCESS;
-
-  U8 magic_code[PAK_MAGIC_CODE_LEN] = {0};
-  I32 offset = 0;
-  I32 size = 0;
-
-  pak->arena = arena_create();
-
-  IO_BUF(node, PAK_MAGIC_CODE_LEN, magic_code);
-  IO_I32(node, &offset);
-  IO_I32(node, &size);
-  IO_SET(node, offset);
-
-  if ((offset <= 0) || (size <= 0) || (magic_code[0] != 'P') ||
-      (magic_code[1] != 'A') || (magic_code[2] != 'C') ||
-      (magic_code[3] != 'K')) {
-    err = PAK_ERR_MALFORMED;
-    goto cleanup;
-  }
-
-  pak->meta.entries_count = size / sizeof(PakRawEntry);
-
-  pak->DELETE_tree.root.parent = 0;
-  pak->DELETE_tree.root.children = hashmap_init(pak->arena, 64);
-  pak->DELETE_tree.root.is_directory = TRUE;
-  MemZero(pak->DELETE_tree.root.name, PAK_ENTRY_NAME_LEN);
-  pak->DELETE_tree.root.name[0] = ' ';
-
-  err = DELETE_pak_read_entries_from_file(pak, node);
-  if (err != PAK_ERR_SUCCESS) {
-    goto cleanup;
   }
 
 cleanup:
@@ -631,35 +333,32 @@ pak_extract(Pak* pak, IONode* ionode, Str8 out_dir) {
   START_PROFILING(1);
 
   PakError err = PAK_ERR_SUCCESS;
-  DELETE_Pak_Tree_Node* node = &pak->DELETE_tree.root;
-
-  // TODO: either use scratch arena for all allocation or use the main arena
   ArenaScratch scratch = arena_scratch_begin(pak->arena);
-  Stack* nodes = stack_create(scratch.arena);
+  TreeNode* tree_node = pak->tree->root;
+  Stack* stack = stack_create(scratch.arena);
 
-  stack_push(nodes, &pak->DELETE_tree.root);
+  stack_push(stack, tree_node);
 
-  while (nodes->length > 0) {
-    RawPtr raw_data = stack_pop(nodes);
-    if (0 == raw_data) {
+  while (stack->length > 0) {
+    tree_node = stack_pop(stack);
+    if (0 == tree_node) {
       break;
     }
-    node = (DELETE_Pak_Tree_Node*)raw_data;
 
-    for (U32 index = 0; index < node->children->count; index++) {
-      HashMapKV* kv = hashmap_key_at(node->children, index);
-      if (0 == kv) {
+    U32 children_count = tree_node_length(tree_node);
+    for (U32 index = 0; index < children_count; index++) {
+      TreeNode* child_node = tree_node_get(tree_node, index);
+      if (0 == child_node) {
         err = PAK_ERR_EXTRACT;
         goto cleanup;
       }
 
-      DELETE_Pak_Tree_Node* new_node = (DELETE_Pak_Tree_Node*)kv->v_rawptr;
-      Str8 new_node_str = S(new_node->name);
+      PakNode* pak_node = (PakNode*)child_node->data;
       Str8 full_path_str =
-          str8_join(scratch.arena, out_dir, new_node_str, IO_PATH_SEPARATOR);
+          str8_join(scratch.arena, out_dir, pak_node->path, IO_PATH_SEPARATOR);
 
-      if (TRUE == new_node->is_directory) {
-        stack_push(nodes, new_node);
+      if (TRUE == pak_node->is_directory) {
+        stack_push(stack, child_node);
 
         IOError ioerr = io_make_directory(full_path_str);
         if (IO_ERR_SUCCESS != ioerr) {
@@ -668,16 +367,17 @@ pak_extract(Pak* pak, IONode* ionode, Str8 out_dir) {
         }
       } else {
         CBuf src_buffer =
-            arena_push(scratch.arena, new_node->size, AlignOf(U8), TRUE);
+            arena_push(scratch.arena, pak_node->data_size, AlignOf(U8), TRUE);
 
-        IO_SET(ionode, new_node->offset);
-        IO_BUF(ionode, new_node->size, src_buffer);
-        io_dump(full_path_str, buf8(src_buffer, new_node->size));
+        IO_SET(ionode, pak_node->data_offset);
+        IO_BUF(ionode, pak_node->data_size, src_buffer);
+        io_dump(full_path_str, buf8(src_buffer, pak_node->data_size));
       }
     }
   }
 
 cleanup:
+  stack_destroy(stack);
   arena_scratch_end(scratch);
   END_PROFILING();
   return err;
@@ -686,81 +386,73 @@ cleanup:
 /* ===================================================== */
 
 PakError
-pak_extract_item(Pak* pak,
-                 PakNode* node,
-                 IONode* ionode,
-                 Str8 out_dir) {
+pak_extract_item(Pak* pak, TreeNode* tree_node, IONode* io_node, Str8 out_dir) {
   START_PROFILING(1);
+
   PakError err = PAK_ERR_SUCCESS;
-  // ArenaScratch scratch = arena_scratch_begin(pak->arena);
-  // Stack* nodes = stack_create(scratch.arena);
-  // Str8 node_str = node->name;
-  // Str8 full_path_str =
-  //     str8_join(scratch.arena, out_dir, node_str, IO_PATH_SEPARATOR);
+  ArenaScratch scratch = arena_scratch_begin(pak->arena);
+  Stack* stack = stack_create(scratch.arena);
 
-  // if (FALSE == node->is_directory) {
-  //   CBuf src_buffer = arena_push(scratch.arena, node->data_size, AlignOf(U8), TRUE);
+  stack_push(stack, tree_node);
 
-  //   IO_SET(ionode, node->data_offset);
-  //   IO_BUF(ionode, node->data_size, src_buffer);
-  //   io_dump(full_path_str, buf8(src_buffer, node->data_size));
-  //   goto cleanup;
-  // }
+  if (0 == tree_node_length(tree_node)) {
+    // it's a file!
+    PakNode* pak_node = (PakNode*)tree_node->data;
+    if (pak_node->is_directory) {
+      // wierd, it's an empty directory, we won't do anything here
+      goto cleanup;
+    }
+    Str8 full_path_str =
+          str8_join(scratch.arena, out_dir, pak_node->name, IO_PATH_SEPARATOR);
+    CBuf src_buffer =
+        arena_push(scratch.arena, pak_node->data_size, AlignOf(U8), TRUE);
 
-  // IOError ioerr = io_make_directory(full_path_str);
-  // if (IO_ERR_SUCCESS != ioerr) {
-  //   err = PAK_ERR_EXTRACT;
-  //   goto cleanup;
-  // }
+    IO_SET(io_node, pak_node->data_offset);
+    IO_BUF(io_node, pak_node->data_size, src_buffer);
+    io_dump(full_path_str, buf8(src_buffer, pak_node->data_size));
+    goto cleanup;
+  }
 
-  // U32 start_index = 0;
-  // if (node->parent != &pak->DELETE_tree.root) {
-  //   start_index = strlen(node->parent->name);
-  // }
+  while (stack->length > 0) {
+    tree_node = stack_pop(stack);
+    if (0 == tree_node) {
+      break;
+    }
 
-  // stack_push(nodes, node);
+    U32 children_count = tree_node_length(tree_node);
+    for (U32 index = 0; index < children_count; index++) {
+      TreeNode* child_node = tree_node_get(tree_node, index);
+      if (0 == child_node) {
+        err = PAK_ERR_EXTRACT;
+        goto cleanup;
+      }
 
-  // while (nodes->length > 0) {
-  //   RawPtr raw_data = stack_pop(nodes);
-  //   if (0 == raw_data) {
-  //     break;
-  //   }
+      PakNode* pak_node = (PakNode*)child_node->data;
+      Str8 full_path_str =
+          str8_join(scratch.arena, out_dir, pak_node->path, IO_PATH_SEPARATOR);
 
-  //   node = (DELETE_Pak_Tree_Node*)raw_data;
+      if (TRUE == pak_node->is_directory) {
+        stack_push(stack, child_node);
 
-  //   for (U32 index = 0; index < node->children->count; index++) {
-  //     HashMapKV* kv = hashmap_key_at(node->children, index);
-  //     if (0 == kv) {
-  //       err = PAK_ERR_EXTRACT;
-  //       goto cleanup;
-  //     }
+        IOError ioerr = io_make_nested_directory(full_path_str);
+        if (IO_ERR_SUCCESS != ioerr) {
+          err = PAK_ERR_EXTRACT;
+          goto cleanup;
+        }
+      } else {
+        CBuf src_buffer =
+            arena_push(scratch.arena, pak_node->data_size, AlignOf(U8), TRUE);
 
-  //     DELETE_Pak_Tree_Node* new_node = (DELETE_Pak_Tree_Node*)kv->v_rawptr;
-  //     Str8 new_node_str = S(new_node->name + start_index);
-  //     Str8 full_path_str =
-  //         str8_join(scratch.arena, out_dir, new_node_str, IO_PATH_SEPARATOR);
-
-  //     if (TRUE == new_node->is_directory) {
-  //       stack_push(nodes, new_node);
-
-  //       IOError ioerr = io_make_directory(full_path_str);
-  //       if (IO_ERR_SUCCESS != ioerr) {
-  //         err = PAK_ERR_EXTRACT;
-  //         goto cleanup;
-  //       }
-  //     } else {
-  //       CBuf src_buffer =
-  //           arena_push(scratch.arena, new_node->size, AlignOf(U8), TRUE);
-
-  //       IO_SET(ionode, new_node->offset);
-  //       IO_BUF(ionode, new_node->size, src_buffer);
-  //       io_dump(full_path_str, buf8(src_buffer, new_node->size));
-  //     }
-  //   }
-  // }
+        IO_SET(io_node, pak_node->data_offset);
+        IO_BUF(io_node, pak_node->data_size, src_buffer);
+        io_dump(full_path_str, buf8(src_buffer, pak_node->data_size));
+      }
+    }
+  }
 
 cleanup:
-  // arena_scratch_end(scratch);
+  stack_destroy(stack);
+  arena_scratch_end(scratch);
   END_PROFILING();
   return err;
 }

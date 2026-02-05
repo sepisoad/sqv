@@ -163,6 +163,7 @@ static Nothing app_pak_draw_widget_explorer_dir_icon(struct nk_context* ctx,
                                                      Bool is_directory,
                                                      struct nk_image* image,
                                                      Str8 text);
+
 /* ===================================================== */
 /*                       FUNCTIONS                       */
 /* ===================================================== */
@@ -826,7 +827,7 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
     }
 
     PakNode* pnode = (PakNode*)g_state.tree_current_node->data;
-    nk_label(ctx, pnode->name.cstr, NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
+    nk_label(ctx, pnode->path.cstr, NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
   }
   nk_end(ctx);
 
@@ -880,11 +881,11 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
             g_state.mode = APP_PAK_MODE_FAILED;
           }
         } else {
-          PakNode* pnode = (PakNode*)g_state.requested_extracting_item->data;
           PakError perr =
-              pak_extract_item(&g_state.pak, pnode, &g_state.input_node,
+              pak_extract_item(&g_state.pak, g_state.requested_extracting_item, &g_state.input_node,
                                S(g_state.export_path_buffer));
           if (PAK_ERR_SUCCESS != perr) {
+            PakNode* pnode = (PakNode*)g_state.requested_extracting_item->data;
             snprintf(g_state.error_text, APP_PAK_MAX_ERROR_LENGTH,
                      "failed to extract item '%s' into '%s'", pnode->name.cstr,
                      g_state.export_path_buffer);
