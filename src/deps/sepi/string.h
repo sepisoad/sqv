@@ -48,7 +48,7 @@ Nothing str8_reset(Str8* ptr);
 Bool str8_is_equal(Str8 a, Str8 b);
 I32 str8_find_first(Str8 str, I8 chr);
 I32 str8_find_last(Str8 str, I8 chr);
-Bool str8_cmp(Str8 str_a, Str8 str_b, StringCompareFlags flags);
+Bool str8_equal(Str8 str_a, Str8 str_b, StringCompareFlags flags);
 
 // Buf8
 Buf8 buf8(CBuf cbuf, Sz size);
@@ -229,7 +229,7 @@ str8_find_first(Str8 str, I8 chr) {
   I32 index = 0;
   Bool found = FALSE;
 
-  for (; index < str.length; index++) {
+  for (; index < (I32)str.length; index++) {
     if (str.cstr[index] == chr) {
       found = TRUE;
       break;
@@ -268,7 +268,7 @@ str8_find_last(Str8 str, I8 chr) {
 }
 
 Bool
-str8_cmp(Str8 str_a, Str8 str_b, StringCompareFlags flags) {
+str8_equal(Str8 str_a, Str8 str_b, StringCompareFlags flags) {
   START_PROFILING(1);
 
   Assert(str_a.cstr != 0);

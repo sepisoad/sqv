@@ -51,8 +51,8 @@ struct Array {
 Array* array_create(Arena* arena, Sz item_size, Sz item_alignment);
 RawPtr array_push(Array* array, RawPtr ptr);
 RawPtr array_get(Array* array, U64 index);
-U64 array_length(Array* array);
 
+#define array_length(array) (array)->offset
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -134,13 +134,6 @@ array_get(Array* array, U64 index) {
   END_PROFILING();
 
   return res;
-}
-
-U64 array_length(Array* array) {
-  START_PROFILING(1);
-  Assert(array != 0);
-  END_PROFILING();
-  return array->offset;
 }
 
 /* ===================================================== */

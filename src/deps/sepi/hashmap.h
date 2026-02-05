@@ -226,7 +226,7 @@ hashmap_find(HashMap* hm, Str8 key) {
   U64 i = hash % hm->capacity;
   HashMapList* list = hm->list + i;
   for (HashMapNode* hmn = list->first; hmn != 0; hmn = hmn->next) {
-    if (str8_cmp(hmn->kv.k_str, key, 0)) {
+    if (str8_equal(hmn->kv.k_str, key, 0)) {
       END_PROFILING();
       return &hmn->kv;
     }
@@ -248,7 +248,7 @@ hashmap_pop(HashMap* hm, Str8 key) {
   HashMapNode* prv = itr;
   Bool single = list->first == list->last ? TRUE : FALSE;
   for (; itr != 0; prv = itr, itr = itr->next) {
-    if (str8_cmp(itr->kv.k_str, key, 0)) {
+    if (str8_equal(itr->kv.k_str, key, 0)) {
       prv->next = itr->next;
       kv = itr->kv;
       MemZeroStruct(itr);

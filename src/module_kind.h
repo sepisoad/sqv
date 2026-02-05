@@ -87,8 +87,7 @@ typedef enum {
 /*                          API                          */
 /* ===================================================== */
 
-// KindError kind_guess_entry(UStr8 path, Kind* kind);
-KindError kind_guess_entry(Str, U32, Kind*);
+KindError kind_guess_entry(Str8, Kind*);
 KindError kind_guess_file(CStr, Kind*);
 KindError kind_guess_buffer(CStr, Kind*);
 
@@ -104,281 +103,239 @@ static KindError
 guess_file_type(CStr buf, Kind* kind) {
   START_PROFILING(1);
 
-  // TODO:
-  // use goto here!
-
   Assert(buf != 0);
   Assert(kind != 0);
 
+  KindError err = KIND_ERR_SUCCESS;
+
   if (strncmp(buf, "PACK", 4) == 0) {
     *kind = KIND_PAK;
-
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
+    goto cleanup;
   }
 
   if (strncmp(buf, "IDPO", 4) == 0) {
     *kind = KIND_MD1;
-
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
+    goto cleanup;
   }
 
+cleanup:
   END_PROFILING();
-  return KIND_ERR_INVALID;
+  return err;
 }
 
 KindError
-kind_guess_entry(Str path, U32 len, Kind* kind) {
+kind_guess_entry(Str8 path, Kind* kind) {
   START_PROFILING(1);
 
-  Assert(path != 0);
-  Assert(len > 0);
+  Assert(path.cstr != 0);
+  Assert(path.length > 0);
   Assert(kind != 0);
 
-  Str ext_base = path;
-  Str ext = path;
-  for (; *ext_base != 0; ext_base++)
-    if ('.' == *ext_base)
-      ext = ext_base;
-
-  ext++;
-  U32 extlen = ext_base - ext;
-
-  for (I32 i = 0; i < extlen; i++)
-    ext[i] = tolower(ext[i]);
-
-  if (!strncmp(ext, "pak", 3)) {
-    *kind = KIND_PAK;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "pa3", 3)) {
-    *kind = KIND_PK3;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "bin", 3)) {
-    *kind = KIND_BIN;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "dat", 3)) {
-    *kind = KIND_DAT;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "mdl", 3)) {
-    *kind = KIND_MD1;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "md2", 3)) {
-    *kind = KIND_MD2;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "md3", 3)) {
-    *kind = KIND_MD3;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "ms2", 3)) {
-    *kind = KIND_MS2;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "smd", 3)) {
-    *kind = KIND_SMD;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "bsp", 3)) {
-    *kind = KIND_BSP;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "ent", 3)) {
-    *kind = KIND_ENT;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "md5mesh", 7)) {
-    *kind = KIND_MD5MESH;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "md5anim", 7)) {
-    *kind = KIND_MD5ANIM;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "mdanim", 6)) {
-    *kind = KIND_MDANIM;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "bnvib", 5)) {
-    *kind = KIND_BNVIB;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "nav", 3)) {
-    *kind = KIND_NAV;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "map", 3)) {
-    *kind = KIND_MAP;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "raw", 3)) {
-    *kind = KIND_RAW;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "dem", 3)) {
-    *kind = KIND_DEM;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "lit", 3)) {
-    *kind = KIND_LIT;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "lights", 6)) {
-    *kind = KIND_LIGHTS;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "rtlights", 8)) {
-    *kind = KIND_RTLIGHTS;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "wad", 3)) {
-    *kind = KIND_WAD;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "lmp", 3)) {
-    *kind = KIND_LMP;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "pcx", 3)) {
-    *kind = KIND_PCX;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "jpg", 3)) {
-    *kind = KIND_JPG;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "png", 3)) {
-    *kind = KIND_PNG;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "tga", 3)) {
-    *kind = KIND_TGA;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "spr", 3)) {
-    *kind = KIND_SPR;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "spr32", 5)) {
-    *kind = KIND_SPR32;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "skin", 4)) {
-    *kind = KIND_SKIN;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "wav", 3)) {
-    *kind = KIND_WAV;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "ogg", 3)) {
-    *kind = KIND_OGG;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "mp3", 3)) {
-    *kind = KIND_MP3;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "rc", 3)) {
-    *kind = KIND_RC;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "cfg", 3)) {
-    *kind = KIND_CFG;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "txt", 3)) {
-    *kind = KIND_TXT;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
-  if (!strncmp(ext, "json", 3)) {
-    *kind = KIND_JSON;
-    END_PROFILING();
-    return KIND_ERR_SUCCESS;
-  }
-
+  KindError err = KIND_ERR_SUCCESS;
+  StringCompareFlags compare = StringCompareFlag_CaseInsensitive;
   *kind = KIND_UNKNOWN;
+
+  I32 dot_index = str8_find_last(path, '.') - 1;
+  if (dot_index < 0) {
+    err = KIND_ERR_INVALID;
+    goto cleanup;
+  }
+
+  Str8 ext = S(&path.cstr[dot_index + 1]);
+
+  if (!str8_equal(ext, S("pak"), compare)) {
+    *kind = KIND_PAK;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("pa3"), compare)) {
+    *kind = KIND_PK3;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("bin"), compare)) {
+    *kind = KIND_BIN;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("dat"), compare)) {
+    *kind = KIND_DAT;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("mdl"), compare)) {
+    *kind = KIND_MD1;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("md2"), compare)) {
+    *kind = KIND_MD2;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("md3"), compare)) {
+    *kind = KIND_MD3;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("ms2"), compare)) {
+    *kind = KIND_MS2;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("smd"), compare)) {
+    *kind = KIND_SMD;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("bsp"), compare)) {
+    *kind = KIND_BSP;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("ent"), compare)) {
+    *kind = KIND_ENT;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("md5mesh"), compare)) {
+    *kind = KIND_MD5MESH;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("md5anim"), compare)) {
+    *kind = KIND_MD5ANIM;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("mdanim"), compare)) {
+    *kind = KIND_MDANIM;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("bnvib"), compare)) {
+    *kind = KIND_BNVIB;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("nav"), compare)) {
+    *kind = KIND_NAV;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("map"), compare)) {
+    *kind = KIND_MAP;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("raw"), compare)) {
+    *kind = KIND_RAW;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("dem"), compare)) {
+    *kind = KIND_DEM;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("lit"), compare)) {
+    *kind = KIND_LIT;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("lighs"), compare)) {
+    *kind = KIND_LIGHTS;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("rtlights"), compare)) {
+    *kind = KIND_RTLIGHTS;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("wad"), compare)) {
+    *kind = KIND_WAD;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("lmp"), compare)) {
+    *kind = KIND_LMP;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("pcx"), compare)) {
+    *kind = KIND_PCX;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("jpg"), compare)) {
+    *kind = KIND_JPG;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("png"), compare)) {
+    *kind = KIND_PNG;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("tga"), compare)) {
+    *kind = KIND_TGA;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("spr"), compare)) {
+    *kind = KIND_SPR;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("spr32"), compare)) {
+    *kind = KIND_SPR32;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("skin"), compare)) {
+    *kind = KIND_SKIN;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("wav"), compare)) {
+    *kind = KIND_WAV;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("ogg"), compare)) {
+    *kind = KIND_OGG;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("mp3"), compare)) {
+    *kind = KIND_MP3;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("rc"), compare)) {
+    *kind = KIND_RC;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("cfg"), compare)) {
+    *kind = KIND_CFG;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("txt"), compare)) {
+    *kind = KIND_TXT;
+    goto cleanup;
+  }
+
+  if (!str8_equal(ext, S("json"), compare)) {
+    *kind = KIND_JSON;
+    goto cleanup;
+  }
+
+cleanup:
   END_PROFILING();
-  return KIND_ERR_SUCCESS;
+  return err;
 }
 
 KindError
@@ -387,6 +344,8 @@ kind_guess_file(CStr path, Kind* kind) {
 
   Assert(path != 0);
   Assert(kind != 0);
+
+  KindError err = KIND_ERR_SUCCESS;
 
   char buf[MAXBUFSIZE + 1] = {0};
 
@@ -402,8 +361,11 @@ kind_guess_file(CStr path, Kind* kind) {
 
   fclose(f);
 
+  err = guess_file_type(buf, kind);
+
+cleanup:
   END_PROFILING();
-  return guess_file_type(buf, kind);
+  return err;
 }
 
 KindError
@@ -413,11 +375,16 @@ kind_guess_buffer(CStr data, Kind* kind) {
   Assert(data != 0);
   Assert(kind != 0);
 
+  KindError err = KIND_ERR_SUCCESS;
+
   char buf[9] = {0};
   Assert(memcpy(buf, data, 8) != 0);
 
+  err = guess_file_type(buf, kind);
+
+cleanup:
   END_PROFILING();
-  return guess_file_type(buf, kind);
+  return err;
 }
 
 /* ===================================================== */

@@ -50,9 +50,10 @@ Nothing tree_destroy(Tree* tree);
 TreeNode* tree_push(Tree* tree, TreeNode* node, RawPtr data);
 
 #define tree_node_length(node) (node)->children->offset
-#define tree_node_get(node, index)  array_get((node)->children, (index))
+#define tree_node_get(node, index) array_get((node)->children, (index))
 #define tree_root(tree) (tree)->root
 #define tree_root_data(tree) (tree)->root->data
+#define tree_node_data(node) (node)->data
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -73,12 +74,14 @@ tree_create(Arena* arena, RawPtr data, Sz item_size, Sz item_alignment) {
   tree->arena = arena;
   tree->meta.item_size = item_size;
   tree->meta.item_alignment = item_alignment;
+  // tree->meta.item_size = sizeof(TreeNode);
+  // tree->meta.item_alignment = AlignOf(TreeNode);
 
   tree->root = arena_push(arena, sizeof(TreeNode), AlignOf(TreeNode), TRUE);
   tree->root->data = data;
   tree->root->parent = 0;
-  tree->root->children = array_create(tree->arena, tree->meta.item_size,
-                                      tree->meta.item_alignment);
+  tree->root->children =
+      array_create(tree->arena, sizeof(TreeNode), AlignOf(TreeNode));
 
   END_PROFILING();
   return tree;
@@ -102,14 +105,14 @@ tree_push(Tree* tree, TreeNode* node, RawPtr data) {
   Assert(node != 0);
   Assert(node->children != 0);
 
-  TreeNode data_node = {
+  TreeNode child = {
       .data = data,
       .parent = node,
-      .children = array_create(tree->arena, tree->meta.item_size,
-                               tree->meta.item_alignment),
+      .children =
+          array_create(tree->arena, sizeof(TreeNode), AlignOf(TreeNode)),
   };
 
-  TreeNode* stored_node = array_push(node->children, &data_node);
+  TreeNode* stored_node = array_push(node->children, &child);
 
   END_PROFILING();
   return stored_node;
