@@ -141,7 +141,7 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 #define MemZeroStruct(ptr) MemZero((ptr), sizeof(*(ptr)))
 #define MemZeroArray(ptr) MemZero((ptr), sizeof(ptr))
 #define MemZeroTyped(ptr, count) MemZero((ptr), sizeof(*(ptr)) * (count))
-#define MemCopy(SRC, DST, SZ) memcpy((SRC), (DST), (SZ))
+#define MemCopy(DST, SRC, SZ) memcpy((DST), (SRC), (SZ))
 #define MemoryCompare(a, b, size) memcmp((a), (b), (size))
 #define MemoryEq(a, b, z) (MemoryCompare((a), (b), (z)) == 0)
 #define StructEq(a, b) MemoryEq((a), (b), sizeof(*(a)))
@@ -217,6 +217,8 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 
 #define Glue_(A, B) A##B
 #define Glue(A, B) Glue_(A, B)
+
+#define API(...)
 
 /* ===================================================== */
 /*                      ASSERTIONS                       */

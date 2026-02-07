@@ -43,7 +43,6 @@ Stack* stack_create(Arena* arena);
 Nothing stack_destroy(Stack* stack);
 Nothing stack_push(Stack* stack, RawPtr ptr);
 RawPtr stack_pop(Stack* stack);
-
 #define stack_length(s) (s)->length
 
 /* ===================================================== */
