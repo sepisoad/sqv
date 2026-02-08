@@ -91,7 +91,7 @@
     U64 seg = ARRAY_EX_GET_IDX_SEGMENT_NORMALIZED(index);                      \
     U64 base = (seg > 1) ? ARRAY_EX_SEGMENT_CAPACITY(seg - 1) : 0;             \
     U64 slot = index - base;                                                   \
-    res = array->segments[seg - 1] + (sizeof(TYPE) * slot);                    \
+    res = array->segments[seg - 1] + slot;                                     \
                                                                                \
     END_PROFILING();                                                           \
     return res;                                                                \

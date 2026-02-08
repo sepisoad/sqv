@@ -15,9 +15,10 @@
 
 #include "deps/sepi/arena.h"
 #include "deps/sepi/endian.h"
-#include "deps/sepi/tree.h"
-#include "deps/sepi/stack.h"
+#include "deps/sepi/tree_ex.h"
+#include "deps/sepi/stack_ex.h"
 #include "deps/sepi/hashmap.h"
+#include "deps/sepi/map_ex.h"
 #include "deps/sepi/string.h"
 #include "deps/sepi/io.h"
 
@@ -57,8 +58,8 @@ struct PakMeta {
   U32 entries_count;
 };
 
-typedef struct PakNode PakNode;
-struct PakNode {
+typedef struct PakItem PakItem;
+struct PakItem {
   Str8 name;
   Str8 path;
   Sz data_size;
@@ -66,10 +67,17 @@ struct PakNode {
   Bool is_directory;
 };
 
+DefineTree(PakItem*, PakItem, pak_item);
+DefineMap(TreePakItemNode*, TreePakItemNode, tree_pak_item_node);
+DefineStack(TreePakItemNode*, TreePakItemNode, tree_pak_item_node);
+
+typedef struct TreeManager TreeManager;
+struct TreeManager {};
+
 typedef struct Pak Pak;
 struct Pak {
   PakMeta meta;
-  TreeOf(PakNode) tree;
+  TreePakItem tree;
   Arena* arena;
 };
 
@@ -81,7 +89,7 @@ PakError pak_load_from_file(Pak* pak, IONode* node);
 Nothing pak_unload(Pak* pak);
 PakError pak_extract(Pak* pak, IONode* node, Str8 out_dir);
 PakError pak_extract_item(Pak* pak,
-                          TreeNode* tree_node,
+                          TreePakItemNode* pak_item_node_for_path,
                           IONode* io_node,
                           Str8 out_dir);
 PakError pak_generate(Pak* pak, IONode* node);
@@ -188,48 +196,55 @@ pak_get_name_at_depth(CStr path,
 /* ===================================================== */
 
 static PakError
-pak_read_entries_from_file(Pak* pak, IONode* node) {
+pak_read_entries_from_file(Pak* pak, IONode* file_node) {
   START_PROFILING(1);
 
   Assert(pak != 0);
-  Assert(node != 0);
-  Assert(node->file != 0);
+  Assert(file_node != 0);
+  Assert(file_node->file != 0);
 
   PakError err = PAK_ERR_SUCCESS;
   Arena* arena = pak->arena;
-  HashMap* map = hashmap_init(arena, 64);
-  PakRawEntry pak_raw_entry = {0};
-  U32 entry_size = 0;
-  U32 entry_offset = 0;
-  PakNode* pak_node_root =
-      arena_push(arena, sizeof(PakNode), AlignOf(PakNode), TRUE);
 
-  pak_node_root->name = str8_clone(arena, S(".")),
-  pak_node_root->path = str8_clone(arena, S(".")), pak_node_root->data_size = 0,
-  pak_node_root->data_offset = 0, pak_node_root->is_directory = TRUE,
+  MapTreePakItemNode map = map_tree_pak_item_node_make(arena, 64);
 
-  pak->tree =
-      tree_create(arena, pak_node_root, sizeof(PakNode), AlignOf(PakNode));
+  PakItem* root_pak_item =
+      arena_push(arena, sizeof(PakItem), AlignOf(PakItem), TRUE);
+
+  pak->tree = tree_pak_item_make(arena);
+
+  root_pak_item->name = str8_clone(arena, S("."));
+  root_pak_item->path = str8_clone(arena, S("."));
+  root_pak_item->data_size = 0;
+  root_pak_item->data_offset = 0;
+  root_pak_item->is_directory = TRUE;
+
+  pak->tree.root.data = root_pak_item;
+
+  // tree_pak_item_push(&pak->tree, &pak->tree.root, root_pak_item);
 
   for (U32 index = 0; index < pak->meta.entries_count; index++) {
-    char pak_entry[PAK_ENTRY_NAME_LEN] = {0};
-    IO_BUF(node, PAK_ENTRY_NAME_LEN, pak_entry);
-    IO_I32(node, &entry_offset);
-    IO_I32(node, &entry_size);
+    char entry_str[PAK_ENTRY_NAME_LEN] = {0};
+    U32 entry_size = 0;
+    U32 entry_offset = 0;
 
-    U32 entry_depth = 0;
-    err = pak_get_path_depth(pak_entry, PAK_ENTRY_NAME_LEN, &entry_depth);
+    IO_BUF(file_node, PAK_ENTRY_NAME_LEN, entry_str);
+    IO_I32(file_node, &entry_offset);
+    IO_I32(file_node, &entry_size);
+
+    U32 path_depth = 0;
+    err = pak_get_path_depth(entry_str, PAK_ENTRY_NAME_LEN, &path_depth);
     if (err != PAK_ERR_SUCCESS) {
       goto cleanup;
     }
 
-    TreeNode* current_tree_node = tree_root(pak->tree);
+    TreePakItemNode* current_pak_item_node = &pak->tree.root;
 
-    for (U32 depth_index = 0; depth_index < entry_depth + 1; depth_index++) {
+    for (U32 depth_index = 0; depth_index < path_depth + 1; depth_index++) {
       char path[PAK_ENTRY_NAME_LEN] = {0};
       char name[PAK_ENTRY_NAME_LEN] = {0};
 
-      err = pak_get_path_at_depth(pak_entry, PAK_ENTRY_NAME_LEN,
+      err = pak_get_path_at_depth(entry_str, PAK_ENTRY_NAME_LEN,
                                   depth_index + 1, &path[0]);
       if (err != PAK_ERR_SUCCESS) {
         goto cleanup;
@@ -240,31 +255,32 @@ pak_read_entries_from_file(Pak* pak, IONode* node) {
         goto cleanup;
       }
 
-      HashMapKV* kv = hashmap_find(map, S(path));
-      if (kv) {
-        current_tree_node = (TreeNode*)kv->v_rawptr;
+      TreePakItemNode* pak_item_node_for_path =
+          map_tree_pak_item_node_find(&map, S(path));
+      if (pak_item_node_for_path) {
+        current_pak_item_node = pak_item_node_for_path;
         continue;
       }
 
-      PakNode* new_pak_node =
-          arena_push(pak->arena, sizeof(PakNode), AlignOf(PakNode), TRUE);
+      PakItem* new_pak_item =
+          arena_push(pak->arena, sizeof(PakItem), AlignOf(PakItem), TRUE);
 
-      new_pak_node->name = str8_clone(pak->arena, S(name));
-      new_pak_node->path = str8_clone(pak->arena, S(path));
+      new_pak_item->name = str8_clone(pak->arena, S(name));
+      new_pak_item->path = str8_clone(pak->arena, S(path));
 
-      TreeNode* new_tree_node =
-          tree_push(pak->tree, current_tree_node, new_pak_node);
-      hashmap_push_rawptr(arena, map, new_pak_node->path,
-                          (RawPtr)new_tree_node);
+      TreePakItemNode* new_child_pak_item_node =
+          tree_pak_item_push(&pak->tree, current_pak_item_node, new_pak_item);
+      map_tree_pak_item_node_push(&map, new_pak_item->path,
+                                  new_child_pak_item_node);
 
-      if (depth_index >= entry_depth) {
-        new_pak_node->data_size = entry_size;
-        new_pak_node->data_offset = entry_offset;
+      if (depth_index >= path_depth) {
+        new_pak_item->data_size = entry_size;
+        new_pak_item->data_offset = entry_offset;
         continue;
       }
 
-      current_tree_node = new_tree_node;
-      new_pak_node->is_directory = TRUE;
+      current_pak_item_node = new_child_pak_item_node;
+      new_pak_item->is_directory = TRUE;
     }
   }
 
@@ -276,11 +292,11 @@ cleanup:
 /* ===================================================== */
 
 PakError
-pak_load_from_file(Pak* pak, IONode* node) {
+pak_load_from_file(Pak* pak, IONode* file_node) {
   START_PROFILING(1);
 
   Assert(pak != 0);
-  Assert(node != 0);
+  Assert(file_node != 0);
 
   PakError err = PAK_ERR_SUCCESS;
 
@@ -290,10 +306,10 @@ pak_load_from_file(Pak* pak, IONode* node) {
 
   pak->arena = arena_create();
 
-  IO_BUF(node, PAK_MAGIC_CODE_LEN, magic_code);
-  IO_I32(node, &offset);
-  IO_I32(node, &size);
-  IO_SET(node, offset);
+  IO_BUF(file_node, PAK_MAGIC_CODE_LEN, magic_code);
+  IO_I32(file_node, &offset);
+  IO_I32(file_node, &size);
+  IO_SET(file_node, offset);
 
   if ((offset <= 0) || (size <= 0) || (magic_code[0] != 'P') ||
       (magic_code[1] != 'A') || (magic_code[2] != 'C') ||
@@ -303,7 +319,7 @@ pak_load_from_file(Pak* pak, IONode* node) {
   }
 
   pak->meta.entries_count = size / sizeof(PakRawEntry);
-  err = pak_read_entries_from_file(pak, node);
+  err = pak_read_entries_from_file(pak, file_node);
   if (err != PAK_ERR_SUCCESS) {
     goto cleanup;
   }
@@ -334,31 +350,32 @@ pak_extract(Pak* pak, IONode* ionode, Str8 out_dir) {
 
   PakError err = PAK_ERR_SUCCESS;
   ArenaScratch scratch = arena_scratch_begin(pak->arena);
-  TreeNode* tree_node = pak->tree->root;
-  Stack* stack = stack_create(scratch.arena);
+  TreePakItemNode* pak_item_node_for_path = &pak->tree.root;
+  StackTreePakItemNode stack = stack_tree_pak_item_node_make(scratch.arena);
 
-  stack_push(stack, tree_node);
+  stack_tree_pak_item_node_push(&stack, pak_item_node_for_path);
 
-  while (stack->length > 0) {
-    tree_node = stack_pop(stack);
-    if (0 == tree_node) {
+  while (stack.length > 0) {
+    pak_item_node_for_path = stack_tree_pak_item_node_pop(&stack);
+    if (0 == pak_item_node_for_path) {
       break;
     }
 
-    U32 children_count = tree_node_length(tree_node);
+    U32 children_count = tree_pak_item_node_length(pak_item_node_for_path);
     for (U32 index = 0; index < children_count; index++) {
-      TreeNode* child_node = tree_node_get(tree_node, index);
-      if (0 == child_node) {
+      TreePakItemNode* current_child =
+          tree_pak_item_node_get_child(pak_item_node_for_path, index);
+      PakItem* pak_item = current_child->data;
+      if (0 == pak_item) {
         err = PAK_ERR_EXTRACT;
         goto cleanup;
       }
 
-      PakNode* pak_node = (PakNode*)child_node->data;
       Str8 full_path_str =
-          str8_join(scratch.arena, out_dir, pak_node->path, IO_PATH_SEPARATOR);
+          str8_join(scratch.arena, out_dir, pak_item->path, IO_PATH_SEPARATOR);
 
-      if (TRUE == pak_node->is_directory) {
-        stack_push(stack, child_node);
+      if (TRUE == pak_item->is_directory) {
+        stack_tree_pak_item_node_push(&stack, current_child);
 
         IOError ioerr = io_make_directory(full_path_str);
         if (IO_ERR_SUCCESS != ioerr) {
@@ -367,17 +384,17 @@ pak_extract(Pak* pak, IONode* ionode, Str8 out_dir) {
         }
       } else {
         CBuf src_buffer =
-            arena_push(scratch.arena, pak_node->data_size, AlignOf(U8), TRUE);
+            arena_push(scratch.arena, pak_item->data_size, AlignOf(U8), TRUE);
 
-        IO_SET(ionode, pak_node->data_offset);
-        IO_BUF(ionode, pak_node->data_size, src_buffer);
-        io_dump(full_path_str, buf8(src_buffer, pak_node->data_size));
+        IO_SET(ionode, pak_item->data_offset);
+        IO_BUF(ionode, pak_item->data_size, src_buffer);
+        io_dump(full_path_str, buf8(src_buffer, pak_item->data_size));
       }
     }
   }
 
 cleanup:
-  stack_destroy(stack);
+  stack_tree_pak_item_node_clean(&stack);
   arena_scratch_end(scratch);
   END_PROFILING();
   return err;
@@ -386,53 +403,57 @@ cleanup:
 /* ===================================================== */
 
 PakError
-pak_extract_item(Pak* pak, TreeNode* tree_node, IONode* io_node, Str8 out_dir) {
+pak_extract_item(Pak* pak,
+                 TreePakItemNode* pak_item_node_for_path,
+                 IONode* io_node,
+                 Str8 out_dir) {
   START_PROFILING(1);
 
   PakError err = PAK_ERR_SUCCESS;
   ArenaScratch scratch = arena_scratch_begin(pak->arena);
-  Stack* stack = stack_create(scratch.arena);
+  StackTreePakItemNode stack = stack_tree_pak_item_node_make(scratch.arena);
 
-  stack_push(stack, tree_node);
+  stack_tree_pak_item_node_push(&stack, pak_item_node_for_path);
 
-  if (0 == tree_node_length(tree_node)) {
+  if (0 == tree_pak_item_node_length(pak_item_node_for_path)) {
     // it's a file!
-    PakNode* pak_node = (PakNode*)tree_node->data;
-    if (pak_node->is_directory) {
-      // wierd, it's an empty directory, we won't do anything here
+    PakItem* pak_item = pak_item_node_for_path->data;
+    if (pak_item->is_directory) {
+      // fuck, it's an empty directory, we won't do anything here
       goto cleanup;
     }
     Str8 full_path_str =
-          str8_join(scratch.arena, out_dir, pak_node->name, IO_PATH_SEPARATOR);
+        str8_join(scratch.arena, out_dir, pak_item->name, IO_PATH_SEPARATOR);
     CBuf src_buffer =
-        arena_push(scratch.arena, pak_node->data_size, AlignOf(U8), TRUE);
+        arena_push(scratch.arena, pak_item->data_size, AlignOf(U8), TRUE);
 
-    IO_SET(io_node, pak_node->data_offset);
-    IO_BUF(io_node, pak_node->data_size, src_buffer);
-    io_dump(full_path_str, buf8(src_buffer, pak_node->data_size));
+    IO_SET(io_node, pak_item->data_offset);
+    IO_BUF(io_node, pak_item->data_size, src_buffer);
+    io_dump(full_path_str, buf8(src_buffer, pak_item->data_size));
     goto cleanup;
   }
 
-  while (stack->length > 0) {
-    tree_node = stack_pop(stack);
-    if (0 == tree_node) {
+  while (stack.length > 0) {
+    pak_item_node_for_path = stack_tree_pak_item_node_pop(&stack);
+    if (0 == pak_item_node_for_path) {
       break;
     }
 
-    U32 children_count = tree_node_length(tree_node);
+    U32 children_count = tree_pak_item_node_length(pak_item_node_for_path);
     for (U32 index = 0; index < children_count; index++) {
-      TreeNode* child_node = tree_node_get(tree_node, index);
-      if (0 == child_node) {
+      TreePakItemNode* current_child =
+          tree_pak_item_node_get_child(pak_item_node_for_path, index);
+      PakItem* pak_item = current_child->data;
+      if (0 == pak_item) {
         err = PAK_ERR_EXTRACT;
         goto cleanup;
       }
 
-      PakNode* pak_node = (PakNode*)child_node->data;
       Str8 full_path_str =
-          str8_join(scratch.arena, out_dir, pak_node->path, IO_PATH_SEPARATOR);
+          str8_join(scratch.arena, out_dir, pak_item->path, IO_PATH_SEPARATOR);
 
-      if (TRUE == pak_node->is_directory) {
-        stack_push(stack, child_node);
+      if (TRUE == pak_item->is_directory) {
+        stack_tree_pak_item_node_push(&stack, current_child);
 
         IOError ioerr = io_make_nested_directory(full_path_str);
         if (IO_ERR_SUCCESS != ioerr) {
@@ -441,17 +462,17 @@ pak_extract_item(Pak* pak, TreeNode* tree_node, IONode* io_node, Str8 out_dir) {
         }
       } else {
         CBuf src_buffer =
-            arena_push(scratch.arena, pak_node->data_size, AlignOf(U8), TRUE);
+            arena_push(scratch.arena, pak_item->data_size, AlignOf(U8), TRUE);
 
-        IO_SET(io_node, pak_node->data_offset);
-        IO_BUF(io_node, pak_node->data_size, src_buffer);
-        io_dump(full_path_str, buf8(src_buffer, pak_node->data_size));
+        IO_SET(io_node, pak_item->data_offset);
+        IO_BUF(io_node, pak_item->data_size, src_buffer);
+        io_dump(full_path_str, buf8(src_buffer, pak_item->data_size));
       }
     }
   }
 
 cleanup:
-  stack_destroy(stack);
+  stack_tree_pak_item_node_clean(&stack);
   arena_scratch_end(scratch);
   END_PROFILING();
   return err;

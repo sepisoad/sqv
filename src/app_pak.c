@@ -24,8 +24,6 @@
 #include "deps/sokol/sokol_nuklear.h"
 #include "deps/sokol/sokol_time.h"
 #include "deps/sepi/base.h"
-#include "deps/sepi/hashmap.h"
-#include "deps/sepi/array.h"
 #include "deps/sepi/io.h"
 
 #include "shaders/default.glsl.h"
@@ -90,8 +88,8 @@ static struct {
   Bool is_packaging_requested;
   AppPakMode mode;
   Pak pak;
-  TreeNode* tree_current_node;
-  TreeNode* requested_extracting_item;
+  TreePakItemNode* tree_current_node;
+  TreePakItemNode* requested_extracting_item;
   IONode input_node;
   IONode* current_dir_node;
   Str8 input_path;
@@ -150,11 +148,11 @@ static Nothing app_pak_draw_widget_dir_explorer_area(struct nk_context* ctx,
                                                      U32 window_width,
                                                      U32 window_height);
 static Nothing app_pak_draw_widget_explorer_pak_item(struct nk_context* ctx,
-                                                     TreeNode* node);
+                                                     TreePakItemNode* node);
 static Nothing app_pak_draw_widget_explorer_dir_item(struct nk_context* ctx,
                                                      IONode* node);
 static Nothing app_pak_draw_widget_explorer_pak_icon(struct nk_context* ctx,
-                                                     TreeNode* node,
+                                                     TreePakItemNode* node,
                                                      Bool is_directory,
                                                      struct nk_image* image,
                                                      Str8 text);
@@ -598,7 +596,7 @@ app_pak_handle_pak(Str8 path) {
 
   g_state.mode = APP_PAK_MODE_PAK_LOADED;
   g_state.input_path = path;
-  g_state.tree_current_node = tree_root(g_state.pak.tree);
+  g_state.tree_current_node = &g_state.pak.tree.root;
 
 cleanup:
   END_PROFILING();
@@ -802,8 +800,9 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
                nk_rect(0, 0, window_width, STYLE.toolbar.height),
                NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BORDER)) {
     nk_layout_row_template_begin(ctx, STYLE.toolbar.icon.height);
+
     nk_layout_row_template_push_static(ctx, STYLE.toolbar.icon.height);
-    if (g_state.tree_current_node != tree_root(g_state.pak.tree)) {
+    if (g_state.tree_current_node != &g_state.pak.tree.root) {
       nk_layout_row_template_push_static(ctx, STYLE.toolbar.icon.height);
       nk_layout_row_template_push_static(ctx, STYLE.toolbar.icon.height);
     }
@@ -814,9 +813,9 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
       g_state.is_extracting_requested = TRUE;
     }
 
-    if (g_state.tree_current_node != tree_root(g_state.pak.tree)) {
+    if (g_state.tree_current_node != &g_state.pak.tree.root) {
       if (nk_button_image(ctx, g_icons.home.icon_image)) {
-        g_state.tree_current_node = tree_root(g_state.pak.tree);
+        g_state.tree_current_node = &g_state.pak.tree.root;
       }
 
       if (nk_button_image(ctx, g_icons.back.icon_image)) {
@@ -826,8 +825,9 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
       }
     }
 
-    PakNode* pnode = (PakNode*)g_state.tree_current_node->data;
-    nk_label(ctx, pnode->path.cstr, NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
+    PakItem* pak_item = (PakItem*)g_state.tree_current_node->data;
+    nk_label(ctx, pak_item->path.cstr,
+             NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
   }
   nk_end(ctx);
 
@@ -881,14 +881,15 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
             g_state.mode = APP_PAK_MODE_FAILED;
           }
         } else {
-          PakError perr =
-              pak_extract_item(&g_state.pak, g_state.requested_extracting_item, &g_state.input_node,
-                               S(g_state.export_path_buffer));
+          PakError perr = pak_extract_item(
+              &g_state.pak, g_state.requested_extracting_item,
+              &g_state.input_node, S(g_state.export_path_buffer));
           if (PAK_ERR_SUCCESS != perr) {
-            PakNode* pnode = (PakNode*)g_state.requested_extracting_item->data;
+            PakItem* pak_item =
+                (PakItem*)g_state.requested_extracting_item->data;
             snprintf(g_state.error_text, APP_PAK_MAX_ERROR_LENGTH,
-                     "failed to extract item '%s' into '%s'", pnode->name.cstr,
-                     g_state.export_path_buffer);
+                     "failed to extract item '%s' into '%s'",
+                     pak_item->name.cstr, g_state.export_path_buffer);
             g_state.mode = APP_PAK_MODE_FAILED;
           }
         }
@@ -1058,13 +1059,13 @@ app_pak_draw_widget_pak_explorer_area(struct nk_context* ctx,
                                       U32 window_height) {
   START_PROFILING(1);
 
-  ArrayOf(PakNode) children = g_state.tree_current_node->children;
-  U32 items_count = array_length(children);
+  TreePakItemNode* tree_nodes = g_state.tree_current_node;
+  U32 nodes_count = tree_pak_item_node_length(tree_nodes);
   U32 columns = (window_width + STYLE.explorer.icon.gap) /
                 (STYLE.explorer.icon.text.width + STYLE.explorer.icon.gap);
   columns = columns ? columns : 1;
-  U32 rows = (items_count / columns);
-  U32 remainder = items_count % columns;
+  U32 rows = (nodes_count / columns);
+  U32 remainder = nodes_count % columns;
   U32 row_height = STYLE.explorer.icon.image.height +
                    STYLE.explorer.icon.text.height + STYLE.explorer.icon.gap +
                    STYLE.explorer.padding.x;
@@ -1087,16 +1088,18 @@ app_pak_draw_widget_pak_explorer_area(struct nk_context* ctx,
     U32 index = 0;
     for (U32 row = 0; row < rows; row++) {
       for (U32 column = 0; column < columns; column++) {
-        if (index >= items_count)
+        if (index >= nodes_count)
           break;
-        TreeNode* child = array_get(children, index);
+        TreePakItemNode* child =
+            tree_pak_item_node_get_child(tree_nodes, index);
         index++;
 
         app_pak_draw_widget_explorer_pak_item(ctx, child);
       }
     }
     for (U32 column = 0; column < remainder; column++) {
-      TreeNode* child = array_get(children, index);
+      TreePakItemNode* child =
+          tree_pak_item_node_get_child(tree_nodes, index);
       index++;
 
       app_pak_draw_widget_explorer_pak_item(ctx, child);
@@ -1167,20 +1170,24 @@ app_pak_draw_widget_dir_explorer_area(struct nk_context* ctx,
 /* ===================================================== */
 
 static Nothing
-app_pak_draw_widget_explorer_pak_item(struct nk_context* ctx, TreeNode* node) {
+app_pak_draw_widget_explorer_pak_item(struct nk_context* ctx,
+                                      TreePakItemNode* node) {
   START_PROFILING(1);
 
-  PakNode* pnode = (PakNode*)node->data;
+  PakItem* pak_item = (PakItem*)node->data;
+  if (!pak_item) {
+    Dbg("FUCK");
+  }
 
   if (nk_group_begin(
           ctx, "",
           NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_NO_INPUT | NK_WINDOW_BORDER)) {
-    if (pnode->is_directory) {
+    if (pak_item->is_directory) {
       app_pak_draw_widget_explorer_pak_icon(
-          ctx, node, TRUE, &g_icons.folder.icon_image, pnode->name);
+          ctx, node, TRUE, &g_icons.folder.icon_image, pak_item->name);
     } else {
       app_pak_draw_widget_explorer_pak_icon(
-          ctx, node, FALSE, &g_icons.file.icon_image, pnode->name);
+          ctx, node, FALSE, &g_icons.file.icon_image, pak_item->name);
     }
     nk_group_end(ctx);
   }
@@ -1214,7 +1221,7 @@ app_pak_draw_widget_explorer_dir_item(struct nk_context* ctx, IONode* node) {
 
 static Nothing
 app_pak_draw_widget_explorer_pak_icon(struct nk_context* ctx,
-                                      TreeNode* node,
+                                      TreePakItemNode* node,
                                       Bool is_directory,
                                       struct nk_image* image,
                                       Str8 text) {
