@@ -8,9 +8,8 @@
 #include "../tracy/tracy.h"
 
 #include "base.h"
-#include "string.h"
 #include "arena.h"
-#include "array.h"
+#include "array_ex.h"
 
 /* ===================================================== */
 /*                       CONSTANTS                       */
@@ -22,101 +21,93 @@
 /*                         TYPES                         */
 /* ===================================================== */
 
-typedef struct TreeNode TreeNode;
-struct TreeNode {
-  RawPtr data;
-  TreeNode* parent;
-  ArrayOf(TreeNode) children;
-};
-
-typedef struct Tree Tree;
-struct Tree {
-  Arena* arena;
-  TreeNode* root;
-  struct {
-    Sz item_size;
-    Sz item_alignment;
-  } meta;
-};
-
-#define TreeOf(T) Tree*
+#define DefineTree(TYPE, CLASS, METHOD)                                      \
+  typedef struct Tree##CLASS##Node Tree##CLASS##Node;                        \
+  typedef struct Tree##CLASS Tree##CLASS;                                    \
+  typedef struct ArrayTree##CLASS##Node ArrayTree##CLASS##Node;              \
+                                                                             \
+  struct Tree##CLASS##Node {                                                 \
+    TYPE data;                                                               \
+    Tree##CLASS##Node* parent;                                               \
+    ArrayTree##CLASS##Node* children;                                        \
+  };                                                                         \
+                                                                             \
+  struct Tree##CLASS {                                                       \
+    Tree##CLASS##Node root;                                                  \
+    Arena* arena;                                                            \
+  };                                                                         \
+                                                                             \
+  DefineArray(Tree##CLASS##Node, Tree##CLASS##Node, tree_##METHOD##_node);   \
+                                                                             \
+  Tree##CLASS tree_##METHOD##_make(Arena* arena) {                           \
+    START_PROFILING(1);                                                      \
+                                                                             \
+    Assert(arena != 0);                                                      \
+                                                                             \
+    Tree##CLASS tree;                                                        \
+                                                                             \
+    tree.root.children = arena_push(arena, sizeof(ArrayTree##CLASS##Node),   \
+                                    AlignOf(ArrayTree##CLASS##Node), TRUE);  \
+                                                                             \
+    array_tree_##METHOD##_node_init(arena, tree.root.children);              \
+                                                                             \
+    tree.arena = arena;                                                      \
+    tree.root.parent = 0;                                                    \
+                                                                             \
+    END_PROFILING();                                                         \
+    return tree;                                                             \
+  }                                                                          \
+                                                                             \
+  Tree##CLASS##Node* tree_##METHOD##_push(                                   \
+      Tree##CLASS* tree, Tree##CLASS##Node* node, TYPE data) {               \
+    START_PROFILING(1);                                                      \
+                                                                             \
+    Assert(tree != 0);                                                       \
+    Assert(node != 0);                                                       \
+                                                                             \
+    ArrayTree##CLASS##Node* children =                                       \
+        arena_push(tree->arena, sizeof(ArrayTree##CLASS##Node),              \
+                   AlignOf(ArrayTree##CLASS##Node), TRUE);                   \
+                                                                             \
+    array_tree_##METHOD##_node_init(tree->arena, children);                  \
+                                                                             \
+    Tree##CLASS##Node child = {                                              \
+        .data = data,                                                        \
+        .parent = node,                                                      \
+        .children = children,                                                \
+    };                                                                       \
+                                                                             \
+    Tree##CLASS##Node* stored_node =                                         \
+        array_tree_##METHOD##_node_push(node->children, &child);             \
+                                                                             \
+    END_PROFILING();                                                         \
+    return stored_node;                                                      \
+  }                                                                          \
+                                                                             \
+  U64 tree_##METHOD##_node_length(Tree##CLASS##Node* node) {                 \
+    return array_tree_##METHOD##_node_length(node->children);                \
+  }                                                                          \
+                                                                             \
+  Tree##CLASS##Node* tree_##METHOD##_node_get_child(Tree##CLASS##Node* node, \
+                                                    U64 index) {             \
+    return array_tree_##METHOD##_node_get(node->children, index);            \
+  }                                                                          \
+                                                                             \
+  TYPE tree_##METHOD##_node_get_data(Tree##CLASS##Node* node, U64 index) {   \
+    return array_tree_##METHOD##_node_get(node->children, index)->data;      \
+  }
 
 /* ===================================================== */
 /*                          API                          */
 /* ===================================================== */
 
-Tree* tree_create(Arena* arena, RawPtr data, Sz item_size, Sz item_alignment);
-Nothing tree_destroy(Tree* tree);
-TreeNode* tree_push(Tree* tree, TreeNode* node, RawPtr data);
-
-#define tree_node_length(node) (node)->children->offset
-#define tree_node_get(node, index) array_get((node)->children, (index))
-#define tree_root(tree) (tree)->root
-#define tree_root_data(tree) (tree)->root->data
-#define tree_node_data(node) (node)->data
+// --
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
 /* ===================================================== */
 
 #ifdef SEPI_TREE_IMPLEMENTATION
-
-SLAVE_PROFILING_CONTEXT;
-
-Tree*
-tree_create(Arena* arena, RawPtr data, Sz item_size, Sz item_alignment) {
-  START_PROFILING(1);
-
-  Assert(arena != 0);
-
-  Tree* tree = arena_push(arena, sizeof(Tree), AlignOf(Tree), TRUE);
-
-  tree->arena = arena;
-  tree->meta.item_size = item_size;
-  tree->meta.item_alignment = item_alignment;
-  // tree->meta.item_size = sizeof(TreeNode);
-  // tree->meta.item_alignment = AlignOf(TreeNode);
-
-  tree->root = arena_push(arena, sizeof(TreeNode), AlignOf(TreeNode), TRUE);
-  tree->root->data = data;
-  tree->root->parent = 0;
-  tree->root->children =
-      array_create(tree->arena, sizeof(TreeNode), AlignOf(TreeNode));
-
-  END_PROFILING();
-  return tree;
-}
-
-Nothing
-tree_destroy(Tree* tree) {
-  START_PROFILING(1);
-
-  Assert(tree != 0);
-  MemZero(tree, sizeof(Tree));
-
-  END_PROFILING();
-}
-
-TreeNode*
-tree_push(Tree* tree, TreeNode* node, RawPtr data) {
-  START_PROFILING(1);
-
-  Assert(data != 0);
-  Assert(node != 0);
-  Assert(node->children != 0);
-
-  TreeNode child = {
-      .data = data,
-      .parent = node,
-      .children =
-          array_create(tree->arena, sizeof(TreeNode), AlignOf(TreeNode)),
-  };
-
-  TreeNode* stored_node = array_push(node->children, &child);
-
-  END_PROFILING();
-  return stored_node;
-}
 
 /* ===================================================== */
 /*                          END                          */

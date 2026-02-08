@@ -15,10 +15,10 @@
 
 #include "deps/sepi/arena.h"
 #include "deps/sepi/endian.h"
-#include "deps/sepi/tree_ex.h"
-#include "deps/sepi/stack_ex.h"
-#include "deps/sepi/hashmap.h"
-#include "deps/sepi/map_ex.h"
+#include "deps/sepi/tree.h"
+#include "deps/sepi/stack.h"
+#include "deps/sepi/map.h"
+#include "deps/sepi/map.h"
 #include "deps/sepi/string.h"
 #include "deps/sepi/io.h"
 

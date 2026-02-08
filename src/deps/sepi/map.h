@@ -1,5 +1,5 @@
-#ifndef SEPI_MAP_EX_H
-#define SEPI_MAP_EX_H
+#ifndef SEPI_MAP_H
+#define SEPI_MAP_H
 
 /* ===================================================== */
 /*                     DEPENDENCIES                      */
@@ -21,8 +21,8 @@
 /* ===================================================== */
 
 typedef enum {
-  MAP_EX_ERR_SUCCESS = 1,
-  MAP_EX_ERR__COUNT,
+  MAP_ERR_SUCCESS = 1,
+  MAP_ERR__COUNT,
 } MapError;
 
 #define DefineMap(TYPE, CLASS, METHOD)                                         \
@@ -199,11 +199,11 @@ typedef enum {
 /*                    IMPLEMENTATION                     */
 /* ===================================================== */
 
-#ifdef SEPI_MAP_EX_IMPLEMENTATION
+#ifdef SEPI_MAP_IMPLEMENTATION
 
 /* ===================================================== */
 /*                          END                          */
 /* ===================================================== */
 
-#endif /* SEPI_MAP_EX_IMPLEMENTATION */
-#endif /* SEPI_MAP_EX_H */
+#endif /* SEPI_MAP_IMPLEMENTATION */
+#endif /* SEPI_MAP_H */

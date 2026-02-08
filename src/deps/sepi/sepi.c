@@ -14,10 +14,12 @@
 #include "string.h"
 #include "platform.h"
 #include "arena.h"
-#include "hashmap.h"
+#include "io.h"
+
+// NOTE: do i need to include the following headers?
+#include "map.h"
 #include "array.h"
 #include "stack.h"
 #include "list.h"
 #include "tree.h"
-#include "io.h"
 

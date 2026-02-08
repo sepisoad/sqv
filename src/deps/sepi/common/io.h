@@ -10,6 +10,7 @@
 #include "../endian.h"
 #include "../array.h"
 #include "../stack.h"
+#include "../stack.h"
 
 /* ===================================================== */
 /*                       CONSTANTS                       */
@@ -42,7 +43,6 @@ typedef enum {
 } IOKind;
 
 typedef struct IONode IONode;
-
 struct IONode {
   Str8 name;
   Str8 path;
@@ -121,6 +121,8 @@ IOError io_get_path_base_name(Str8 path, Str8* name);
 /* ===================================================== */
 
 #ifdef SEPI_COMMON_IO_IMPLEMENTATION
+
+DefineStack(IONode*, IONode, io_node);
 
 IOError
 io_open_file(Arena* arena, Str8 path, IONode* node) {
@@ -323,7 +325,7 @@ io_directory_nested_children(Arena* arena, Str8 path, IONode* node) {
   Assert(SL(path) > 0);
 
   IOError err = IO_ERR_SUCCESS;
-  StackOf(IONode*) nodes = stack_create(arena);
+  StackIONode stack = stack_io_node_make(arena);
 
   err = io_directory_children(arena, path, node);
   if (IO_ERR_SUCCESS != err) {
@@ -343,18 +345,15 @@ io_directory_nested_children(Arena* arena, Str8 path, IONode* node) {
           if (IO_ERR_SUCCESS != err) {
             goto cleanup;
           }
-          stack_push(nodes, child);
+          stack_io_node_push(&stack, child);
         }
       }
     }
-    last = stack_pop(nodes);
+    last = stack_io_node_pop(&stack);
   } while (last != 0);
 
 cleanup:
-  if (nodes) {
-    stack_destroy(nodes);
-  }
-
+  stack_io_node_clean(&stack);
   END_PROFILING();
   return err;
 }
