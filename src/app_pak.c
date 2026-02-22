@@ -196,6 +196,7 @@ sokol_main(int argc, char* argv[]) {
       .ios_keyboard_resizes_canvas = true,
       .icon.sokol_default = true,
       .logger.func = slog_func,
+      .high_dpi = true,
   };
 
   end_profiling();
