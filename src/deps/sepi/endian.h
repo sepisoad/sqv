@@ -6,7 +6,8 @@
 /* ===================================================== */
 
 #include <stdlib.h>
-#include "base.h"
+
+#include <sepi/base.h>
 
 /* ===================================================== */
 /*                       CONSTANTS                       */
@@ -18,11 +19,12 @@
 /*                         TYPES                         */
 /* ===================================================== */
 
-typedef struct {
+typedef struct NDBuffer NDBuffer;
+struct NDBuffer {
+  Sz size;
   CBuf base;
-  U32  offset;
-  Sz   size;
-} NDBuffer;
+  U32 offset;
+};
 
 /* ===================================================== */
 /*                          API                          */
@@ -134,7 +136,7 @@ nd_f32(F32 num) {
     return num;
   }
 
-  F32  result;
+  F32 result;
   Str src = (Str)&num;
   Str dst = (Str)&result;
   dst[0] = src[3];
@@ -149,7 +151,7 @@ nd_f64(F64 num) {
   if (isle()) {
     return num;
   }
-  F64  result;
+  F64 result;
   Str src = (Str)&num;
   Str dst = (Str)&result;
   dst[0] = src[7];
@@ -163,7 +165,8 @@ nd_f64(F64 num) {
   return result;
 }
 
-Nothing nd_reset(NDBuffer* ndb) {
+Nothing
+nd_reset(NDBuffer* ndb) {
   ndb->base = 0;
   ndb->offset = 0;
   ndb->size = 0;

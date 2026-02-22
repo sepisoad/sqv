@@ -5,7 +5,7 @@
 workspace "ProjectWorkspace"
   configurations { "Debug", "Release", "Profiling" }
   location "."
-  toolset "gcc"
+  toolset "clang"
   includedirs { "src/deps" }
   buildoptions { "-std=gnu11" }
   -- linkoptions  { "-fuse-ld=mold" }
@@ -22,8 +22,11 @@ workspace "ProjectWorkspace"
 
   -- Debug + macOS
   filter { "configurations:Debug", "system:macosx" }
-    buildoptions { "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
-    linkoptions  { "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
+    -- FUCK MACOS, i have to disable ASAN for now!
+    -- buildoptions { "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
+    -- linkoptions  { "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
+    buildoptions { "-fsanitize=undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
+    linkoptions  { "-fsanitize=undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
 
   -- Debug + Linux
   filter { "configurations:Debug", "system:linux" }
@@ -133,28 +136,28 @@ project "lib_sepi"
 --
 
 -- APP::playground (testing ideas)
-project "app_playground"
-  kind "ConsoleApp"
-  language "C"
-  location ".build"
-  targetdir ".build/"
-  objdir ".build/obj"
-  targetname "app_playground"
-  includedirs { "src", "src/deps" }
-  links { "lib_log:static", "lib_stb:static", "lib_hmm:static", "lib_sepi:static", "lib_sokol:static", }
-  files { "src/app_playground.c" }
+-- project "app_playground"
+--   kind "ConsoleApp"
+--   language "C"
+--   location ".build"
+--   targetdir ".build/"
+--   objdir ".build/obj"
+--   targetname "app_playground"
+--   includedirs { "src", "src/deps" }
+--   links { "lib_log:static", "lib_stb:static", "lib_hmm:static", "lib_sepi:static", "lib_sokol:static", }
+--   files { "src/app_playground.c" }
 
-  filter "system:macosx"
-    links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework", "m" }
+--   filter "system:macosx"
+--     links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework", "m" }
 
-  filter "system:linux"
-    links { "X11", "Xi", "Xcursor", "GL", "m" }
+--   filter "system:linux"
+--     links { "X11", "Xi", "Xcursor", "GL", "m" }
 
-  filter "system:windows"
-    links { "opengl32", "gdi32", "user32", "shell32", "ole32", "winmm" }
-    defines { "SOKOL_WIN32_FORCE_MAIN", "NK_INCLUDE_FIXED_TYPES" }
+--   filter "system:windows"
+--     links { "opengl32", "gdi32", "user32", "shell32", "ole32", "winmm" }
+--     defines { "SOKOL_WIN32_FORCE_MAIN", "NK_INCLUDE_FIXED_TYPES" }
 
-  filter {}
+--   filter {}
 
 -- APP::pak
 project "app_pak"
@@ -189,6 +192,15 @@ project "app_pak"
 
 -- ACTION::glsl
 newaction {
+  trigger = "gen-code",
+  description = "Generates code using templates",
+  execute = function()
+    os.execute("source ~/.zshrc && /opt/homebrew/bin/lua scripts/gen-code.lua")
+  end
+}
+
+-- ACTION::glsl
+newaction {
   trigger = "glsl",
   description = "Compile shaders into C headers",
   execute = function()
@@ -212,15 +224,6 @@ newaction {
   description = "Execute the program with optional arguments",
   execute = function()
     os.execute("make --no-print-directory -C .build -f mk_sqv.make clean")
-  end
-}
-
--- ACTION::gen_module
-newaction {
-  trigger = "gen-module",
-  description = "generate a c module scaffold",
-  execute = function()
-    os.execute("lua scripts/gen-module.lua")
   end
 }
 

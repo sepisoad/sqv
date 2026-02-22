@@ -2,24 +2,11 @@
 #define SEPI_STRING_IMPLEMENTATION
 #define SEPI_PLATFORM_IMPLEMENTATION
 #define SEPI_ARENA_IMPLEMENTATION
-#define SEPI_HASHMAP_IMPLEMENTATION
-#define SEPI_ARRAY_IMPLEMENTATION
-#define SEPI_STACK_IMPLEMENTATION
-#define SEPI_LIST_IMPLEMENTATION
-#define SEPI_TREE_IMPLEMENTATION
 #define SEPI_IO_IMPLEMENTATION
 
-#include "base.h"
-#include "endian.h"
-#include "string.h"
-#include "platform.h"
-#include "arena.h"
-#include "io.h"
-
-// NOTE: do i need to include the following headers?
-#include "map.h"
-#include "array.h"
-#include "stack.h"
-#include "list.h"
-#include "tree.h"
-
+#include <sepi/base.h>
+#include <sepi/endian.h>
+#include <sepi/string.h>
+#include <sepi/platform.h>
+#include <sepi/arena.h>
+#include <sepi/io.h>

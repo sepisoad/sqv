@@ -7,22 +7,21 @@
 
 #include <stdio.h>
 
-#include "deps/hmm/hmm.h"
-#include "deps/log/log.h"
-#include "deps/nuklear/nuklear.h"
-#include "deps/sokol/sokol_app.h"
-#include "deps/sokol/sokol_args.h"
-#include "deps/sokol/sokol_gfx.h"
-#include "deps/sokol/sokol_glue.h"
-#include "deps/sokol/sokol_log.h"
-#include "deps/sokol/sokol_nuklear.h"
-#include "deps/sokol/sokol_time.h"
-#include "deps/sepi/base.h"
-#include "deps/sepi/io.h"
+#include <deps/hmm/hmm.h>
+#include <deps/log/log.h>
+#include <deps/nuklear/nuklear.h>
+#include <deps/sokol/sokol_app.h>
+#include <deps/sokol/sokol_args.h>
+#include <deps/sokol/sokol_gfx.h>
+#include <deps/sokol/sokol_glue.h>
+#include <deps/sokol/sokol_log.h>
+#include <deps/sokol/sokol_nuklear.h>
+#include <deps/sokol/sokol_time.h>
+#include <deps/sepi/base.h>
+#include <deps/sepi/io.h>
 
 #include "shaders/default.glsl.h"
 #include "shaders/bbox.glsl.h"
-
 #include "module_md1.h"
 
 static struct {
@@ -170,7 +169,6 @@ input(const sapp_event* e) {
     } else {
       S.zoom--;
     }
-    Dbg("%d\n", S.zoom);
   }
 }
 

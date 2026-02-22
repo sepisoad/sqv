@@ -97,14 +97,14 @@ KindError kind_guess_buffer(CStr, Kind*);
 
 #ifdef MODULE_KIND_IMPLEMENTATION
 
-SLAVE_PROFILING_CONTEXT;
+mount_slave_profiling_context();
 
 static KindError
 guess_file_type(CStr buf, Kind* kind) {
-  START_PROFILING(1);
+  start_profiling(1);
 
-  Assert(buf != 0);
-  Assert(kind != 0);
+  assert(buf != 0);
+  assert(kind != 0);
 
   KindError err = KIND_ERR_SUCCESS;
 
@@ -119,17 +119,17 @@ guess_file_type(CStr buf, Kind* kind) {
   }
 
 cleanup:
-  END_PROFILING();
+  end_profiling();
   return err;
 }
 
 KindError
 kind_guess_entry(Str8 path, Kind* kind) {
-  START_PROFILING(1);
+  start_profiling(1);
 
-  Assert(path.cstr != 0);
-  Assert(path.length > 0);
-  Assert(kind != 0);
+  assert(path.cstr != 0);
+  assert(path.length > 0);
+  assert(kind != 0);
 
   KindError err = KIND_ERR_SUCCESS;
   StringCompareFlags compare = StringCompareFlag_CaseInsensitive;
@@ -334,16 +334,16 @@ kind_guess_entry(Str8 path, Kind* kind) {
   }
 
 cleanup:
-  END_PROFILING();
+  end_profiling();
   return err;
 }
 
 KindError
 kind_guess_file(CStr path, Kind* kind) {
-  START_PROFILING(1);
+  start_profiling(1);
 
-  Assert(path != 0);
-  Assert(kind != 0);
+  assert(path != 0);
+  assert(kind != 0);
 
   KindError err = KIND_ERR_SUCCESS;
 
@@ -351,39 +351,39 @@ kind_guess_file(CStr path, Kind* kind) {
 
   FILE* f = fopen(path, "rb");
 
-  Assert(f != 0);
-  Assert(fseek(f, 0, SEEK_END) == 0);
+  assert(f != 0);
+  assert(fseek(f, 0, SEEK_END) == 0);
 
   rewind(f);
 
   Sz sz = fread(buf, sizeof(buf[0]), MAXBUFSIZE, f);
-  Assert(sz == MAXBUFSIZE);
+  assert(sz == MAXBUFSIZE);
 
   fclose(f);
 
   err = guess_file_type(buf, kind);
 
 cleanup:
-  END_PROFILING();
+  end_profiling();
   return err;
 }
 
 KindError
 kind_guess_buffer(CStr data, Kind* kind) {
-  START_PROFILING(1);
+  start_profiling(1);
 
-  Assert(data != 0);
-  Assert(kind != 0);
+  assert(data != 0);
+  assert(kind != 0);
 
   KindError err = KIND_ERR_SUCCESS;
 
   char buf[9] = {0};
-  Assert(memcpy(buf, data, 8) != 0);
+  assert(memcpy(buf, data, 8) != 0);
 
   err = guess_file_type(buf, kind);
 
 cleanup:
-  END_PROFILING();
+  end_profiling();
   return err;
 }
 

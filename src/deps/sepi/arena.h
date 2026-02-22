@@ -5,17 +5,17 @@
 /*                     DEPENDENCIES                      */
 /* ===================================================== */
 
-#include "../tracy/tracy.h"
+#include <tracy/tracy.h>
 
-#include "base.h"
-#include "platform.h"
+#include <sepi/base.h>
+#include <sepi/platform.h>
 
 /* ===================================================== */
 /*                       CONSTANTS                       */
 /* ===================================================== */
 
-#define ARENA_DEFAULT_RESERVE_SIZE MB(64)
-#define ARENA_DEFAULT_COMMIT_SIZE MB(64)
+#define ARENA_DEFAULT_RESERVE_SIZE mega_bytes(64)
+#define ARENA_DEFAULT_COMMIT_SIZE mega_bytes(64)
 
 /* ===================================================== */
 /*                         TYPES                         */
@@ -33,7 +33,7 @@ typedef struct Arena Arena;
 struct Arena {
   Arena* previous_block;
   Arena* current_block;
-  Arena* free_last;
+  Arena* last_freed_block;
   U64 requested_commit_size;
   U64 committed_size;
   U64 requested_reserve_size;
@@ -54,15 +54,18 @@ struct ArenaScratch {
 /*                          API                          */
 /* ===================================================== */
 
-Arena* arena_create_(ArenaParams* ap);
-Nothing arena_destroy(Arena* a);
-RawPtr arena_push(Arena*, U64 size, U64 align, Bool with_zero);
-Nothing arena_pop(Arena*, U64 amount);
-Nothing arena_pop_to(Arena* a, U64 position);
-Nothing arena_clear(Arena*);
-U64 arena_get_position(Arena* a);
-ArenaScratch arena_scratch_begin(Arena* a);
-Nothing arena_scratch_end(ArenaScratch s);
+Arena* arena_create_(ArenaParams* arena_params);
+Nothing arena_destroy(Arena* arena);
+RawPtr arena_push(Arena* arena,
+                  U64 size_to_allocate,
+                  U64 memory_alignment,
+                  Bool with_zero);
+Nothing arena_pop(Arena* arena, U64 amount);
+Nothing arena_pop_to(Arena* arena, U64 position);
+Nothing arena_clear(Arena* arena);
+U64 arena_get_position(Arena* arena);
+ArenaScratch arena_scratch_begin(Arena* arena);
+Nothing arena_scratch_end(ArenaScratch arena_scratch);
 
 #define arena_create(...)                                                  \
   arena_create_(                                                           \
@@ -76,9 +79,9 @@ Nothing arena_scratch_end(ArenaScratch s);
 #define arena_push_array_aligned(arena, type, count, alignment) \
   (type*)arena_push((arena), sizeof(type) * (count), (alignment), (FALSE))
 #define arena_push_array_no_zero(arena, type, count) \
-  arena_push_array_no_zero_aligned(arena, type, count, Max(8, AlignOf(type)))
+  arena_push_array_no_zero_aligned(arena, type, count, max(8, alignof(type)))
 #define arena_push_array(arena, type, count) \
-  arena_push_array_aligned(arena, type, count, Max(8, AlignOf(type)))
+  arena_push_array_aligned(arena, type, count, max(8, alignof(type)))
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -86,100 +89,112 @@ Nothing arena_scratch_end(ArenaScratch s);
 
 #ifdef SEPI_ARENA_IMPLEMENTATION
 
-SLAVE_PROFILING_CONTEXT;
+mount_slave_profiling_context();
 
 Arena*
 arena_create_(ArenaParams* ap) {
-  START_PROFILING(1);
+  start_profiling(1);
 
-  U64 page_size = platform_get_large_page_size();
-  if (page_size == 0) {
-    page_size = (U64)platform_get_page_size();  // fallback
+  U64 platform_large_page_size = platform_get_large_page_size();
+  if (platform_large_page_size == 0) {
+    platform_large_page_size = (U64)platform_get_page_size();  // fallback
   }
 
   /* TODO: this uses large pages size by default */
-  U64 requested_reserve_size = AlignUp(ap->requested_reserve_size, page_size);
-  U64 requested_commit_size = AlignUp(ap->requested_commit_size, page_size);
+  U64 requested_reserve_size =
+      align_up(ap->requested_reserve_size, platform_large_page_size);
+  U64 requested_commit_size =
+      align_up(ap->requested_commit_size, platform_large_page_size);
 
-  RawPtr base = platform_reserve_large_pages(requested_reserve_size);
-  platform_commit_large_pages(base, requested_commit_size);
+  RawPtr raw_base_pointer =
+      platform_reserve_large_pages(requested_reserve_size);
+  platform_commit_large_pages(raw_base_pointer, requested_commit_size);
 
-  if (!base) {
-    Abort("failed to allocate memory to arena allocator");
+  if (!raw_base_pointer) {
+    abort("failed to allocate memory to arena allocator");
   }
 
-  Sz header_size = sizeof(Arena);
-  Arena* a = (Arena*)base;
+  Sz arena_header_size = sizeof(Arena);
+  Arena* arena = (Arena*)raw_base_pointer;
 
-  a->current_block = a;
-  a->free_last = 0;
+  arena->current_block = arena;
+  arena->last_freed_block = 0;
 
-  a->requested_reserve_size = ap->requested_reserve_size;
-  a->reserved_size = requested_reserve_size;
+  arena->requested_reserve_size = ap->requested_reserve_size;
+  arena->reserved_size = requested_reserve_size;
 
-  a->requested_commit_size = ap->requested_commit_size;
-  a->committed_size = requested_commit_size;
+  arena->requested_commit_size = ap->requested_commit_size;
+  arena->committed_size = requested_commit_size;
 
-  a->base_position = 0;
-  a->offset = header_size;
+  arena->base_position = 0;
+  arena->offset = arena_header_size;
 
-  a->caller_file_name = ap->caller_file_name;
-  a->caller_file_line = ap->caller_file_line;
+  arena->caller_file_name = ap->caller_file_name;
+  arena->caller_file_line = ap->caller_file_line;
 
-  AsanPoisonMemoryRegion(base, requested_commit_size);
-  AsanUnpoisonMemoryRegion(base, header_size);
+  asan_poison_memory_region(raw_base_pointer, requested_commit_size);
+  asan_unpoison_memory_region(raw_base_pointer, arena_header_size);
 
-  END_PROFILING();
-  return a;
+  end_profiling();
+  return arena;
 }
 
 Nothing
-arena_destroy(Arena* a) {
-  START_PROFILING(1);
+arena_destroy(Arena* arena) {
+  start_profiling(1);
 
-  for (Arena *it = a->current_block, *previous_block = 0; it != 0;
-       it = previous_block) {
-    previous_block = it->previous_block;
-    platform_release(it, it->reserved_size);
+  for (Arena *iterator = arena->current_block, *previous_block = 0;
+       iterator != 0; iterator = previous_block) {
+    previous_block = iterator->previous_block;
+    platform_release(iterator, iterator->reserved_size);
   }
 
-  END_PROFILING();
+  end_profiling();
 }
 
 RawPtr
-arena_push(Arena* a, U64 size, U64 align, Bool with_zero) {
-  START_PROFILING(1);
+arena_push(Arena* arena,
+           U64 size_to_allocate,
+           U64 memory_alignment,
+           Bool with_zero) {
+  start_profiling(1);
 
-  Arena* current_block = a->current_block;
-  U64 offset_aligned = AlignUp(current_block->offset, align);
-  U64 offset_aligned_sized = offset_aligned + size;
+  Arena* current_block = arena->current_block;
+  U64 aligned_memory_offset = align_up(current_block->offset, memory_alignment);
+  U64 aligned_memory_size_to_allocate =
+      aligned_memory_offset + size_to_allocate;
 
-  if (current_block->reserved_size < offset_aligned_sized) {
-    Arena* new_block = 0;
-    Arena* previous_block;
+  if (current_block->reserved_size < aligned_memory_size_to_allocate) {
+    Arena* new_arena_block = 0;
+    Arena* previous_arena_block;
 
-    for (new_block = a->free_last, previous_block = 0; new_block != 0;
-         previous_block = new_block, new_block = new_block->previous_block) {
-      if (new_block->reserved_size >=
-          AlignUp(new_block->offset, align) + size) {
-        if (previous_block) {
-          previous_block->previous_block = new_block->previous_block;
+    for (new_arena_block = arena->last_freed_block, previous_arena_block = 0;
+         new_arena_block != 0; previous_arena_block = new_arena_block,
+        new_arena_block = new_arena_block->previous_block) {
+      if (new_arena_block->reserved_size >=
+          align_up(new_arena_block->offset, memory_alignment) +
+              size_to_allocate) {
+        if (previous_arena_block) {
+          previous_arena_block->previous_block =
+              new_arena_block->previous_block;
         } else {
-          a->free_last = new_block->previous_block;
+          arena->last_freed_block = new_arena_block->previous_block;
         }
         break;
       }
     }
 
-    if (new_block == 0) {
-      Sz header_size = sizeof(Arena);
+    if (new_arena_block == 0) {
+      Sz arena_header_size = sizeof(Arena);
       U64 requested_reserve_size = current_block->requested_reserve_size;
       U64 requested_commit_size = current_block->requested_commit_size;
-      if (size + header_size > requested_reserve_size) {
-        requested_reserve_size = AlignUp(size + header_size, align);
-        requested_commit_size = AlignUp(size + header_size, align);
+      if (size_to_allocate + arena_header_size > requested_reserve_size) {
+        requested_reserve_size =
+            align_up(size_to_allocate + arena_header_size, memory_alignment);
+        requested_commit_size =
+            align_up(size_to_allocate + arena_header_size, memory_alignment);
       }
-      new_block =
+      new_arena_block =
           arena_create(.requested_reserve_size = requested_reserve_size,
                        .requested_commit_size = requested_commit_size,
                        .caller_file_name =
@@ -187,55 +202,56 @@ arena_push(Arena* a, U64 size, U64 align, Bool with_zero) {
                        .caller_file_line = current_block->caller_file_line);
     }
 
-    new_block->base_position =
+    new_arena_block->base_position =
         current_block->base_position + current_block->reserved_size;
-    new_block->previous_block = a->current_block;
-    a->current_block = new_block;
-    current_block = new_block;
-    offset_aligned = AlignUp(current_block->offset, align);
-    offset_aligned_sized = offset_aligned + size;
+    new_arena_block->previous_block = arena->current_block;
+    arena->current_block = new_arena_block;
+    current_block = new_arena_block;
+    aligned_memory_offset = align_up(current_block->offset, memory_alignment);
+    aligned_memory_size_to_allocate = aligned_memory_offset + size_to_allocate;
   }
 
   U64 size_to_zero = 0;
   if (with_zero) {
-    size_to_zero = Min(current_block->committed_size, offset_aligned_sized) -
-                   offset_aligned;
+    size_to_zero =
+        min(current_block->committed_size, aligned_memory_size_to_allocate) -
+        aligned_memory_offset;
   }
 
-  if (current_block->committed_size < offset_aligned_sized) {
-    U64 new_commit_size =
-        offset_aligned_sized + current_block->requested_commit_size - 1;
+  if (current_block->committed_size < aligned_memory_size_to_allocate) {
+    U64 new_commit_size = aligned_memory_size_to_allocate +
+                          current_block->requested_commit_size - 1;
     new_commit_size -= new_commit_size % current_block->requested_commit_size;
-    U64 commit_size_clamped =
-        Max(new_commit_size, current_block->reserved_size);
+    U64 clamped_commit_size =
+        max(new_commit_size, current_block->reserved_size);
     U64 needed_commit_size =
-        commit_size_clamped - current_block->committed_size;
+        clamped_commit_size - current_block->committed_size;
     U8* committed_size_ptr = (U8*)current_block + current_block->committed_size;
     platform_commit_large_pages(committed_size_ptr, needed_commit_size);
-    current_block->committed_size = commit_size_clamped;
+    current_block->committed_size = clamped_commit_size;
   }
 
   RawPtr result = 0;
-  if (current_block->committed_size >= offset_aligned_sized) {
-    result = (U8*)current_block + offset_aligned;
-    current_block->offset = offset_aligned_sized;
-    AsanUnpoisonMemoryRegion(result, size);
+  if (current_block->committed_size >= aligned_memory_size_to_allocate) {
+    result = (U8*)current_block + aligned_memory_offset;
+    current_block->offset = aligned_memory_size_to_allocate;
+    asan_unpoison_memory_region(result, size_to_allocate);
     if (size_to_zero != 0) {
-      MemZero(result, size_to_zero);
+      zero_memory(result, size_to_zero);
     }
   }
 
   if (result == 0) {
-    Abort("failed to allocate memory from arena allocator");
+    abort("failed to allocate memory from arena allocator");
   }
 
-  END_PROFILING();
+  end_profiling();
   return result;
 }
 
 Nothing
 arena_pop(Arena* a, U64 amount) {
-  START_PROFILING(1);
+  start_profiling(1);
 
   U64 old_position = arena_get_position(a);
   U64 new_position = old_position;
@@ -245,75 +261,75 @@ arena_pop(Arena* a, U64 amount) {
 
   arena_pop_to(a, new_position);
 
-  END_PROFILING();
+  end_profiling();
 }
 
 Nothing
 arena_pop_to(Arena* a, U64 position) {
-  START_PROFILING(1);
+  start_profiling(1);
 
-  Sz header_size = sizeof(Arena);
-  U64 normilized_position = Max(header_size, position);
+  Sz arena_header_size = sizeof(Arena);
+  U64 normilized_position = max(arena_header_size, position);
   Arena* current_block = a->current_block;
 
   for (Arena* previous_block = 0;
        current_block->base_position >= normilized_position;
        current_block = previous_block) {
     previous_block = current_block->previous_block;
-    current_block->offset = header_size;
-    current_block->previous_block = a->free_last;
-    a->free_last = current_block;
-    AsanPoisonMemoryRegion((U8*)current_block + header_size,
-                           current_block->reserved_size - header_size);
+    current_block->offset = arena_header_size;
+    current_block->previous_block = a->last_freed_block;
+    a->last_freed_block = current_block;
+    asan_poison_memory_region((U8*)current_block + arena_header_size,
+                              current_block->reserved_size - arena_header_size);
   }
 
   a->current_block = current_block;
   U64 new_offset = normilized_position - current_block->base_position;
-  AssertAlways(new_offset <= current_block->offset);
-  AsanPoisonMemoryRegion((U8*)current_block + new_offset,
-                         (current_block->offset - new_offset));
+  runtime_assert(new_offset <= current_block->offset);
+  asan_poison_memory_region((U8*)current_block + new_offset,
+                            (current_block->offset - new_offset));
   current_block->offset = new_offset;
 
-  END_PROFILING();
+  end_profiling();
 }
 
 Nothing
 arena_clear(Arena* a) {
-  START_PROFILING(1);
+  start_profiling(1);
 
   arena_pop_to(a, 0);
 
-  END_PROFILING();
+  end_profiling();
 }
 
 U64
 arena_get_position(Arena* a) {
-  START_PROFILING(1);
+  start_profiling(1);
 
   Arena* current_block = a->current_block;
   U64 position = current_block->base_position + current_block->offset;
 
-  END_PROFILING();
+  end_profiling();
   return position;
 }
 
 ArenaScratch
 arena_scratch_begin(Arena* a) {
-  START_PROFILING(1);
+  start_profiling(1);
 
   U64 position = arena_get_position(a);
 
-  END_PROFILING();
+  end_profiling();
   return (ArenaScratch){a, position};
 }
 
 Nothing
 arena_scratch_end(ArenaScratch s) {
-  START_PROFILING(1);
+  start_profiling(1);
 
   arena_pop_to(s.arena, s.offset);
 
-  END_PROFILING();
+  end_profiling();
 }
 
 /* ===================================================== */

@@ -56,3 +56,25 @@ fact the way i structured the code base and build script makes the build time ve
 gained from mold is negligible, however if the code grows and the build system becomes more complicated
 i am pretty sure there are more substantial gains with mold, for now i think i will not use mold as it adds
 more complexity to the project setup
+
+
+┏━━━━━━━━┓
+┃ metal  ┃◀━━━━━━━━━━━━━━━━━━━━━━━━┓
+┣━━━━━━━━┫                         ┃
+┃direct3d┃◀━━━━━━━━━━━━━━━━━━━━━━┓ ┃
+┣━━━━━━━━┫                       ┃ ┃
+┃ webgpu ┃◀━━━━━━━━━━━━━━━━━━━━┳━┻━┻━━━━━━━┓
+┣━━━━━━━━┫          ┏━━━━━━━━━━┫ lib_sokol ┣━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ opengl ┃◀━━━━━━━━━┛   ┏━━━━━━┻━━━━━━━━━━━┛                         ┃
+┣━━━━━━━━┫              ┃      ┏━━━━━━━━━━━┓                         ┃                            ┏━━━━━━━━━┓
+┃ vulkan ┃◀━━━━━━━━━━━━━┛      ┃  lib_hmm  ┣━━━━━━━━━━━━━━━━━━━━━┓   ┃                ┏━━━━━━━━━━▶┃ windows ┃
+┗━━━━━━━━┛                     ┗━━━━━━━━━━━┛                     ▼   ▼                ┃           ┗━━━━━━━━━┛
+                               ┏━━━━━━━━━━━┓                  ╔═════════╗       ┏━━━━━┻━━━━┓      ┏━━━━━━━━━┓
+                               ┃lib_nuklear┃━━━━━━━━━━━━━━━━━▶║ app_pak ║◀━━━━━━┫ lib_sepi ┃      ┃  macos  ┃
+                               ┗━━━━━━━━━━━┛                  ╚═════════╝       ┗━━━━━┳━━━━┛      ┗━━━━━━━━━┛
+                               ┏━━━━━━━━━━━┓                     ▲   ▲                ┃           ┏━━━━━━━━━┓
+                               ┃  lib_log  ┃━━━━━━━━━━━━━━━━━━━━━┛   ┃                ┗━━━━━━━━━━▶┃  linux  ┃
+                               ┗━━━━━━━━━━━┛                         ┃                            ┗━━━━━━━━━┛
+                               ┏━━━━━━━━━━━┓                         ┃
+                               ┃  lib_stb  ┃━━━━━━━━━━━━━━━━━━━━━━━━━┛
+                               ┗━━━━━━━━━━━┛

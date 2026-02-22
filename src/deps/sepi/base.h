@@ -40,9 +40,8 @@ typedef const U8* CBuf;
 typedef char* Str;
 typedef const char* CStr;
 
-/* ===================================================== */
-/*                       KEYWORDS                        */
-/* ===================================================== */
+typedef struct Empty Empty;
+struct Empty {};
 
 /* ===================================================== */
 /*                         DEBUG                         */
@@ -55,21 +54,23 @@ typedef const char* CStr;
 #endif /* DEBUG_MODE */
 
 /* ===================================================== */
-/*                       PLATFOTM                        */
+/*                      COMPILERS                        */
 /* ===================================================== */
 
-/* COMPILER */
 #if defined(__clang__)
 #define CC_CLANG 1
 #elif defined(__GNUC__) || defined(__GNUG__)
 #define CC_GCC 1
-#elif defined(_MSC_VER)
+#elif defined(_MSCvalueER)
 #define CC_MSVC 1
 #else
-#error unsuppored c compiler!
+#error "compiler not supported!"
 #endif
 
-/* OPERATING SYSTEM */
+/* ===================================================== */
+/*                   OPERATING SYSTEM                    */
+/* ===================================================== */
+
 #if defined(_WIN32)
 #define OS_WINDOWS 1
 #elif defined(__gnu_linux__) || defined(__linux__)
@@ -78,10 +79,13 @@ typedef const char* CStr;
 #elif defined(__APPLE__) && defined(__MACH__)
 #define OS_MACOS 1
 #else
-#error unsupported operating system!
+#error "os not supported!"
 #endif
 
-/* CPU ARCHITECTURE */
+/* ===================================================== */
+/*                       CPU ARCHS                       */
+/* ===================================================== */
+
 #if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || \
     defined(__x86_64)
 #define CPU_X64 1
@@ -92,14 +96,96 @@ typedef const char* CStr;
 #elif defined(__arm__)
 #define CPU_ARM32 1
 #else
-#error unsupported cpu architecture!
+#error "cpu not supported!"
 #endif
 
 /* ===================================================== */
-/*                        MEMORY                         */
+/*                         MATHS                         */
 /* ===================================================== */
 
-#if CC_MSVC
+#define is_pow2(X) ((X) != 0 && ((X) & ((X) - 1)) == 0)
+#define is_pow2_or_zero(X) ((((X) - 1) & (X)) == 0)
+#define max(A, B) ((A) > (B) ? (A) : (B))
+#define min(A, B) ((A) < (B) ? (A) : (B))
+
+/* ===================================================== */
+/*                         UNITS                         */
+/* ===================================================== */
+
+#define kilo_bytes(number) (((U64)(number)) << 10)
+#define mega_bytes(number) (((U64)(number)) << 20)
+#define giga_bytes(number) (((U64)(number)) << 30)
+#define terra_bytes(number) (((U64)(number)) << 40)
+#define thousand(number) ((number) * 1000)
+#define million(number) ((number) * 1000000)
+#define billion(number) ((number) * 1000000000)
+
+/* ===================================================== */
+/*                         UTILS                         */
+/* ===================================================== */
+
+#define ignore(value) ((void)(value))
+
+#define to_string_(expression) #expression
+#define to_string(expression) to_string_(expression)
+
+#define glue_(expression_a, expression_b) expression_a##expression_b
+#define glue(expression_a, expression_b) glue_(expression_a, expression_b)
+
+/* ===================================================== */
+/*                       ALIGNMENT                       */
+/* ===================================================== */
+
+#if defined(CC_MSVC)
+#define alignof(type) __alignof(type)
+#elif defined(CC_GCC) || defined(CC_CLANG)
+#define alignof(type) __alignof(type)
+#else
+#error "alignof() not supported!"
+#endif
+
+#define align_up(value, boundry) \
+  (((value) + (boundry) - 1) & (~((boundry) - 1)))
+#define align_down(value, boundry) ((value) & (~((boundry) - 1)))
+#define get_alignment_padding(value, boundry) ((0 - (value)) & ((boundry) - 1))
+
+#define get_native_alignment() \
+  max(alignof(int),            \
+      max(alignof(long),       \
+          max(alignof(long long), max(alignof(double), alignof(void*)))))
+
+/* ===================================================== */
+/*                        BITOPS                         */
+/* ===================================================== */
+
+#if defined(CC_MSVC)
+#define get_leading_0_bits(T) _BitScanReverse64(0, T)  // TODO: not tested!
+#elif defined(CC_GCC) || defined(CC_CLANG)
+#define get_leading_0_bits(T) __builtin_clzll(T)
+#else
+#error "get_leading_0_bits() not supported!"
+#endif
+
+/* ===================================================== */
+/*                      MEMORY OPS                       */
+/* ===================================================== */
+
+#define zero_memory(ptr, size) memset((ptr), 0, (size))
+#define zero_struct(ptr) zero_memory((ptr), sizeof(*(ptr)))
+#define zero_array(ptr) zero_memory((ptr), sizeof(ptr))
+#define zero_memory_typed(ptr, count) \
+  zero_memory((ptr), sizeof(*(ptr)) * (count))
+#define copy_memory(DST, SRC, SZ) memcpy((DST), (SRC), (SZ))
+#define compare_memory(a, b, size) memcmp((a), (b), (size))
+#define is_memory_equal(a, b, z) (compare_memory((a), (b), (z)) == 0)
+#define is_struct_equal(a, b) is_memory_equal((a), (b), sizeof(*(a)))
+#define is_array_equal(a, b) is_memory_equal((a), (b), sizeof(a))
+
+/* ===================================================== */
+/*                         ASAN                          */
+/* ===================================================== */
+
+#if defined(CC_MSVC)
 #if defined(__SANITIZE_ADDRESS__)
 #define ASAN_ENABLED 1
 #define NO_ASAN __declspec(no_sanitize_address)
@@ -107,7 +193,7 @@ typedef const char* CStr;
 #define NO_ASAN
 #endif
 
-#elif CC_CLANG
+#elif defined(CC_CLANG)
 #if defined(__has_feature)
 #if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
 #define ASAN_ENABLED 1
@@ -128,134 +214,52 @@ typedef const char* CStr;
 #ifdef ASAN_ENABLED
 void __asan_poison_memory_region(void const volatile* addr, size_t size);
 void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
-#define AsanPoisonMemoryRegion(addr, size) \
+#define asan_poison_memory_region(addr, size) \
   __asan_poison_memory_region((addr), (size))
-#define AsanUnpoisonMemoryRegion(addr, size) \
+#define asan_unpoison_memory_region(addr, size) \
   __asan_unpoison_memory_region((addr), (size))
 #else
-#define AsanPoisonMemoryRegion(addr, size) ((void)(addr), (void)(size))
-#define AsanUnpoisonMemoryRegion(addr, size) ((void)(addr), (void)(size))
+#define asan_poison_memory_region(addr, size) ((void)(addr), (void)(size))
+#define asan_unpoison_memory_region(addr, size) ((void)(addr), (void)(size))
 #endif /* DEBUG_MODE */
-
-#define MemZero(ptr, size) memset((ptr), 0, (size))
-#define MemZeroStruct(ptr) MemZero((ptr), sizeof(*(ptr)))
-#define MemZeroArray(ptr) MemZero((ptr), sizeof(ptr))
-#define MemZeroTyped(ptr, count) MemZero((ptr), sizeof(*(ptr)) * (count))
-#define MemCopy(DST, SRC, SZ) memcpy((DST), (SRC), (SZ))
-#define MemoryCompare(a, b, size) memcmp((a), (b), (size))
-#define MemoryEq(a, b, z) (MemoryCompare((a), (b), (z)) == 0)
-#define StructEq(a, b) MemoryEq((a), (b), sizeof(*(a)))
-#define ArrayEq(a, b) MemoryEq((a), (b), sizeof(a))
-
-/* ===================================================== */
-/*                         UNITS                         */
-/* ===================================================== */
-
-#define KB(n) (((U64)(n)) << 10)
-#define MB(n) (((U64)(n)) << 20)
-#define GB(n) (((U64)(n)) << 30)
-#define TB(n) (((U64)(n)) << 40)
-#define Thousand(n) ((n) * 1000)
-#define Million(n) ((n) * 1000000)
-#define Billion(n) ((n) * 1000000000)
-
-/* ===================================================== */
-/*                         UTILS                         */
-/* ===================================================== */
-
-/* GENERAL */
-#define NoOp ((void)0)
-#define Ignore(_V) ((void)(_V))
-
-/* MATH MACROS */
-#define IsPow2(X) ((X) != 0 && ((X) & ((X) - 1)) == 0)
-#define IsPow2OrZero(X) ((((X) - 1) & (X)) == 0)
-#define Max(A, B) ((A) > (B) ? (A) : (B))
-#define Min(A, B) ((A) < (B) ? (A) : (B))
-
-#if defined(CC_MSVC)
-#define AlignOf(T) __alignof(T)
-#define LeadingZeroBits(T) _BitScanReverse64(0, T)  // TODO: not tested!
-#elif defined(CC_GCC) || defined(CC_CLANG)
-#define AlignOf(T) __alignof(T)
-#define LeadingZeroBits(T) __builtin_clzll(T)
-#else
-#error "AlignOf macro not supported on this compiler"
-#endif
-
-#if defined(CC_GCC) || defined(CC_CLANG)
-#define TypeOf(x) __typeof__(x)
-#else
-#error "TypeOf macro not supported on this compiler"
-#endif
-
-#if defined(CC_GCC) || defined(CC_CLANG)
-#define TypesCompatible(T1, T2) __builtin_types_compatible_p(T1, T2)
-#else
-#error "TypesCompatible macro not supported on this compiler"
-#endif
-
-#if defined(CC_GCC) || defined(CC_CLANG)
-#define ChooseExpr(condition, expr_true, expr_false) \
-  __builtin_choose_expr(condition, expr_true, expr_false)
-#else
-#define ChooseExpr(condition, expr_true, expr_false) \
-  ((condition) ? (expr_true) : (expr_false))
-#endif
-
-#define NATIVE_ALIGNMENT \
-  Max(AlignOf(int),      \
-      Max(AlignOf(long), \
-          Max(AlignOf(long long), Max(AlignOf(double), AlignOf(void*)))))
-
-#define AlignUp(V, B) (((V) + (B) - 1) & (~((B) - 1)))
-#define AlignDown(V, B) ((V) & (~((B) - 1)))
-#define AlignUpPad(X, B) ((0 - (X)) & ((B) - 1))
-
-#define ToString_(X) #X
-#define ToString(X) ToString_(X)
-
-#define Glue_(A, B) A##B
-#define Glue(A, B) Glue_(A, B)
-
-#define API(...)
 
 /* ===================================================== */
 /*                      ASSERTIONS                       */
 /* ===================================================== */
 
 #if CC_MSVC
-#define Trap() __debugbreak()
+#define trap() __debugbreak()
 #elif CC_CLANG || CC_GCC
-#define Trap() __builtin_trap()
+#define trap() __builtin_trap()
 #else
 #error unsupported compiler
 #endif
 
-#define StaticAssert(COND, ID) typedef char Glue(ID, __LINE__)[(COND) ? 1 : -1]
+#define static_assert(condition, id) \
+  typedef char glue(id, __LINE__)[(condition) ? 1 : -1]
 
 #ifdef DEBUG_MODE
-#define AssertAlways(COND)                                \
+#define runtime_assert(condition)                         \
   do {                                                    \
-    if (!(COND)) {                                        \
-      fprintf(stderr, "Assert: (%s)\n", #COND);           \
-      fprintf(stderr, "At: %s:%d\n", __FILE__, __LINE__); \
-      Trap();                                             \
+    if (!(condition)) {                                   \
+      fprintf(stderr, "assert: (%s)\n", #condition);      \
+      fprintf(stderr, "at: %s:%d\n", __FILE__, __LINE__); \
+      trap();                                             \
     }                                                     \
   } while (0)
-#define Assert(x) AssertAlways(x)
+#define assert(condition) runtime_assert(condition)
 #else /* DEBUG_MODE */
-#define AssertAlways(COND) \
-  do {                     \
-    if (!(COND)) {         \
-      Trap();              \
-    }                      \
+#define runtime_assert(condition) \
+  do {                            \
+    if (!(condition)) {           \
+      trap();                     \
+    }                             \
   } while (0)
-#define Assert(x) (void)(x)
+#define assert(condition) (void)(condition)
 #endif
 
-#define Abort(msg) AssertAlways(!#msg)
-#define NotImplemented() Abort("NOT IMPLEMENTED!")
+#define abort(message) runtime_assert(!#message)
+#define not_implemented() abort("NOT IMPLEMENTED!")
 
 /* ===================================================== */
 /*                     DEBUG LOGGER                      */
@@ -263,13 +267,13 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 
 #ifdef DEBUG_MODE
 #include <stdio.h>
-#define Dbg(msg, ...)           \
-  do {                          \
-    printf(msg, ##__VA_ARGS__); \
-    printf("\n");               \
+#define dbg(format, ...)           \
+  do {                             \
+    printf(format, ##__VA_ARGS__); \
+    printf("\n");                  \
   } while (0);
 #else
-#define Dbg(msg, ...)
+#define dbg(format, ...)
 #endif /* DEBUG_MODE */
 
 /* ===================================================== */
@@ -278,20 +282,20 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 
 #ifdef PROFILING
 #include <tracy/tracy.h>
-#define MASTER_PROFILING_CONTEXT TracyCZoneCtx tracyctx;
-#define SLAVE_PROFILING_CONTEXT extern TracyCZoneCtx tracyctx;
-#define START_PROFILING(NUM) TracyCZoneN(tracyctx, __func__, (NUM));
-#define END_PROFILING() TracyCZoneEnd(tracyctx);
-#define START_MEMORY_PROFILING(PTR, SIZE) TracyCAlloc((PTR), (SIZE));
-#define END_MEMORY_PROFILING(PTR) TracyCFree((PTR));
+#define mount_master_profiling_context() TracyCZoneCtx tracyctx;
+#define mount_slave_profiling_context() extern TracyCZoneCtx tracyctx;
+#define start_profiling(NUM) TracyCZoneN(tracyctx, __func__, (NUM));
+#define end_profiling() TracyCZoneEnd(tracyctx);
+#define start_memory_profiling(PTR, SIZE) TracyCAlloc((PTR), (SIZE));
+#define end_memory_profiling(PTR) TracyCFree((PTR));
 #else /* NOT PROFILING */
-#define MASTER_PROFILING_CONTEXT
-#define SLAVE_PROFILING_CONTEXT
-#define START_PROFILING(NUM)
-#define END_PROFILING()
-#define START_MEMORY_PROFILING(PTR, SIZE)
-#define END_MEMORY_PROFILING(PTR)
-#endif /* PROFILING */
+#define mount_master_profiling_context()
+#define mount_slave_profiling_context()
+#define start_profiling(NUM)
+#define end_profiling()
+#define start_memory_profiling(PTR, SIZE)
+#define end_memory_profiling(PTR)
+#endif /* */
 
 /* ===================================================== */
 /*                          END                          */

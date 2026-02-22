@@ -14,7 +14,6 @@ ifeq ($(config),debug)
   lib_hmm_config = debug
   lib_stb_config = debug
   lib_sepi_config = debug
-  app_playground_config = debug
   app_pak_config = debug
 endif
 ifeq ($(config),release)
@@ -23,7 +22,6 @@ ifeq ($(config),release)
   lib_hmm_config = release
   lib_stb_config = release
   lib_sepi_config = release
-  app_playground_config = release
   app_pak_config = release
 endif
 ifeq ($(config),profiling)
@@ -32,11 +30,10 @@ ifeq ($(config),profiling)
   lib_hmm_config = profiling
   lib_stb_config = profiling
   lib_sepi_config = profiling
-  app_playground_config = profiling
   app_pak_config = profiling
 endif
 
-PROJECTS := lib_log lib_sokol lib_hmm lib_stb lib_sepi app_playground app_pak
+PROJECTS := lib_log lib_sokol lib_hmm lib_stb lib_sepi app_pak
 
 .PHONY: all clean help $(PROJECTS) 
 
@@ -72,12 +69,6 @@ ifneq (,$(lib_sepi_config))
 	@${MAKE} --no-print-directory -C .build -f lib_sepi.make config=$(lib_sepi_config)
 endif
 
-app_playground:
-ifneq (,$(app_playground_config))
-	@echo "==== Building app_playground ($(app_playground_config)) ===="
-	@${MAKE} --no-print-directory -C .build -f app_playground.make config=$(app_playground_config)
-endif
-
 app_pak:
 ifneq (,$(app_pak_config))
 	@echo "==== Building app_pak ($(app_pak_config)) ===="
@@ -90,7 +81,6 @@ clean:
 	@${MAKE} --no-print-directory -C .build -f lib_hmm.make clean
 	@${MAKE} --no-print-directory -C .build -f lib_stb.make clean
 	@${MAKE} --no-print-directory -C .build -f lib_sepi.make clean
-	@${MAKE} --no-print-directory -C .build -f app_playground.make clean
 	@${MAKE} --no-print-directory -C .build -f app_pak.make clean
 
 help:
@@ -109,7 +99,6 @@ help:
 	@echo "   lib_hmm"
 	@echo "   lib_stb"
 	@echo "   lib_sepi"
-	@echo "   app_playground"
 	@echo "   app_pak"
 	@echo ""
 	@echo "For more information, see https://github.com/premake/premake-core/wiki"

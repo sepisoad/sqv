@@ -5,8 +5,8 @@
 /*                     DEPENDENCIES                      */
 /* ===================================================== */
 
-#include "base.h"
-#include "arena.h"
+#include <sepi/base.h>
+#include <sepi/arena.h>
 
 /* ===================================================== */
 /*                       CONSTANTS                       */
@@ -25,14 +25,51 @@ enum {
 
 typedef struct Str8 Str8;
 struct Str8 {
-  CStr cstr;
   Sz length;
+  CStr cstr;
 };
 
 typedef struct {
-  CBuf cbuf;
   Sz size;
+  CBuf cbuf;
 } Buf8;
+
+#define _DefineFixedStr8_Internal(length)                                      \
+  typedef struct Fixed##length##Str8 {                                         \
+    const char cstr[(length) + 1];                                             \
+  } Fixed##length##Str8;                                                       \
+                                                                               \
+  static inline U32 fixed_##length##_str8_length() {                           \
+    return (length);                                                           \
+  }                                                                            \
+                                                                               \
+  static inline Fixed##length##Str8 fixed_##length##_str8(const char* str) {   \
+    assert(str != NULL);                                                       \
+    assert(strlen(str) < (length) + 1);                                        \
+    struct {                                                                   \
+      char c[(length) + 1];                                                    \
+    } mutable_tmp = {0};                                                       \
+    strncpy(mutable_tmp.c, str, (length));                                     \
+    return *(Fixed##length##Str8*)&mutable_tmp;                                \
+  }                                                                            \
+                                                                               \
+  static inline Fixed##length##Str8* fixed_##length##_str8_clone(              \
+      Arena* arena, const char* str) {                                         \
+    assert(arena != NULL);                                                     \
+    assert(str != NULL);                                                       \
+    assert(strlen(str) < (length) + 1);                                        \
+    Fixed##length##Str8* res = arena_push(arena, sizeof(Fixed##length##Str8),  \
+                                          alignof(Fixed##length##Str8), TRUE); \
+    strncpy((char*)res->cstr, str, (length));                                  \
+    return res;                                                                \
+  }                                                                            \
+                                                                               \
+  static inline Str8 fixed_##length##_str8_view(Fixed##length##Str8* f) {      \
+    assert(f != NULL);                                                         \
+    return str8(f->cstr);                                                      \
+  }
+
+#define DefineFixedStr8(length) _DefineFixedStr8_Internal(length)
 
 /* ===================================================== */
 /*                          API                          */
@@ -87,7 +124,7 @@ Buf8 buf8(CBuf cbuf, Sz size);
 
 #ifdef SEPI_STRING_IMPLEMENTATION
 
-SLAVE_PROFILING_CONTEXT;
+mount_slave_profiling_context();
 
 static U8 integer_symbol_reverse[128] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -103,102 +140,102 @@ static U8 integer_symbol_reverse[128] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 };
 
-// TODO:
-// add profiling to these functions!
+// TODO: turn all these functions into inline function
 
 Str8
 str8(CStr cstr) {
-  START_PROFILING(1);
+  start_profiling(1);
 
-  Assert(cstr != 0);
-  Assert(strlen(cstr) > 0);
+  assert(cstr != 0);
+  assert(strlen(cstr) > 0);
 
-  Str8 result = {cstr, (Sz)strlen(cstr)};
+  Str8 result = {.cstr = cstr, .length = (Sz)strlen(cstr)};
 
-  END_PROFILING();
+  end_profiling();
   return result;
 }
 
 Str8
 str8_raw(RawPtr rptr, Sz length) {
-  START_PROFILING(1);
+  start_profiling(1);
 
-  Assert(rptr != 0);
-  Assert(length > 0);
+  assert(rptr != 0);
+  assert(length > 0);
 
-  Str8 result = {(CStr)rptr, length};
+  Str8 result = {.cstr = (CStr)rptr, .length = length};
 
-  END_PROFILING();
+  end_profiling();
   return result;
 }
 
 Str8
 str8_clone(Arena* arena, Str8 str) {
-  START_PROFILING(1);
+  start_profiling(1);
 
-  Assert(arena != 0);
-  Assert(str.cstr != 0);
-  Assert(str.length > 0);
+  assert(arena != 0);
+  assert(str.cstr != 0);
+  assert(str.length > 0);
 
-  Str copy = arena_push(arena, sizeof(I8) * (str.length + 1), AlignOf(I8), TRUE);
-  MemCopy(copy, str.cstr, str.length);
-  Str8 result = {copy, str.length};
+  Str copy =
+      arena_push(arena, sizeof(I8) * (str.length + 1), alignof(I8), TRUE);
+  copy_memory(copy, str.cstr, str.length);
+  Str8 result = {.cstr = copy, .length = str.length};
 
-  END_PROFILING();
+  end_profiling();
   return result;
 }
 
 Str8
 str8_zero(void) {
-  START_PROFILING(1);
+  start_profiling(1);
 
   Str8 result = {0};
 
-  END_PROFILING();
+  end_profiling();
   return result;
 }
 
 Str8
 str8_join(Arena* arena, Str8 s1, Str8 s2, char separator) {
-  START_PROFILING(1);
+  start_profiling(1);
 
-  Assert(arena != 0);
-  Assert(s1.cstr != 0);
-  Assert(s1.length > 0);
-  Assert(s2.cstr != 0);
-  Assert(s2.length > 0);
-  Assert(separator != 0);
+  assert(arena != 0);
+  assert(s1.cstr != 0);
+  assert(s1.length > 0);
+  assert(s2.cstr != 0);
+  assert(s2.length > 0);
+  assert(separator != 0);
 
   Sz length = s1.length + s2.length + 1; /*/*/
-  Str str = arena_push(arena, sizeof(I8) * (length + 1 /*0*/), AlignOf(I8), TRUE);
+  Str str =
+      arena_push(arena, sizeof(I8) * (length + 1 /*0*/), alignof(I8), TRUE);
 
   memcpy(str, s1.cstr, s1.length);
   str[s1.length] = separator;
   memcpy(str + s1.length + 1, s2.cstr, s2.length);
 
-
-  END_PROFILING();
-  return (Str8){str, length};
+  end_profiling();
+  return (Str8){.cstr = str, .length = length};
 }
 
 Nothing
 str8_reset(Str8* ptr) {
-  START_PROFILING(1);
+  start_profiling(1);
 
-  ptr->cstr = 0;
+  zero_memory((RawPtr)ptr->cstr, ptr->length);
   ptr->length = 0;
 
-  END_PROFILING();
+  end_profiling();
 }
 
 Bool
 str8_is_equal(Str8 str_a, Str8 str_b) {
-  START_PROFILING(1);
+  start_profiling(1);
 
-  Assert(str_a.cstr != 0);
-  Assert(str_a.length > 0);
-  Assert(str_b.cstr != 0);
-  Assert(str_b.length > 0);
+  assert(str_a.cstr != 0);
+  assert(str_a.length > 0);
+  assert(str_b.cstr != 0);
+  assert(str_b.length > 0);
 
   Bool result = TRUE;
 
@@ -215,16 +252,16 @@ str8_is_equal(Str8 str_a, Str8 str_b) {
   }
 
 cleanup:
-  END_PROFILING();
+  end_profiling();
   return result;
 }
 
 I32
 str8_find_first(Str8 str, I8 chr) {
-  START_PROFILING(1);
+  start_profiling(1);
 
-  Assert(str.cstr != 0);
-  Assert(str.length > 0);
+  assert(str.cstr != 0);
+  assert(str.length > 0);
 
   I32 index = 0;
   Bool found = FALSE;
@@ -236,7 +273,7 @@ str8_find_first(Str8 str, I8 chr) {
     }
   }
 
-  END_PROFILING();
+  end_profiling();
 
   if (found)
     return index;
@@ -245,10 +282,10 @@ str8_find_first(Str8 str, I8 chr) {
 
 I32
 str8_find_last(Str8 str, I8 chr) {
-  START_PROFILING(1);
+  start_profiling(1);
 
-  Assert(str.cstr != 0);
-  Assert(str.length > 0);
+  assert(str.cstr != 0);
+  assert(str.length > 0);
 
   I32 index = str.length;
   Bool found = FALSE;
@@ -260,7 +297,7 @@ str8_find_last(Str8 str, I8 chr) {
     }
   }
 
-  END_PROFILING();
+  end_profiling();
 
   if (found)
     return index;
@@ -269,22 +306,22 @@ str8_find_last(Str8 str, I8 chr) {
 
 Bool
 str8_equal(Str8 str_a, Str8 str_b, StringCompareFlags flags) {
-  START_PROFILING(1);
+  start_profiling(1);
 
-  Assert(str_a.cstr != 0);
-  Assert(str_a.length > 0);
-  Assert(str_b.cstr != 0);
-  Assert(str_b.length > 0);
+  assert(str_a.cstr != 0);
+  assert(str_a.length > 0);
+  assert(str_b.cstr != 0);
+  assert(str_b.length > 0);
 
   Bool result = FALSE;
 
   if (str_a.length == str_b.length && flags == 0) {
-    result = MemoryEq(str_a.cstr, str_b.cstr, str_b.length);
+    result = is_memory_equal(str_a.cstr, str_b.cstr, str_b.length);
   } else if (str_a.length == str_b.length ||
              (flags & StringCompareFlag_RightSideSloppy)) {
     Bool case_insensitive = (flags & StringCompareFlag_CaseInsensitive);
     Bool slash_insensitive = (flags & StringCompareFlag_SlashInsensitive);
-    U64 length = Min(str_a.length, str_b.length);
+    U64 length = min(str_a.length, str_b.length);
 
     result = 1;
     for (U64 i = 0; i < length; i += 1) {
@@ -305,20 +342,20 @@ str8_equal(Str8 str_a, Str8 str_b, StringCompareFlags flags) {
     }
   }
 
-  END_PROFILING();
+  end_profiling();
   return result;
 }
 
 Buf8
 buf8(CBuf cbuf, Sz size) {
-  START_PROFILING(1);
+  start_profiling(1);
 
-  Assert(cbuf != 0);
-  Assert(size > 0);
+  assert(cbuf != 0);
+  assert(size > 0);
 
-  Buf8 result = {cbuf, size};
+  Buf8 result = {.cbuf = cbuf, .size = size};
 
-  END_PROFILING();
+  end_profiling();
   return result;
 }
 
