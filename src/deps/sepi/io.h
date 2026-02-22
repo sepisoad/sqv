@@ -98,7 +98,8 @@ IOError io_read_directory(Arena* arena,
                           IOItem* io_item,
                           IOFlags flags);
 IOError io_get_directory_children_count(Str8 path, U32* count, IOFlags flags);
-IOError io_get_path_base_name(Str8 path, Str8* name);
+IOError io_get_path_base_name(Arena* arena, Str8 path, Str8* out);
+IOError io_get_path_directory_name(Arena* arena, Str8 path, Str8* out);
 
 #define IO_POS(n /* IOItem* */) ftell((n->file))
 #define IO_SET(n /* IOItem* */, ofs /* U32 */) fseek((n->file), (ofs), SEEK_SET)
@@ -425,12 +426,12 @@ cleanup:
 }
 
 IOError
-io_get_path_base_name(Str8 path, Str8* name) {
+io_get_path_base_name(Arena* arena, Str8 path, Str8* out) {
   start_profiling(1);
 
   assert(CS(path) != 0);
   assert(SL(path) > 0);
-  assert(name != 0);
+  assert(out != 0);
 
   IOError err = IO_ERR_SUCCESS;
   U32 last_index = SL(path) - 1;  // index of the last character
@@ -439,7 +440,7 @@ io_get_path_base_name(Str8 path, Str8* name) {
   if (IO_PATH_SEPARATOR == CS(path)[last_index]) {
     last_index--;
   }
-  // /Users/sepi/Games/Quake1/lq/
+
   for (U32 index = last_index; index >= 0; index--) {
     if (CS(path)[index] == IO_PATH_SEPARATOR) {
       last_segment_index = index + 1;
@@ -447,10 +448,33 @@ io_get_path_base_name(Str8 path, Str8* name) {
     }
   }
 
-  name->cstr = &CS(path)[last_segment_index];
-  name->length = strlen(name->cstr);
+  *out = str8_clone(arena, S(path.cstr + last_segment_index));
 
-  // cleanup: // NOTE: silence compiler warning
+  end_profiling();
+  return err;
+}
+
+IOError
+io_get_path_directory_name(Arena* arena, Str8 path, Str8* out) {
+  start_profiling(1);
+
+  assert(CS(path) != 0);
+  assert(SL(path) > 0);
+  assert(out != 0);
+
+  IOError err = IO_ERR_SUCCESS;
+  U32 last_index = SL(path) - 1;  // index of the last character
+  U32 last_segment_index = last_index;
+
+  for (U32 index = last_index; index >= 0; index--) {
+    if (CS(path)[index] == IO_PATH_SEPARATOR) {
+      last_segment_index = index;
+      break;
+    }
+  }
+
+  *out = str8_slice(arena, path, 0, last_segment_index);
+
   end_profiling();
   return err;
 }
@@ -693,7 +717,7 @@ _io_read_directory(Arena* arena, Str8 path, IOItem* io_item, IOFlags flags) {
   } while (TRUE);
 
   Str8 temp_name;
-  err = io_get_path_base_name(path, &temp_name);
+  err = io_get_path_base_name(arena, path, &temp_name);
   if (IO_ERR_SUCCESS != err) {
     goto cleanup;
   }

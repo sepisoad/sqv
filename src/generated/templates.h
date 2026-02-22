@@ -2,6 +2,8 @@
 
 #define SEPI_MAP_PAKITEM_IMPLEMENTATION
 #define SEPI_MAP_PAKCOUNTER_IMPLEMENTATION
+#define SEPI_STACK_PAKITEM_IMPLEMENTATION
 
 #include "map_pakitem.h"
 #include "map_pakcounter.h"
+#include "stack_pakitem.h"

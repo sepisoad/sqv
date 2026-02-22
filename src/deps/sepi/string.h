@@ -78,7 +78,8 @@ typedef struct {
 // Str8
 Str8 str8(CStr cstr);
 Str8 str8_raw(RawPtr rptr, Sz length);
-Str8 str8_clone(Arena* a, Str8 str);
+Str8 str8_clone(Arena* arena, Str8 str);
+Str8 str8_slice(Arena* arena, Str8 str, U32 from, U32 to);
 Str8 str8_zero(void);
 Str8 str8_join(Arena* arena, Str8 str_a, Str8 str_b, char separator);
 Nothing str8_reset(Str8* ptr);
@@ -183,6 +184,28 @@ str8_clone(Arena* arena, Str8 str) {
 
   end_profiling();
   return result;
+}
+
+Str8 str8_slice(Arena* arena, Str8 str, U32 from, U32 to) {
+  start_profiling(1);
+
+  assert(arena != 0);
+  assert(str.cstr != 0);
+  assert(str.length > 0);
+  assert(from <= to);
+  assert(from <= str.length);
+  assert(to <= str.length);
+
+  Sz new_length = to - from;
+  Str copy =
+      arena_push(arena, sizeof(I8) * (new_length + 1), alignof(I8), TRUE);
+
+  copy_memory(copy, str.cstr + from, new_length);
+  Str8 result = {.cstr = copy, .length = new_length};
+
+  end_profiling();
+  return result;
+
 }
 
 Str8

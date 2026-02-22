@@ -33,6 +33,12 @@ local jobs = {
         input_module = "map.h",
         target       = "PakCounter",
     },
+    {
+        input_dir    = "src/deps/sepi/templates/",
+        target_dir   = "src/generated/",
+        input_module = "stack.h",
+        target       = "PakItem",
+    },
 }
 
 -- Registry to group files by their target directory

@@ -83,8 +83,9 @@ project "lib_sokol"
   files { "src/deps/sokol/sokol.c" }
 
   filter "system:macosx"
-    defines { "SOKOL_GLCORE" }
-    links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
+    defines { "SOKOL_METAL" }
+    -- links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
+    links { "Cocoa.framework", "Metal.framework", "MetalKit.framework", "QuartzCore.framework", "IOKit.framework" }
     buildoptions { "-x objective-c" }
 
   filter "system:linux"
@@ -171,15 +172,16 @@ project "app_pak"
   links { "lib_log:static", "lib_stb:static", "lib_sepi:static", "lib_sokol:static", }
   files { "src/app_pak.c" }
 
-  defines { "SOKOL_GLCORE" }
-
   filter "system:macosx"
-    links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework" }
+    defines { "SOKOL_METAL" }
+    links { "Cocoa.framework", "Metal.framework", "MetalKit.framework", "QuartzCore.framework", "IOKit.framework" }
 
   filter "system:linux"
+    defines { "SOKOL_GLCORE" }
     links { "X11", "Xi", "Xcursor", "GL", "m" }
 
   filter "system:windows"
+    defines { "SOKOL_GLCORE" }
     links { "opengl32", "gdi32", "user32", "shell32", "ole32", "winmm" }
     defines { "SOKOL_WIN32_FORCE_MAIN", "NK_INCLUDE_FIXED_TYPES" }
 
