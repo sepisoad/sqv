@@ -17,6 +17,7 @@
 #include <sepi/endian.h>
 #include <sepi/string.h>
 #include <sepi/io.h>
+#include <sepi/generated/stack_ioitem.h>
 
 #define SEPI_MAP_PAKITEM_IMPLEMENTATION
 #define SEPI_MAP_PAKCOUNTER_IMPLEMENTATION
@@ -39,12 +40,17 @@
 /*                         TYPES                         */
 /* ===================================================== */
 
+DefineFStr8(PAK_ENTRY_NAME_LEN);
+
 typedef enum {
   PAK_ERR_SUCCESS,
   PAK_ERR_MALFORMED,
   PAK_ERR_INVALID_ENTRY_PATH,
   PAK_ERR_OUT_DIR_NOT_FOUND,
   PAK_ERR_EXTRACT,
+  PAK_ERR_PATH_LENGTH_TOO_LONG,
+  PAK_ERR_PAK_CREATION_ERROR,
+  PAK_ERR_ITEM_ZERO_SIZE,
   PAK_ERR__COUNT,
 } PakError;
 
@@ -80,18 +86,25 @@ struct Pak {
   U16 items_count;
 };
 
+typedef struct FL512_Str8 FL512_Str8;
+static inline Nothing fl512_str8_set(FL512_Str8* f, const char* str);
+
 /* ===================================================== */
 /*                          API                          */
 /* ===================================================== */
 
-PakError pak_load_from_file(Pak* pak, IOItem* node);
+PakError pak_load_from_io_file(Pak* pak, IOFile* io_file);
 Nothing pak_unload(Pak* pak);
-PakError pak_extract(Pak* pak, IOItem* node, Str8 out_dir);
+PakError pak_extract(Pak* pak, IOFile* io_file, Str8 out_dir);
 PakError pak_extract_item(Pak* pak,
                           PakItem* pak_item_for_path,
-                          IOItem* io_node,
+                          IOFile* io_file,
                           Str8 out_dir);
-PakError pak_generate(Pak* pak, IOItem* node);
+PakError pak_make_from_ioitem(Arena* arena,
+                              IOItem* io_item,
+                              Str8 base_path,
+                              Str8 out_path,
+                              FL512_Str8* out_err);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -193,18 +206,18 @@ pak_get_name_at_depth(CStr path,
 /* ===================================================== */
 
 static PakError
-pak_read_entries_from_io_item(Pak* pak, IOItem* io_item) {
+pak_read_entries_from_io_file(Pak* pak, IOFile* io_file) {
   start_profiling(1);
 
   assert(pak != 0);
-  assert(io_item != 0);
-  assert(io_item->file != 0);
+  assert(io_file != 0);
+  assert(io_file->file != 0);
 
   PakError err = PAK_ERR_SUCCESS;
   Arena* arena = pak->arena;
 
   MapPakCounter map_counts = map_pakcounter_make(arena, 64);
-  U64 io_item_file_offset = IO_POS(io_item);
+  U64 io_file_offset = io_get_file_position(io_file);
   PakCounter* root_counter =
       arena_push(pak->arena, sizeof(PakCounter), alignof(PakCounter), TRUE);
 
@@ -214,9 +227,9 @@ pak_read_entries_from_io_item(Pak* pak, IOItem* io_item) {
   for (U32 index = 0; index < pak->items_count; index++) {
     char entry_str[PAK_ENTRY_NAME_LEN] = {0};
 
-    IO_BUF(io_item, PAK_ENTRY_NAME_LEN, entry_str);
-    IO_MOVE(io_item, sizeof(I32));
-    IO_MOVE(io_item, sizeof(I32));
+    io_read_into_buffer(io_file, PAK_ENTRY_NAME_LEN, entry_str);
+    io_move_file_position(io_file, sizeof(I32));
+    io_move_file_position(io_file, sizeof(I32));
 
     U32 path_depth = 0;
     err = pak_get_path_depth(entry_str, PAK_ENTRY_NAME_LEN, &path_depth);
@@ -255,7 +268,7 @@ pak_read_entries_from_io_item(Pak* pak, IOItem* io_item) {
     }
   }
 
-  IO_SET(io_item, io_item_file_offset);
+  io_set_file_position(io_file, io_file_offset);
 
   MapPakItem map_items = map_pakitem_make(arena, 64);
   PakItem* root_pak_item =
@@ -274,12 +287,12 @@ pak_read_entries_from_io_item(Pak* pak, IOItem* io_item) {
   PakItem* last_pak_item = root_pak_item;
   for (U32 index = 0; index < pak->items_count; index++) {
     char entry_str[PAK_ENTRY_NAME_LEN] = {0};
-    U32 entry_size = 0;
-    U32 entry_offset = 0;
+    I32 entry_size = 0;
+    I32 entry_offset = 0;
 
-    IO_BUF(io_item, PAK_ENTRY_NAME_LEN, entry_str);
-    IO_I32(io_item, &entry_offset);
-    IO_I32(io_item, &entry_size);
+    io_read_into_buffer(io_file, PAK_ENTRY_NAME_LEN, entry_str);
+    io_read_into_i32(io_file, &entry_offset);
+    io_read_into_i32(io_file, &entry_size);
 
     U32 path_depth = 0;
     err = pak_get_path_depth(entry_str, PAK_ENTRY_NAME_LEN, &path_depth);
@@ -345,11 +358,11 @@ cleanup:
 /* ===================================================== */
 
 PakError
-pak_load_from_file(Pak* pak, IOItem* io_item) {
+pak_load_from_io_file(Pak* pak, IOFile* io_file) {
   start_profiling(1);
 
   assert(pak != 0);
-  assert(io_item != 0);
+  assert(io_file != 0);
 
   PakError err = PAK_ERR_SUCCESS;
 
@@ -359,10 +372,10 @@ pak_load_from_file(Pak* pak, IOItem* io_item) {
 
   pak->arena = arena_create();
 
-  IO_BUF(io_item, PAK_MAGIC_CODE_LEN, magic_code);
-  IO_I32(io_item, &offset);
-  IO_I32(io_item, &size);
-  IO_SET(io_item, offset);
+  io_read_into_buffer(io_file, PAK_MAGIC_CODE_LEN, magic_code);
+  io_read_into_i32(io_file, &offset);
+  io_read_into_i32(io_file, &size);
+  io_set_file_position(io_file, offset);
 
   if ((offset <= 0) || (size <= 0) || (magic_code[0] != 'P') ||
       (magic_code[1] != 'A') || (magic_code[2] != 'C') ||
@@ -372,7 +385,7 @@ pak_load_from_file(Pak* pak, IOItem* io_item) {
   }
 
   pak->items_count = size / sizeof(PakRawEntry);
-  err = pak_read_entries_from_io_item(pak, io_item);
+  err = pak_read_entries_from_io_file(pak, io_file);
   if (err != PAK_ERR_SUCCESS) {
     goto cleanup;
   }
@@ -398,7 +411,7 @@ pak_unload(Pak* pak) {
 /* ===================================================== */
 
 PakError
-pak_extract(Pak* pak, IOItem* io_item, Str8 out_dir) {
+pak_extract(Pak* pak, IOFile* io_file, Str8 out_dir) {
   start_profiling(1);
 
   PakError err = PAK_ERR_SUCCESS;
@@ -434,11 +447,11 @@ pak_extract(Pak* pak, IOItem* io_item, Str8 out_dir) {
           goto cleanup;
         }
       } else {
-        CBuf src_buffer = arena_push(scratch.arena, current_child->data_size,
-                                     alignof(U8), TRUE);
+        U8* src_buffer = arena_push(scratch.arena, current_child->data_size,
+                                    alignof(U8), TRUE);
 
-        IO_SET(io_item, current_child->data_offset);
-        IO_BUF(io_item, current_child->data_size, src_buffer);
+        io_set_file_position(io_file, current_child->data_offset);
+        io_read_into_buffer(io_file, current_child->data_size, src_buffer);
         io_dump_buffer_to_path(full_path_str,
                                buf8(src_buffer, current_child->data_size));
       }
@@ -457,7 +470,7 @@ cleanup:
 PakError
 pak_extract_item(Pak* pak,
                  PakItem* pak_item_for_path,
-                 IOItem* io_node,
+                 IOFile* io_file,
                  Str8 out_dir) {
   start_profiling(1);
 
@@ -474,11 +487,11 @@ pak_extract_item(Pak* pak,
     }
     Str8 full_path_str = str8_join(scratch.arena, out_dir,
                                    pak_item_for_path->name, IO_PATH_SEPARATOR);
-    CBuf src_buffer = arena_push(scratch.arena, pak_item_for_path->data_size,
-                                 alignof(U8), TRUE);
+    U8* src_buffer = arena_push(scratch.arena, pak_item_for_path->data_size,
+                                alignof(U8), TRUE);
 
-    IO_SET(io_node, pak_item_for_path->data_offset);
-    IO_BUF(io_node, pak_item_for_path->data_size, src_buffer);
+    io_set_file_position(io_file, pak_item_for_path->data_offset);
+    io_read_into_buffer(io_file, pak_item_for_path->data_size, src_buffer);
     io_dump_buffer_to_path(full_path_str,
                            buf8(src_buffer, pak_item_for_path->data_size));
     goto cleanup;
@@ -523,11 +536,11 @@ pak_extract_item(Pak* pak,
           goto cleanup;
         }
 
-        CBuf src_buffer = arena_push(scratch.arena, current_child->data_size,
-                                     alignof(U8), TRUE);
+        U8* src_buffer = arena_push(scratch.arena, current_child->data_size,
+                                    alignof(U8), TRUE);
 
-        IO_SET(io_node, current_child->data_offset);
-        IO_BUF(io_node, current_child->data_size, src_buffer);
+        io_set_file_position(io_file, current_child->data_offset);
+        io_read_into_buffer(io_file, current_child->data_size, src_buffer);
         io_dump_buffer_to_path(full_path_str,
                                buf8(src_buffer, current_child->data_size));
       }
@@ -544,15 +557,88 @@ cleanup:
 /* ===================================================== */
 
 PakError
-pak_generate(Pak* pak, IOItem* node) {
+pak_make_from_ioitem(Arena* arena,
+                     IOItem* io_item,
+                     Str8 base_path,
+                     Str8 out_path,
+                     FL512_Str8* out_err) {
   start_profiling(1);
 
-  assert(pak != 0);
-  assert(node != 0);
+  assert(arena != 0);
+  assert(io_item != 0);
+  assert(out_err != 0);
 
   PakError err = PAK_ERR_SUCCESS;
+  ArenaScratch fnmem = arena_scratch_begin(arena);
+
+  IOItem* current_directory = 0;
+  StackIOItem* stack_directories = stack_ioitem_create(fnmem.arena);
+
+  stack_ioitem_push(stack_directories, io_item);
+
+  I32 files_table_offset = (4 + sizeof(I32) + sizeof(I32));
+  I32 files_table_size = io_item->total_files_count * sizeof(PakRawEntry);
+  I32 current_data_position = files_table_offset + files_table_size;
+  Sz total_size = current_data_position + io_item->total_files_size;
+
+  IOFile pak_io_file = {0};
+  IOError ioerr =
+      io_create_file_with_size(fnmem.arena, out_path, total_size, &pak_io_file);
+  if (IO_ERR_SUCCESS != ioerr) {
+    err = PAK_ERR_PAK_CREATION_ERROR;
+    goto cleanup;
+  }
+
+  Str8 pak_file_id = str8("PACK");
+  io_write_from_buffer(&pak_io_file, pak_file_id.length,
+                       (RawPtr)pak_file_id.cstr);
+  io_write_from_i32(&pak_io_file, &files_table_offset);
+  io_write_from_i32(&pak_io_file, &files_table_size);
+  while (0 != (current_directory = stack_ioitem_pop(stack_directories))) {
+    IOItem* children = current_directory->children;
+    for (U16 index = 0; index < current_directory->children_count; index++) {
+      if (children[index].is_directory) {
+        stack_ioitem_push(stack_directories, (children + index));
+      } else {
+        ArenaScratch loopmem = arena_scratch_begin(fnmem.arena);
+
+        FL56_Str8 clean_name_ =
+            fl56_str8(children[index].path.cstr + (base_path.length + 1));
+
+        Sz pak_item_size = 0;
+        IOError ioerro = io_get_file_size(children[index].path, &pak_item_size);
+        if (IO_ERR_SUCCESS != ioerr) {
+          err = PAK_ERR_PAK_CREATION_ERROR;
+          goto cleanup;
+        }
+
+        if (pak_item_size <= 0) {
+          err = PAK_ERR_ITEM_ZERO_SIZE;
+          goto cleanup;
+        }
+
+        io_write_from_buffer(&pak_io_file, PAK_ENTRY_NAME_LEN,
+                             (RawPtr)clean_name_.cstr);
+        io_write_from_i32(&pak_io_file, &current_data_position);
+        io_write_from_i32(&pak_io_file, (I32*)&pak_item_size);
+
+        U64 saved_position = io_get_file_position(&pak_io_file);
+        io_set_file_position(&pak_io_file, current_data_position);
+
+        Buf8 buf = {0};
+        io_slurp_path_to_buffer(loopmem.arena, children[index].path, &buf);
+        io_write_from_buffer(&pak_io_file, pak_item_size, (RawPtr)buf.cbuf);
+        io_set_file_position(&pak_io_file, saved_position);
+
+        current_data_position += pak_item_size;
+        arena_scratch_end(loopmem);
+      }
+    }
+  }
 
 cleanup:
+  io_close_file(&pak_io_file);
+  arena_scratch_end(fnmem);
   end_profiling();
   return err;
 }

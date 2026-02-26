@@ -23,8 +23,10 @@ workspace "ProjectWorkspace"
   -- Debug + macOS
   filter { "configurations:Debug", "system:macosx" }
     -- FUCK MACOS, i have to disable ASAN for now!
+
     -- buildoptions { "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
     -- linkoptions  { "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
+
     buildoptions { "-fsanitize=undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
     linkoptions  { "-fsanitize=undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
 

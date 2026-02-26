@@ -49,6 +49,9 @@ typedef enum {
   IO_ERR_MKDIR,
   IO_ERR_MKDIR_RECUR,
   IO_ERR_FILE_OPEN,
+  IO_ERR_FILE_TRUNCATE,
+  IO_ERR_FILE_DESCRIPTOR,
+  IO_ERR_SLURP,
   IO_ERR_NOT_FILE,
   IO_ERR_NOT_DIR,
   IO_ERR_STAT,
@@ -70,14 +73,23 @@ typedef enum {
   IO_KIND__COUNT,
 } IOKind;
 
+typedef struct IOFile IOFile;
+struct IOFile {
+  Str8 path;
+  NDBuffer buffer;
+  FILE* file;
+  Sz file_size;
+};
+
 typedef struct IOItem IOItem;
 struct IOItem {
   IOItem* parent;
   IOItem* children;
   Str8 name;
   Str8 path;
-  FILE* file;
-  NDBuffer buffer;
+  Sz file_size;
+  Sz total_files_size;
+  U32 total_files_count;
   U16 children_count;
   Bool is_directory;
 };
@@ -86,10 +98,17 @@ struct IOItem {
 /*                          API                          */
 /* ===================================================== */
 
-IOError io_open_file(Arena* arena, Str8 path, IOItem* io_item);
-IOError io_close_file(IOItem* io_item);
-IOError io_load_file(Arena* a, Str8 path, IOItem* io_item);
+IOError io_create_file(Arena* arena, Str8 path, IOFile* io_file);
+IOError io_create_file_with_size(Arena* arena,
+                                 Str8 path,
+                                 Sz size,
+                                 IOFile* io_file);
+IOError io_open_file(Arena* arena, Str8 path, IOFile* io_file);
+IOError io_close_file(IOFile* io_file);
+IOError io_load_file(Arena* a, Str8 path, IOFile* io_file);
+IOError io_get_file_size(Str8 path, Sz* out);
 IOError io_dump_buffer_to_path(Str8 path, Buf8 data);
+IOError io_slurp_path_to_buffer(Arena* arena, Str8 path, Buf8* data);
 IOError io_is_path_a_file(Str8 path, Bool* is_file);
 IOError io_is_path_a_directory(Str8 path, Bool* is_dir);
 IOError io_make_directory(Str8 path, IOFlags flags);
@@ -101,52 +120,85 @@ IOError io_get_directory_children_count(Str8 path, U32* count, IOFlags flags);
 IOError io_get_path_base_name(Arena* arena, Str8 path, Str8* out);
 IOError io_get_path_directory_name(Arena* arena, Str8 path, Str8* out);
 
-#define IO_POS(n /* IOItem* */) ftell((n->file))
-#define IO_SET(n /* IOItem* */, ofs /* U32 */) fseek((n->file), (ofs), SEEK_SET)
-#define IO_MOVE(n /* IOItem* */, sz /* Sz */) fseek((n->file), (sz), SEEK_CUR)
+static inline U64
+io_get_file_position(IOFile* io_file) {
+  return ftell(io_file->file);
+}
 
-#define IO_BUF(n /* IOItem* */, len /* U32 */, buf /* CBuf */) \
-  fread((RawPtr)(buf), 1, (len), ((n)->file))
+static inline Nothing
+io_set_file_position(IOFile* io_file, U64 offset) {
+  fseek(io_file->file, offset, SEEK_SET);
+}
 
-#define IO_I16(n /* IOItem* */, num /* I16* */)         \
-  {                                                     \
-    I16 tmp;                                            \
-    fread((RawPtr)(&tmp), 1, sizeof(I16), ((n)->file)); \
-    tmp = nd_i16(tmp);                                  \
-    *(num) = tmp;                                       \
-  }
+static inline Nothing
+io_move_file_position(IOFile* io_file, U64 offset) {
+  fseek(io_file->file, offset, SEEK_CUR);
+}
 
-#define IO_I32(n /* IOItem* */, num /* I32* */)         \
-  {                                                     \
-    I32 tmp;                                            \
-    fread((RawPtr)(&tmp), 1, sizeof(I32), ((n)->file)); \
-    tmp = nd_i32(tmp);                                  \
-    *(num) = tmp;                                       \
-  }
+static inline Sz
+io_read_into_buffer(IOFile* io_file, Sz length, RawPtr buffer) {
+  return fread(buffer, 1, length, io_file->file);
+}
 
-#define IO_I64(n /* IOItem* */, num /* I64* */)         \
-  {                                                     \
-    I64 tmp;                                            \
-    fread((RawPtr)(&tmp), 1, sizeof(I64), ((n)->file)); \
-    tmp = nd_i64(tmp);                                  \
-    *(num) = tmp;                                       \
-  }
+static inline Nothing
+io_read_into_i16(IOFile* io_file, I16* out_value) {
+  I16 temp_value;
+  fread((RawPtr)&temp_value, 1, sizeof(I16), io_file->file);
+  temp_value = nd_i16(temp_value);
+  *(out_value) = temp_value;
+}
 
-#define IO_F32(n /* IOItem* */, num /* F32* */)         \
-  {                                                     \
-    F32 tmp;                                            \
-    fread((RawPtr)(&tmp), 1, sizeof(F32), ((n)->file)); \
-    tmp = nd_f32(tmp);                                  \
-    *(num) = tmp;                                       \
-  }
+static inline Nothing
+io_read_into_i32(IOFile* io_file, I32* out_value) {
+  I32 temp_value;
+  fread((RawPtr)&temp_value, 1, sizeof(I32), io_file->file);
+  temp_value = nd_i32(temp_value);
+  *(out_value) = temp_value;
+}
 
-#define IO_F64(n /* IOItem* */, num /* F64* */)         \
-  {                                                     \
-    F64 tmp;                                            \
-    fread((RawPtr)(&tmp), 1, sizeof(F64), ((n)->file)); \
-    tmp = nd_f64(tmp);                                  \
-    *(num) = tmp;                                       \
-  }
+static inline Nothing
+io_read_into_i64(IOFile* io_file, I64* out_values) {
+  I64 temp_value;
+  fread((RawPtr)&temp_value, 1, sizeof(I64), io_file->file);
+  temp_value = nd_i64(temp_value);
+  *(out_values) = temp_value;
+}
+
+static inline Nothing
+io_read_into_f32(IOFile* io_file, F32* out_values) {
+  F32 temp_value;
+  fread((RawPtr)&temp_value, 1, sizeof(F32), io_file->file);
+  temp_value = nd_f32(temp_value);
+  *(out_values) = temp_value;
+}
+
+static inline Nothing
+io_read_into_f64(IOFile* io_file, F64* out_values) {
+  F64 temp_value;
+  fread((RawPtr)&temp_value, 1, sizeof(F64), io_file->file);
+  temp_value = nd_f64(temp_value);
+  *(out_values) = temp_value;
+}
+
+static inline Sz
+io_write_from_buffer(IOFile* io_file, Sz length, RawPtr buffer) {
+  return fwrite(buffer, 1, length, io_file->file);
+}
+
+static inline Sz
+io_write_from_i16(IOFile* io_file, I16* i16) {
+  return fwrite((RawPtr)(i16), 1, sizeof(I16), io_file->file);
+}
+
+static inline Sz
+io_write_from_i32(IOFile* io_file, I32* i32) {
+  return fwrite((RawPtr)(i32), 1, sizeof(I32), io_file->file);
+}
+
+static inline Sz
+io_write_from_i64(IOFile* io_file, I64* i64) {
+  return fwrite((RawPtr)(i64), 1, sizeof(I64), io_file->file);
+}
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -171,12 +223,40 @@ static IOError _io_make_directory(Str8 path);
 static IOError _io_make_directory_recursively(Str8 path);
 
 IOError
-io_open_file(Arena* arena, Str8 path, IOItem* io_item) {
+io_create_file(Arena* arena, Str8 path, IOFile* io_file) {
   start_profiling(1);
 
   assert(CS(path) != 0);
   assert(SL(path) > 0);
-  assert(io_item != 0);
+  assert(io_file != 0);
+
+  IOError err = IO_ERR_SUCCESS;
+
+  io_file->file = fopen(CS(path), "wb");
+  if (0 == io_file->file) {
+    err = IO_ERR_FILE_OPEN;
+    goto cleanup;
+  }
+
+  io_file->file_size = 0;
+  io_file->path = str8_clone(arena, path);
+
+cleanup:
+  if (io_file->file && err != IO_ERR_SUCCESS) {
+    fclose(io_file->file);
+  }
+
+  end_profiling();
+  return err;
+}
+
+IOError
+io_open_file(Arena* arena, Str8 path, IOFile* io_file) {
+  start_profiling(1);
+
+  assert(CS(path) != 0);
+  assert(SL(path) > 0);
+  assert(io_file != 0);
 
   IOError err = IO_ERR_SUCCESS;
   Bool is_file = FALSE;
@@ -188,19 +268,24 @@ io_open_file(Arena* arena, Str8 path, IOItem* io_item) {
     goto cleanup;
   }
 
-  io_item->file = fopen(CS(path), "rb");
-  if (0 == io_item->file) {
+  io_file->file = fopen(CS(path), "rb");
+  if (0 == io_file->file) {
     err = IO_ERR_FILE_OPEN;
     goto cleanup;
   }
 
-  io_item->is_directory = FALSE;
-  io_item->name = str8_clone(arena, path);
-  io_item->path = str8_clone(arena, path);
+  // TODO: handle error cases
+  fseek(io_file->file, 0, SEEK_END);
+
+  io_file->file_size = (Sz)ftell(io_file->file);
+  io_file->path = str8_clone(arena, path);
+
+  // TODO: handle error cases
+  rewind(io_file->file);
 
 cleanup:
-  if (io_item->file && err != IO_ERR_SUCCESS) {
-    fclose(io_item->file);
+  if (io_file->file && err != IO_ERR_SUCCESS) {
+    fclose(io_file->file);
   }
 
   end_profiling();
@@ -208,35 +293,34 @@ cleanup:
 }
 
 IOError
-io_close_file(IOItem* io_item) {
+io_close_file(IOFile* io_file) {
   start_profiling(1);
 
-  assert(io_item != 0);
+  assert(io_file != 0);
 
   IOError err = IO_ERR_SUCCESS;
 
-  str8_reset(&io_item->name);
-  str8_reset(&io_item->path);
-  io_item->is_directory = FALSE;
-  if (!io_item->file) {
-    fclose(io_item->file);
-  }
-  nd_reset(&io_item->buffer);
-  zero_memory(io_item, sizeof(IOItem));
+  fflush(io_file->file);
 
-  // cleanup: // NOTE: silence compiler warning
+  str8_reset(&io_file->path);
+  if (!io_file->file) {
+    fclose(io_file->file);
+  }
+  nd_reset(&io_file->buffer);
+  zero_memory(io_file, sizeof(IOFile));
+
   end_profiling();
   return err;
 }
 
 IOError
-io_load_file(Arena* arena, Str8 path, IOItem* io_item) {
+io_load_file(Arena* arena, Str8 path, IOFile* io_file) {
   start_profiling(1);
 
   assert(arena != 0);
   assert(CS(path) != 0);
   assert(SL(path) > 0);
-  assert(io_item != 0);
+  assert(io_file != 0);
 
   IOError err = IO_ERR_SUCCESS;
   Bool is_file = FALSE;
@@ -248,46 +332,44 @@ io_load_file(Arena* arena, Str8 path, IOItem* io_item) {
     goto cleanup;
   }
 
-  io_item->file = fopen(CS(path), "rb");
-  if (0 == io_item->file) {
+  io_file->file = fopen(CS(path), "rb");
+  if (0 == io_file->file) {
     err = IO_ERR_FILE_OPEN;
     goto cleanup;
   }
 
-  if (0 != fseek(io_item->file, 0, SEEK_END)) {
+  if (0 != fseek(io_file->file, 0, SEEK_END)) {
     err = IO_ERR_FILE_OPEN;
     goto cleanup;
   }
 
-  I64 file_size = ftell(io_item->file) * sizeof(U8);
+  I64 file_size = ftell(io_file->file) * sizeof(U8);
   if (-1 == file_size) {
     err = IO_ERR_FILE_OPEN;
     goto cleanup;
   }
 
-  io_item->buffer.size = (Sz)file_size;
+  io_file->buffer.size = (Sz)file_size;
 
   // NOTE:
   // rewind has no return to error on!
-  rewind(io_item->file);
+  rewind(io_file->file);
 
-  io_item->buffer.base =
-      (CBuf)arena_push(arena, io_item->buffer.size, alignof(U8), FALSE);
-  runtime_assert(io_item->buffer.base != 0);
+  io_file->buffer.base =
+      (CBuf)arena_push(arena, io_file->buffer.size, alignof(U8), FALSE);
+  runtime_assert(io_file->buffer.base != 0);
 
-  Sz rsize = fread((void*)io_item->buffer.base, 1, io_item->buffer.size,
-                   io_item->file);
-  if (rsize == io_item->buffer.size) {
+  Sz rsize = fread((void*)io_file->buffer.base, 1, io_file->buffer.size,
+                   io_file->file);
+  if (rsize == io_file->buffer.size) {
     err = IO_ERR_FILE_OPEN;
     goto cleanup;
   }
 
-  io_item->is_directory = FALSE;
-
 cleanup:
-  if (io_item->file) {
-    fclose(io_item->file);
-    io_item->file = 0;
+  if (io_file->file) {
+    fclose(io_file->file);
+    io_file->file = 0;
   }
 
   end_profiling();
@@ -318,6 +400,42 @@ io_dump_buffer_to_path(Str8 path, Buf8 data) {
   }
 
   fflush(f);
+
+cleanup:
+  if (f) {
+    fclose(f);
+  }
+  end_profiling();
+  return err;
+}
+
+IOError
+io_slurp_path_to_buffer(Arena* arena, Str8 path, Buf8* data) {
+  start_profiling(1);
+
+  assert(CS(path) != 0);
+  assert(SL(path) > 0);
+
+  IOError err = IO_ERR_SUCCESS;
+
+  FILE* f = fopen(CS(path), "rb");
+  if (0 == f) {
+    err = IO_ERR_MKFILE;
+    goto cleanup;
+  }
+
+  fseek(f, 0, SEEK_END);
+  Sz size = ftell(f);
+  rewind(f);
+
+  U8* buf = arena_push(arena, sizeof(U8) * size, alignof(U8), TRUE);
+  Sz read_size = fread(buf, 1, size, f);
+  if (read_size != size) {
+    err = IO_ERR_SLURP;
+    goto cleanup;
+  }
+
+  *data = buf8(buf, size);
 
 cleanup:
   if (f) {
@@ -393,17 +511,24 @@ _io_read_directory_recursively(Arena* arena,
   assert(SL(path) > 0);
 
   IOError err = IO_ERR_SUCCESS;
+  IOItem* last = 0;
+  Sz total_files_size = 0;
+  U32 total_files_count = 0;
 
   err = _io_read_directory(arena, path, io_item, flags);
   if (IO_ERR_SUCCESS != err) {
     goto cleanup;
   }
 
-  U16 stack_length = 0;
+  // TODO:
+  // use scratch aren here
   StackIOItem* stack = stack_ioitem_create(arena);
+  stack_ioitem_push(stack, io_item);
 
-  IOItem* last = io_item;
-  while (last) {
+  while ((last = stack_ioitem_pop(stack))) {
+    total_files_size += last->total_files_size;
+    total_files_count += last->total_files_count;
+
     for (U16 index = 0; index < last->children_count; index++) {
       IOItem* child = last->children + index;
       if (child->is_directory) {
@@ -416,8 +541,10 @@ _io_read_directory_recursively(Arena* arena,
         stack_ioitem_push(stack, child);
       }
     }
-    last = stack_ioitem_pop(stack);
   }
+
+  io_item->total_files_size = total_files_size;
+  io_item->total_files_count = total_files_count;
 
 cleanup:
   // stack_ioitem_clean(stack);
@@ -601,6 +728,41 @@ cleanup:
 #elif defined(OS_MACOS)
 
 IOError
+io_create_file_with_size(Arena* arena, Str8 path, Sz size, IOFile* io_file) {
+  start_profiling(1);
+
+  assert(CS(path) != 0);
+  assert(SL(path) > 0);
+  assert(size > 0);
+  assert(io_file != 0);
+
+  IOError err = IO_ERR_SUCCESS;
+
+  err = io_create_file(arena, path, io_file);
+  if (IO_ERR_SUCCESS != err) {
+    goto cleanup;
+  }
+
+  I32 file_descriptor = fileno(io_file->file);
+  if (-1 == file_descriptor) {
+    err = IO_ERR_FILE_DESCRIPTOR;
+    goto cleanup;
+  }
+
+  I32 result = ftruncate(file_descriptor, size);
+  if (-1 == result) {
+    err = IO_ERR_FILE_TRUNCATE;
+    goto cleanup;
+  }
+
+  rewind(io_file->file);
+
+cleanup:
+  end_profiling();
+  return err;
+}
+
+IOError
 io_is_path_a_file(Str8 path, Bool* is_file) {
   start_profiling(1);
 
@@ -648,6 +810,33 @@ io_is_path_a_directory(Str8 path, Bool* is_dir) {
   } else {
     *is_dir = FALSE;
   }
+
+cleanup:
+  end_profiling();
+  return err;
+}
+
+IOError
+io_get_file_size(Str8 path, Sz* out) {
+  start_profiling(1);
+
+  assert(CS(path) != 0);
+  assert(out != 0);
+
+  IOError err = IO_ERR_SUCCESS;
+
+  struct stat info = {0};
+  if (-1 == stat(CS(path), &info)) {
+    err = IO_ERR_STAT;
+    goto cleanup;
+  }
+
+  if ((info.st_mode & S_IFMT) == S_IFDIR) {
+    err = IO_ERR_NOT_FILE;
+    goto cleanup;
+  }
+
+  *out = info.st_size;
 
 cleanup:
   end_profiling();
@@ -713,6 +902,16 @@ _io_read_directory(Arena* arena, Str8 path, IOItem* io_item, IOFlags flags) {
         str8_join(arena, path, S(ent->d_name), IO_PATH_SEPARATOR);
     children[children_index].is_directory = (DT_DIR == ent->d_type);
     children[children_index].parent = io_item;
+    if (FALSE == children[children_index].is_directory) {
+      Sz file_size;
+      err = io_get_file_size(children[children_index].path, &file_size);
+      if (IO_ERR_SUCCESS != err) {
+        goto cleanup;
+      }
+      io_item->total_files_size += file_size;
+      io_item->total_files_count++;
+    }
+
     children_index++;
   } while (TRUE);
 

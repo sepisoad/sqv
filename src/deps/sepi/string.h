@@ -34,42 +34,53 @@ typedef struct {
   CBuf cbuf;
 } Buf8;
 
-#define _DefineFixedStr8_Internal(length)                                      \
-  typedef struct Fixed##length##Str8 {                                         \
-    const char cstr[(length) + 1];                                             \
-  } Fixed##length##Str8;                                                       \
-                                                                               \
-  static inline U32 fixed_##length##_str8_length() {                           \
-    return (length);                                                           \
-  }                                                                            \
-                                                                               \
-  static inline Fixed##length##Str8 fixed_##length##_str8(const char* str) {   \
-    assert(str != NULL);                                                       \
-    assert(strlen(str) < (length) + 1);                                        \
-    struct {                                                                   \
-      char c[(length) + 1];                                                    \
-    } mutable_tmp = {0};                                                       \
-    strncpy(mutable_tmp.c, str, (length));                                     \
-    return *(Fixed##length##Str8*)&mutable_tmp;                                \
-  }                                                                            \
-                                                                               \
-  static inline Fixed##length##Str8* fixed_##length##_str8_clone(              \
-      Arena* arena, const char* str) {                                         \
-    assert(arena != NULL);                                                     \
-    assert(str != NULL);                                                       \
-    assert(strlen(str) < (length) + 1);                                        \
-    Fixed##length##Str8* res = arena_push(arena, sizeof(Fixed##length##Str8),  \
-                                          alignof(Fixed##length##Str8), TRUE); \
-    strncpy((char*)res->cstr, str, (length));                                  \
-    return res;                                                                \
-  }                                                                            \
-                                                                               \
-  static inline Str8 fixed_##length##_str8_view(Fixed##length##Str8* f) {      \
-    assert(f != NULL);                                                         \
-    return str8(f->cstr);                                                      \
+#define _DefineFStr8_Internal(length)                                      \
+  typedef struct FL##length##_Str8 {                                       \
+    char cstr[(length) + 1];                                               \
+  } FL##length##_Str8;                                                     \
+                                                                           \
+  static inline U32 fl##length##_str8_length() {                           \
+    return (length);                                                       \
+  }                                                                        \
+                                                                           \
+  static inline FL##length##_Str8 fl##length##_str8(const char* str) {     \
+    assert(str != NULL);                                                   \
+    assert(strlen(str) < (length) + 1);                                    \
+    struct {                                                               \
+      char c[(length) + 1];                                                \
+    } mutable_tmp = {0};                                                   \
+    strncpy(mutable_tmp.c, str, (length));                                 \
+    return *(FL##length##_Str8*)&mutable_tmp;                              \
+  }                                                                        \
+                                                                           \
+  static inline Nothing fl##length##_str8_set(FL##length##_Str8* f,        \
+                                              const char* str) {           \
+    assert(f != NULL);                                                     \
+    assert(str != NULL);                                                   \
+    assert(strlen(str) < (length) + 1);                                    \
+    zero_memory(f->cstr, (length) + 1);                                    \
+    copy_memory(f->cstr, str, strlen(str));                                \
+  }                                                                        \
+                                                                           \
+  static inline Nothing fl##length##_str8_reset(FL##length##_Str8* f) {    \
+    assert(f != NULL);                                                     \
+    zero_memory(f->cstr, (length) + 1);                                    \
+  }                                                                        \
+                                                                           \
+  static inline FL##length##_Str8* fl##length##_str8_clone(                \
+      Arena* arena, FL##length##_Str8 f) {                                 \
+    assert(arena != NULL);                                                 \
+    FL##length##_Str8* res = arena_push(arena, sizeof(FL##length##_Str8),  \
+                                        alignof(FL##length##_Str8), TRUE); \
+    strncpy((char*)res->cstr, f.cstr, (length));                           \
+    return res;                                                            \
+  }                                                                        \
+                                                                           \
+  static inline Str8 fl##length##_str8_view(FL##length##_Str8 f) {         \
+    return str8(f.cstr);                                                   \
   }
 
-#define DefineFixedStr8(length) _DefineFixedStr8_Internal(length)
+#define DefineFStr8(length) _DefineFStr8_Internal(length)
 
 /* ===================================================== */
 /*                          API                          */
@@ -148,7 +159,7 @@ str8(CStr cstr) {
   start_profiling(1);
 
   assert(cstr != 0);
-  assert(strlen(cstr) > 0);
+  // assert(strlen(cstr) > 0);
 
   Str8 result = {.cstr = cstr, .length = (Sz)strlen(cstr)};
 
@@ -161,7 +172,7 @@ str8_raw(RawPtr rptr, Sz length) {
   start_profiling(1);
 
   assert(rptr != 0);
-  assert(length > 0);
+  // assert(length > 0);
 
   Str8 result = {.cstr = (CStr)rptr, .length = length};
 
@@ -175,7 +186,7 @@ str8_clone(Arena* arena, Str8 str) {
 
   assert(arena != 0);
   assert(str.cstr != 0);
-  assert(str.length > 0);
+  // assert(str.length > 0);
 
   Str copy =
       arena_push(arena, sizeof(I8) * (str.length + 1), alignof(I8), TRUE);
@@ -186,7 +197,8 @@ str8_clone(Arena* arena, Str8 str) {
   return result;
 }
 
-Str8 str8_slice(Arena* arena, Str8 str, U32 from, U32 to) {
+Str8
+str8_slice(Arena* arena, Str8 str, U32 from, U32 to) {
   start_profiling(1);
 
   assert(arena != 0);
@@ -205,7 +217,6 @@ Str8 str8_slice(Arena* arena, Str8 str, U32 from, U32 to) {
 
   end_profiling();
   return result;
-
 }
 
 Str8
