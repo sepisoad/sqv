@@ -205,6 +205,23 @@ pak_get_name_at_depth(CStr path,
 
 /* ===================================================== */
 
+static I32 pak_item_sort(const void *a, const void *b) {
+    const PakItem* pak_item_a = *(const PakItem**)a;
+    const PakItem* pak_item_b = *(const PakItem**)b;
+
+    if (pak_item_a->is_directory && !pak_item_b->is_directory) {
+        return -1;
+    }
+    if (!pak_item_a->is_directory && pak_item_b->is_directory) {
+        return 1;
+    }
+
+    return 0;
+}
+
+/* ===================================================== */
+
+
 static PakError
 pak_read_entries_from_io_file(Pak* pak, IOFile* io_file) {
   start_profiling(1);
@@ -350,7 +367,24 @@ pak_read_entries_from_io_file(Pak* pak, IOFile* io_file) {
     }
   }
 
+  ArenaScratch sortmem = arena_scratch_begin(pak->arena);
+  StackPakItem* sortstack = stack_pakitem_create(sortmem.arena);
+
+  stack_pakitem_push(sortstack, pak->items);
+  while ((last_pak_item = stack_pakitem_pop(sortstack))) {
+    qsort(last_pak_item->children, last_pak_item->children_count,
+          sizeof(PakItem*), pak_item_sort);
+    U16 children_count = last_pak_item->children_count;
+    for (U32 index = 0; index < children_count; index++) {
+      PakItem* current_child = last_pak_item->children[index];
+      if (TRUE == current_child->is_directory) {
+        stack_pakitem_push(sortstack, current_child);
+      }
+    }
+  }
+
 cleanup:
+  arena_scratch_end(sortmem);
   end_profiling();
   return err;
 }
@@ -416,25 +450,15 @@ pak_extract(Pak* pak, IOFile* io_file, Str8 out_dir) {
 
   PakError err = PAK_ERR_SUCCESS;
   ArenaScratch scratch = arena_scratch_begin(pak->arena);
-  PakItem* pak_item_for_path = pak->items;
+  PakItem* pak_item_for_path = 0;
   StackPakItem* stack = stack_pakitem_create(scratch.arena);
 
-  stack_pakitem_push(stack, pak_item_for_path);
+  stack_pakitem_push(stack, pak->items);
 
-  while (stack->length > 0) {
-    pak_item_for_path = stack_pakitem_pop(stack);
-    if (0 == pak_item_for_path) {
-      break;
-    }
-
+  while ((pak_item_for_path = stack_pakitem_pop(stack))) {
     U16 children_count = pak_item_for_path->children_count;
     for (U32 index = 0; index < children_count; index++) {
       PakItem* current_child = pak_item_for_path->children[index];
-      if (0 == current_child) {
-        err = PAK_ERR_EXTRACT;
-        goto cleanup;
-      }
-
       Str8 full_path_str = str8_join(scratch.arena, out_dir,
                                      current_child->path, IO_PATH_SEPARATOR);
 

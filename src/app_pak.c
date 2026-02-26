@@ -588,7 +588,8 @@ app_pak_handle_pak(Str8 path) {
   IOError ioerr = io_open_file(g_state.arena, path, &g_state.input_io_file);
   if (IO_ERR_SUCCESS != ioerr) {
     char err_text[APP_PAK_MAX_ERROR_LENGTH] = {0};
-    snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH, "failed to open '%s'", CS(path));
+    snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH, "failed to open '%s'",
+             CS(path));
     fl512_str8_set(&g_state.error_text, err_text);
     err = APP_PAK_ERR_FILE_OPEN;
     g_state.mode = APP_PAK_MODE_FAILED;
@@ -598,7 +599,8 @@ app_pak_handle_pak(Str8 path) {
   PakError perr = pak_load_from_io_file(&g_state.pak, &g_state.input_io_file);
   if (perr != PAK_ERR_SUCCESS) {
     char err_text[APP_PAK_MAX_ERROR_LENGTH] = {0};
-    snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH, "failed to load '%s' items", CS(path));
+    snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH, "failed to load '%s' items",
+             CS(path));
     fl512_str8_set(&g_state.error_text, err_text);
     err = APP_PAK_ERR_MODULE_PAK;
     g_state.mode = APP_PAK_MODE_FAILED;
@@ -629,9 +631,9 @@ app_pak_handle_dir(Str8 path) {
     app_pak_cleanup_reload();
   }
 
-  IOError ioerr =
-      io_read_directory(g_state.arena, path, &g_state.input_io_item,
-                        IO_READ_DIR_RECURSIVE | IO_READ_IGNORE_HIDDEN);
+  IOError ioerr = io_read_directory(
+      g_state.arena, path, &g_state.input_io_item,
+      IO_READ_DIR_RECURSIVE | IO_READ_IGNORE_HIDDEN | IO_SORT_DIRS_FIRST);
   if (ioerr != IO_ERR_SUCCESS) {
     err = APP_PAK_ERR_DIR_OPEN;
     goto cleanup;
@@ -886,8 +888,9 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
                           fl1024_str8_view(g_state.export_path_buffer));
           if (PAK_ERR_SUCCESS != perr) {
             char err_text[APP_PAK_MAX_ERROR_LENGTH] = {0};
-            snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH, "failed to extract pak file into '%s'",
-                    CS(g_state.export_path_buffer));
+            snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH,
+                     "failed to extract pak file into '%s'",
+                     CS(g_state.export_path_buffer));
             fl512_str8_set(&g_state.error_text, err_text);
             g_state.mode = APP_PAK_MODE_FAILED;
           }
@@ -899,8 +902,9 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
           if (PAK_ERR_SUCCESS != perr) {
             PakItem* pak_item = g_state.requested_extracting_pak_item;
             char err_text[APP_PAK_MAX_ERROR_LENGTH] = {0};
-            snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH, "failed to extract item '%s' into '%s'",
-                    pak_item->name.cstr, CS(g_state.export_path_buffer));
+            snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH,
+                     "failed to extract item '%s' into '%s'",
+                     pak_item->name.cstr, CS(g_state.export_path_buffer));
             fl512_str8_set(&g_state.error_text, err_text);
             g_state.mode = APP_PAK_MODE_FAILED;
           }
@@ -1033,13 +1037,14 @@ app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
           char err_text[APP_PAK_MAX_ERROR_LENGTH] = {0};
           if (PAK_ERR_PATH_LENGTH_TOO_LONG == pakerr) {
             snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH,
-                    "failed to generate pak file from '%s' because '%s' path "
-                    "length is longer than '%d' characters",
-                    CS(g_state.input_path), CS(g_state.error_text),
-                    PAK_ENTRY_NAME_LEN);
+                     "failed to generate pak file from '%s' because '%s' path "
+                     "length is longer than '%d' characters",
+                     CS(g_state.input_path), CS(g_state.error_text),
+                     PAK_ENTRY_NAME_LEN);
           } else {
-            snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH, "failed to generate pak file from '%s'",
-                    CS(g_state.input_path));
+            snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH,
+                     "failed to generate pak file from '%s'",
+                     CS(g_state.input_path));
           }
 
           fl512_str8_set(&g_state.error_text, err_text);

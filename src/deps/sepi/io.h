@@ -64,6 +64,7 @@ enum {
   IO_READ_DIR_RECURSIVE = (1 << 0),
   IO_READ_IGNORE_HIDDEN = (1 << 1),
   IO_MAKE_DIR_RECURSIVE = (1 << 2),
+  IO_SORT_DIRS_FIRST = (1 << 3),
 };
 
 typedef enum {
@@ -221,6 +222,8 @@ static IOError _io_read_directory_recursively(Arena* arena,
                                               IOFlags flags);
 static IOError _io_make_directory(Str8 path);
 static IOError _io_make_directory_recursively(Str8 path);
+
+static I32 io_item_sort(const void* a, const void* b);
 
 IOError
 io_create_file(Arena* arena, Str8 path, IOFile* io_file) {
@@ -443,6 +446,21 @@ cleanup:
   }
   end_profiling();
   return err;
+}
+
+static I32
+io_item_sort(const void* a, const void* b) {
+  const IOItem io_item_a = *(const IOItem*)a;
+  const IOItem io_item_b = *(const IOItem*)b;
+
+  if (io_item_a.is_directory && !io_item_b.is_directory) {
+    return -1;
+  }
+  if (!io_item_a.is_directory && io_item_b.is_directory) {
+    return 1;
+  }
+
+  return 0;
 }
 
 static IOError
@@ -920,6 +938,8 @@ _io_read_directory(Arena* arena, Str8 path, IOItem* io_item, IOFlags flags) {
   if (IO_ERR_SUCCESS != err) {
     goto cleanup;
   }
+
+  qsort(children, children_count, sizeof(IOItem), io_item_sort);
 
   io_item->children = children;
   io_item->children_count = children_count;
