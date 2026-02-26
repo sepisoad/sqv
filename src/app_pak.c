@@ -35,6 +35,8 @@
 /*                       CONSTANTS                       */
 /* ===================================================== */
 
+#define APP_PAK_WINDOW_WIDTH 640
+#define APP_PAK_WINDOW_HEIGHT 480
 #define APP_PAK_MAX_EXPORT_PATH_LENGTH 1024
 #define APP_PAK_MAX_ERROR_LENGTH 512
 
@@ -98,12 +100,6 @@ static struct {
   IOItem input_io_item;
   IOItem* current_dir_io_item;
   Str8 input_path;
-
-  // TODO:
-  // maybe use a dynamic array now that we have proper arena allocator
-  // char export_path_buffer[APP_PAK_MAX_EXPORT_PATH_LENGTH];
-  // char error_text[APP_PAK_MAX_ERROR_LENGTH];
-
   FL1024_Str8 export_path_buffer;
   FL512_Str8 error_text;
 
@@ -174,7 +170,7 @@ static Nothing app_pak_draw_widget_explorer_dir_icon(struct nk_context* ctx,
 /* ===================================================== */
 
 sapp_desc
-sokol_main(int argc, char* argv[]) {
+sokol_main(I32 argc, char* argv[]) {
   start_profiling(1);
 
   sargs_setup(&(sargs_desc){
@@ -196,11 +192,11 @@ sokol_main(int argc, char* argv[]) {
       .cleanup_cb = app_pak_cleanup,
       .event_cb = app_pak_handle_user_input_events,
       .enable_clipboard = true,
-      .width = 640,   // TODO: hard coded, who cares!?
-      .height = 480,  // TODO: hard coded
+      .width = APP_PAK_WINDOW_WIDTH,
+      .height = APP_PAK_WINDOW_HEIGHT,
       .enable_dragndrop = true,
       .max_dropped_files = 1,
-      .window_title = "SQV::PAK Manager",
+      .window_title = "SQV :: PAK Manager",
       .ios_keyboard_resizes_canvas = true,
       .icon.sokol_default = true,
       .logger.func = slog_func,

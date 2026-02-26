@@ -78,3 +78,13 @@ more complexity to the project setup
                                ┏━━━━━━━━━━━┓                         ┃
                                ┃  lib_stb  ┃━━━━━━━━━━━━━━━━━━━━━━━━━┛
                                ┗━━━━━━━━━━━┛
+
+# note for myself
+- i hate that linking to graphics apis bloats the binary when it is loaded in memory, i may end up
+  using a software renderer to fight this, and it may even help with the portability, right now
+  the following libs are interesting and be used to achieve this goal:
+  - osmesa: fast 3d software renderer (opengl)
+  - silk: fast 2d software rendere
+  - rgfw: alternative to sokol
+  - nuklear: immediate mode UI (what i am using now)
+  - clay: very fast retained mode UI (a lot of people praised it)

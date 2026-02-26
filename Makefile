@@ -15,6 +15,7 @@ ifeq ($(config),debug)
   lib_stb_config = debug
   lib_sepi_config = debug
   app_pak_config = debug
+  app_md1_config = debug
 endif
 ifeq ($(config),release)
   lib_log_config = release
@@ -23,6 +24,7 @@ ifeq ($(config),release)
   lib_stb_config = release
   lib_sepi_config = release
   app_pak_config = release
+  app_md1_config = release
 endif
 ifeq ($(config),profiling)
   lib_log_config = profiling
@@ -31,9 +33,10 @@ ifeq ($(config),profiling)
   lib_stb_config = profiling
   lib_sepi_config = profiling
   app_pak_config = profiling
+  app_md1_config = profiling
 endif
 
-PROJECTS := lib_log lib_sokol lib_hmm lib_stb lib_sepi app_pak
+PROJECTS := lib_log lib_sokol lib_hmm lib_stb lib_sepi app_pak app_md1
 
 .PHONY: all clean help $(PROJECTS) 
 
@@ -75,6 +78,12 @@ ifneq (,$(app_pak_config))
 	@${MAKE} --no-print-directory -C .build -f app_pak.make config=$(app_pak_config)
 endif
 
+app_md1:
+ifneq (,$(app_md1_config))
+	@echo "==== Building app_md1 ($(app_md1_config)) ===="
+	@${MAKE} --no-print-directory -C .build -f app_md1.make config=$(app_md1_config)
+endif
+
 clean:
 	@${MAKE} --no-print-directory -C .build -f lib_log.make clean
 	@${MAKE} --no-print-directory -C .build -f lib_sokol.make clean
@@ -82,6 +91,7 @@ clean:
 	@${MAKE} --no-print-directory -C .build -f lib_stb.make clean
 	@${MAKE} --no-print-directory -C .build -f lib_sepi.make clean
 	@${MAKE} --no-print-directory -C .build -f app_pak.make clean
+	@${MAKE} --no-print-directory -C .build -f app_md1.make clean
 
 help:
 	@echo "Usage: make [config=name] [target]"
@@ -100,5 +110,6 @@ help:
 	@echo "   lib_stb"
 	@echo "   lib_sepi"
 	@echo "   app_pak"
+	@echo "   app_md1"
 	@echo ""
 	@echo "For more information, see https://github.com/premake/premake-core/wiki"

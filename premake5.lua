@@ -138,30 +138,6 @@ project "lib_sepi"
 -- APPS -----------------------
 --
 
--- APP::playground (testing ideas)
--- project "app_playground"
---   kind "ConsoleApp"
---   language "C"
---   location ".build"
---   targetdir ".build/"
---   objdir ".build/obj"
---   targetname "app_playground"
---   includedirs { "src", "src/deps" }
---   links { "lib_log:static", "lib_stb:static", "lib_hmm:static", "lib_sepi:static", "lib_sokol:static", }
---   files { "src/app_playground.c" }
-
---   filter "system:macosx"
---     links { "Cocoa.framework", "OpenGL.framework", "IOKit.framework", "m" }
-
---   filter "system:linux"
---     links { "X11", "Xi", "Xcursor", "GL", "m" }
-
---   filter "system:windows"
---     links { "opengl32", "gdi32", "user32", "shell32", "ole32", "winmm" }
---     defines { "SOKOL_WIN32_FORCE_MAIN", "NK_INCLUDE_FIXED_TYPES" }
-
---   filter {}
-
 -- APP::pak
 project "app_pak"
   kind "ConsoleApp"
@@ -184,6 +160,31 @@ project "app_pak"
 
   filter "system:windows"
     defines { "SOKOL_GLCORE" }
+    links { "opengl32", "gdi32", "user32", "shell32", "ole32", "winmm" }
+    defines { "SOKOL_WIN32_FORCE_MAIN", "NK_INCLUDE_FIXED_TYPES" }
+
+  filter {}
+
+-- APP::md1
+project "app_md1"
+  kind "ConsoleApp"
+  language "C"
+  location ".build"
+  targetdir ".build/"
+  objdir ".build/obj"
+  targetname "app_md1"
+  includedirs { "src", "src/deps" }
+  links { "lib_log:static", "lib_stb:static", "lib_hmm:static", "lib_sepi:static", "lib_sokol:static", }
+  files { "src/app_md1.c" }
+
+  filter "system:macosx"
+    defines { "SOKOL_METAL" }
+    links { "Cocoa.framework", "Metal.framework", "MetalKit.framework", "QuartzCore.framework", "IOKit.framework" }
+
+  filter "system:linux"
+    links { "X11", "Xi", "Xcursor", "GL", "m" }
+
+  filter "system:windows"
     links { "opengl32", "gdi32", "user32", "shell32", "ole32", "winmm" }
     defines { "SOKOL_WIN32_FORCE_MAIN", "NK_INCLUDE_FIXED_TYPES" }
 
@@ -231,12 +232,12 @@ newaction {
   end
 }
 
--- ACTION::app-playground
+-- ACTION::app-md1
 newaction {
-  trigger = "app-playground",
-  description = "run playground app",
+  trigger = "app-md1",
+  description = "run md1 app",
   execute = function()
-    os.execute(".build/app_playground")
+    os.execute(".build/app_md1")
   end
 }
 
@@ -245,7 +246,6 @@ newaction {
   trigger = "app-pak",
   description = "run pak app",
   execute = function()
-    -- os.execute(".build/app_pak --input=/Users/sepi/Games/Quake1/lq/pak0.pak")
     os.execute(".build/app_pak --input=/Users/sepi/Games/Quake1/lq")
   end
 }
