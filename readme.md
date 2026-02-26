@@ -57,29 +57,7 @@ gained from mold is negligible, however if the code grows and the build system b
 i am pretty sure there are more substantial gains with mold, for now i think i will not use mold as it adds
 more complexity to the project setup
 
-
-┏━━━━━━━━┓
-┃ metal  ┃◀━━━━━━━━━━━━━━━━━━━━━━━━┓
-┣━━━━━━━━┫                         ┃
-┃direct3d┃◀━━━━━━━━━━━━━━━━━━━━━━┓ ┃
-┣━━━━━━━━┫                       ┃ ┃
-┃ webgpu ┃◀━━━━━━━━━━━━━━━━━━━━┳━┻━┻━━━━━━━┓
-┣━━━━━━━━┫          ┏━━━━━━━━━━┫ lib_sokol ┣━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ opengl ┃◀━━━━━━━━━┛   ┏━━━━━━┻━━━━━━━━━━━┛                         ┃
-┣━━━━━━━━┫              ┃      ┏━━━━━━━━━━━┓                         ┃                            ┏━━━━━━━━━┓
-┃ vulkan ┃◀━━━━━━━━━━━━━┛      ┃  lib_hmm  ┣━━━━━━━━━━━━━━━━━━━━━┓   ┃                ┏━━━━━━━━━━▶┃ windows ┃
-┗━━━━━━━━┛                     ┗━━━━━━━━━━━┛                     ▼   ▼                ┃           ┗━━━━━━━━━┛
-                               ┏━━━━━━━━━━━┓                  ╔═════════╗       ┏━━━━━┻━━━━┓      ┏━━━━━━━━━┓
-                               ┃lib_nuklear┃━━━━━━━━━━━━━━━━━▶║ app_pak ║◀━━━━━━┫ lib_sepi ┃      ┃  macos  ┃
-                               ┗━━━━━━━━━━━┛                  ╚═════════╝       ┗━━━━━┳━━━━┛      ┗━━━━━━━━━┛
-                               ┏━━━━━━━━━━━┓                     ▲   ▲                ┃           ┏━━━━━━━━━┓
-                               ┃  lib_log  ┃━━━━━━━━━━━━━━━━━━━━━┛   ┃                ┗━━━━━━━━━━▶┃  linux  ┃
-                               ┗━━━━━━━━━━━┛                         ┃                            ┗━━━━━━━━━┛
-                               ┏━━━━━━━━━━━┓                         ┃
-                               ┃  lib_stb  ┃━━━━━━━━━━━━━━━━━━━━━━━━━┛
-                               ┗━━━━━━━━━━━┛
-
-# note for myself
+# state of the desktop apps
 - i hate that linking to graphics apis bloats the binary when it is loaded in memory, i may end up
   using a software renderer to fight this, and it may even help with the portability, right now
   the following libs are interesting and be used to achieve this goal:
