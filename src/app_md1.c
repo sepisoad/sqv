@@ -91,14 +91,14 @@ sokol_main(I32 argc, char* argv[]) {
 
   // TODO:
   // WTF!
-  // CStr inpath = ".keep/knight.mdl";
+  CStr inpath = ".keep/knight.mdl";
 
   return (sapp_desc){
       .init_cb = init,
       .cleanup_cb = cleanup,
       .event_cb = input,
       .frame_cb = frame,
-      // .user_data = (RawPtr)inpath,
+      .user_data = (RawPtr)inpath,
       .width = APP_MD1_WINDOW_WIDTH,
       .height = APP_MD1_WINDOW_HEIGHT,
       .sample_count = 1,
