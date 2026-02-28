@@ -197,7 +197,7 @@ sokol_main(I32 argc, char* argv[]) {
       .enable_dragndrop = true,
       .max_dropped_files = 1,
       .window_title = "SQV :: PAK Manager",
-      .ios_keyboard_resizes_canvas = true,
+      // .ios_keyboard_resizes_canvas = true,
       .icon.sokol_default = true,
       .logger.func = slog_func,
       .high_dpi = true,
