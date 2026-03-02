@@ -191,16 +191,15 @@ sokol_main(I32 argc, char* argv[]) {
       .frame_cb = app_pak_frame,
       .cleanup_cb = app_pak_cleanup,
       .event_cb = app_pak_handle_user_input_events,
-      .enable_clipboard = true,
+      .enable_clipboard = TRUE,
       .width = APP_PAK_WINDOW_WIDTH,
       .height = APP_PAK_WINDOW_HEIGHT,
-      .enable_dragndrop = true,
+      .enable_dragndrop = TRUE,
       .max_dropped_files = 1,
       .window_title = "SQV :: PAK Manager",
-      // .ios_keyboard_resizes_canvas = true,
-      .icon.sokol_default = true,
+      .icon.sokol_default = TRUE,
       .logger.func = slog_func,
-      .high_dpi = true,
+      .high_dpi = TRUE,
   };
 
   end_profiling();

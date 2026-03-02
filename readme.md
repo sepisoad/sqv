@@ -6,16 +6,18 @@ https://github.com/user-attachments/assets/4b13422c-c4dc-4cd8-9f55-34426d07f551
 
 https://github.com/user-attachments/assets/d725cb44-4b51-4bee-9d44-4ac1fdb165ac
 
-
 ## Features
+
 - Portable: Runs on all major desktop operating systems.
 - Self-contained: Comes with all necessary dependencies as source files—no need to install external packages.
 - Written in pure `C`, utilizing `sokol` for window creation and graphics.
 
 ## Status
+
 SQV is still in early development, but I have some exciting ideas for its future evolution.
 
 ## Building
+
 To build SQV, you need [`premake5`](https://premake.github.io/) installed on your system.
 
 1. Generate the Makefiles:
@@ -28,24 +30,18 @@ To build SQV, you need [`premake5`](https://premake.github.io/) installed on you
    make
    ```
 
-
-## Cool
-
-- d3d mesh optimization functions: https://github.com/wine-mirror/wine/blob/master/dlls/d3dx9_36/mesh.c
-
-
 ## Notes:
 
 i experimented with mold just for fun to see if i can squeeze more time on build time, here is the result:
 
-# using gnu linker
+- using gnu linker:
 
 | full clean | full repeat | target clean | target repeat |
 |------------|-------------|--------------|---------------|
 | 14.034     | 0.078       | 0.630        | 0.028         |
 |            |             |
 
-# using mold linker
+- using mold linker:
 
 | full clean | full repeat | target clean | target repeat |
 |------------|-------------|--------------|---------------|
@@ -57,7 +53,8 @@ gained from mold is negligible, however if the code grows and the build system b
 i am pretty sure there are more substantial gains with mold, for now i think i will not use mold as it adds
 more complexity to the project setup
 
-# state of the desktop apps
+## State of the desktop apps:
+
 - i hate that linking to graphics apis bloats the binary when it is loaded in memory, i may end up
   using a software renderer to fight this, and it may even help with the portability, right now
   the following libs are interesting and be used to achieve this goal:
@@ -66,3 +63,8 @@ more complexity to the project setup
   - rgfw: alternative to sokol
   - nuklear: immediate mode UI (what i am using now)
   - clay: very fast retained mode UI (a lot of people praised it)
+
+## Cool links:
+
+- https://apitrace.github.io/
+- d3d mesh optimization functions: https://github.com/wine-mirror/wine/blob/master/dlls/d3dx9_36/mesh.c

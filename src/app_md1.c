@@ -63,16 +63,17 @@ static struct {
     F32* vbuf;
     Sz vbuf_size;
   } bbox;
+  Str8 input_path;
 } g_state;
 
 /* ===================================================== */
 /*                      DECLERATIONS                     */
 /* ===================================================== */
 
-static Nothing init(void);
-static Nothing cleanup(void);
-static Nothing input(const sapp_event* e);
-static Nothing frame(void);
+static Nothing app_md1_init(void);
+static Nothing app_md1_cleanup(void);
+static Nothing app_md1_handle_user_input_events(const sapp_event* e);
+static Nothing app_md1_frame(void);
 
 /* ===================================================== */
 /*                       FUNCTIONS                       */
@@ -89,31 +90,35 @@ sokol_main(I32 argc, char* argv[]) {
 
   zero_memory(&g_state, sizeof(g_state));
 
-  // TODO:
-  // WTF!
-  CStr inpath = ".keep/knight.mdl";
+  if (sargs_exists("-i")) {
+    g_state.input_path = S(sargs_value("-i"));
+  } else if (sargs_exists("--input")) {
+    g_state.input_path = S(sargs_value("--input"));
+  }
+
 
   return (sapp_desc){
-      .init_cb = init,
-      .cleanup_cb = cleanup,
-      .event_cb = input,
-      .frame_cb = frame,
-      .user_data = (RawPtr)inpath,
+      .init_cb = app_md1_init,
+      .frame_cb = app_md1_frame,
+      .cleanup_cb = app_md1_cleanup,
+      .event_cb = app_md1_handle_user_input_events,
+      .enable_clipboard = TRUE,
       .width = APP_MD1_WINDOW_WIDTH,
       .height = APP_MD1_WINDOW_HEIGHT,
-      .sample_count = 1,
-      .window_title = "SQV :: MD1 Viewer",
-      .icon.sokol_default = TRUE,
       .enable_dragndrop = TRUE,
       .max_dropped_files = 1,
+      .window_title = "SQV :: MD1 Viewer",
+      .icon.sokol_default = TRUE,
+      .icon.sokol_default = TRUE,
       .logger.func = slog_func,
+      .high_dpi = TRUE,
   };
 
   end_profiling();
 }
 
 static Nothing
-init(void) {
+app_md1_init(void) {
   start_profiling(1);
 
   // init arena allocator
@@ -208,7 +213,7 @@ init(void) {
 }
 
 static Nothing
-cleanup(void) {
+app_md1_cleanup(void) {
   start_profiling(1);
 
   md1_unload(&g_state.md1);
@@ -219,7 +224,7 @@ cleanup(void) {
 }
 
 static Nothing
-input(const sapp_event* e) {
+app_md1_handle_user_input_events(const sapp_event* e) {
   start_profiling(1);
 
   switch (e->type) {
@@ -245,7 +250,7 @@ input(const sapp_event* e) {
 }
 
 static Nothing
-frame(void) {
+app_md1_frame(void) {
   start_profiling(1);
 
   Md1* m = &g_state.md1;
