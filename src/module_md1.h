@@ -928,8 +928,9 @@ md1_unload(Md1* md1) {
   start_profiling(1);
 
   assert(md1 != 0);
-  assert(md1->arena != 0);
-  arena_destroy(md1->arena);
+  if (md1->arena) {
+    arena_destroy(md1->arena);
+  }
 
   end_profiling();
   return MD1_ERR_SUCCESS;

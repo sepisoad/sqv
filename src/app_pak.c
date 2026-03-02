@@ -116,6 +116,7 @@ static AppPakError app_pak_init_icons();
 static AppPakError app_pak_init_icon(AppPakImage* app_icon,
                                      CBuf buffer,
                                      Sz size);
+
 static Nothing app_pak_cleanup();
 static Nothing app_pak_cleanup_reload();
 static AppPakError app_pak_cleanup_icons();
@@ -445,6 +446,8 @@ app_pak_cleanup() {
   end_profiling();
 }
 
+/* ===================================================== */
+
 static Nothing
 app_pak_cleanup_reload() {
   start_profiling(1);
@@ -465,6 +468,8 @@ app_pak_cleanup_reload() {
 
   end_profiling();
 }
+
+/* ===================================================== */
 
 static AppPakError
 app_pak_cleanup_icons() {
@@ -501,6 +506,8 @@ cleanup:
   end_profiling();
   return err;
 }
+
+/* ===================================================== */
 
 static AppPakError
 app_pak_cleanup_icon(AppPakImage* app_icon) {
@@ -555,9 +562,9 @@ app_pak_handle_drop_event(Str8 path) {
   }
 
   if (is_directory) {
-    app_pak_handle_dir(path);
+    err = app_pak_handle_dir(path);
   } else {
-    app_pak_handle_pak(path);
+    err = app_pak_handle_pak(path);
   }
 
 cleanup:
@@ -647,8 +654,10 @@ cleanup:
 
 static Nothing
 app_pak_frame() {
+  // TODO:
+  // do i need both profiling functions at the same time?
   start_profiling(1);
-  TracyCFrameMarkStart(0);
+  start_frame_profiling();
 
   struct nk_context* ctx = snk_new_frame();
 
@@ -669,7 +678,7 @@ app_pak_frame() {
   sg_end_pass();
   sg_commit();
 
-  TracyCFrameMarkEnd(0);
+  end_frame_profiling();
   end_profiling();
 }
 
@@ -700,8 +709,10 @@ app_pak_draw(struct nk_context* ctx) {
     app_pak_draw_mode_failed(ctx, window_flags, window_width, window_height);
   }
 
+  Bool is_window_closed = !nk_window_is_closed(ctx, window_title);
+
   end_profiling();
-  return !nk_window_is_closed(ctx, window_title);
+  return is_window_closed;
 }
 
 /* ===================================================== */

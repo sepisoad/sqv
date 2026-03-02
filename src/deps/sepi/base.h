@@ -288,6 +288,8 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 #define end_profiling() TracyCZoneEnd(tracyctx);
 #define start_memory_profiling(PTR, SIZE) TracyCAlloc((PTR), (SIZE));
 #define end_memory_profiling(PTR) TracyCFree((PTR));
+#define start_frame_profiling() TracyCFrameMarkStart(0);
+#define end_frame_profiling() TracyCFrameMarkEnd(0);
 #else /* NOT PROFILING */
 #define mount_master_profiling_context()
 #define mount_slave_profiling_context()
@@ -295,6 +297,8 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 #define end_profiling()
 #define start_memory_profiling(PTR, SIZE)
 #define end_memory_profiling(PTR)
+#define start_frame_profiling()
+#define end_frame_profiling()
 #endif /* */
 
 /* ===================================================== */
