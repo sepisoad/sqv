@@ -26,7 +26,14 @@
 #include <sepi/base.h>
 #include <sepi/io.h>
 
-#include "shaders/default.glsl.h"
+#if defined(OS_LINUX)
+#include "shaders/default.ogl.h"
+#elif defined(OS_MACOS)
+#include "shaders/default.mtl.h"
+#elif defined(OS_WINDOWS)
+#include "shaders/default.d3d.h"
+#endif
+
 #include "data_icons.h"
 #include "data_style.h"
 #include "module_pak.h"
@@ -228,7 +235,7 @@ app_pak_init(void) {
   g_state.mode = APP_PAK_MODE_EMPTY;
 
   if (CS(g_state.input_path) != NULL) {
-    log_info("loading '%s' model", CS(g_state.input_path));
+    log_info("loading '%s'", CS(g_state.input_path));
     app_pak_handle_drop_event(g_state.input_path);
   }
 
@@ -724,8 +731,8 @@ app_pak_draw_mode_empty(struct nk_context* ctx,
                         U32 window_height) {
   start_profiling(1);
 
-  static char label_line_1[] = "drop a .pak file for extraction";
-  static char label_line_2[] = "or drop a folder for packaging as .pak file";
+  static char label_line_1[] = "drop a .PAK file for extraction";
+  static char label_line_2[] = "or drop a folder for packaging as .PAK file";
 
   if (nk_begin(ctx, "", nk_rect(0, 0, window_width, window_height),
                window_flags)) {
@@ -779,9 +786,8 @@ app_pak_draw_mode_failed(struct nk_context* ctx,
     struct nk_rect content_region = nk_window_get_content_region(ctx);
     const struct nk_user_font* font = ctx->style.font;
 
-    F32 text_width =
-        font->width(font->userdata, font->height, g_state.error_text.cstr,
-                    (int)strlen(g_state.error_text.cstr));
+    F32 text_width = font->width(font->userdata, font->height,
+                                 g_state.error_text.cstr, fl512_str8_length());
     F32 text_height = font->height;
     F32 text_pad_x = ctx->style.text.padding.x;
     F32 text_pad_y = ctx->style.text.padding.y;
@@ -826,8 +832,10 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
     nk_layout_row_template_push_dynamic(ctx);
     nk_layout_row_template_end(ctx);
 
-    if (nk_button_image(ctx, g_icons.extract.icon_image)) {
-      g_state.is_extracting_requested = TRUE;
+    if (g_state.current_pak_item == &g_state.pak.items[0]) {
+      if (nk_button_image(ctx, g_icons.extract.icon_image)) {
+        g_state.is_extracting_requested = TRUE;
+      }
     }
 
     if (g_state.current_pak_item != &g_state.pak.items[0]) {

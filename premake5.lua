@@ -195,7 +195,7 @@ project "app_md1"
 -- ACTIONS -----------------------
 --
 
--- ACTION::glsl
+-- ACTION::gen-code
 newaction {
   trigger = "gen-code",
   description = "Generates code using templates",
@@ -204,13 +204,25 @@ newaction {
   end
 }
 
--- ACTION::glsl
+-- ACTION::shader
 newaction {
-  trigger = "glsl",
+  trigger = "shader",
   description = "Compile shaders into C headers",
   execute = function()
-    os.execute("sokol-shdc -m default -i src/shaders/default.glsl -l glsl410 -f sokol -o src/shaders/default.glsl.h")
-    os.execute("sokol-shdc -m bbox -i src/shaders/bbox.glsl -l glsl410 -f sokol -o src/shaders/bbox.glsl.h")
+    local host = os.host()
+
+    if host == "linux" then
+      os.execute("sokol-shdc -m default -i src/shaders/default.glsl -l glsl410 -f sokol -o src/shaders/default.ogl.h")
+      os.execute("sokol-shdc -m bbox -i src/shaders/bbox.glsl -l glsl410 -f sokol -o src/shaders/bbox.ogl.h")
+    elseif host == "macosx" then
+      os.execute("sokol-shdc -m default -i src/shaders/default.glsl -l metal_macos -f sokol -o src/shaders/default.mtl.h")
+      os.execute("sokol-shdc -m bbox -i src/shaders/bbox.glsl -l metal_macos -f sokol -o src/shaders/bbox.mtl.h")
+    elseif host == "windows" then
+      os.execute("sokol-shdc -m default -i src/shaders/default.glsl -l hlsl5 -f sokol -o src/shaders/default.d3d.h")
+      os.execute("sokol-shdc -m bbox -i src/shaders/bbox.glsl -l hlsl5 -f sokol -o src/shaders/bbox.d3d.h")
+    else
+    end
+
   end
 }
 

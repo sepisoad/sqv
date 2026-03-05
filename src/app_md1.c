@@ -25,8 +25,17 @@
 #include <deps/sepi/base.h>
 #include <deps/sepi/io.h>
 
-#include "shaders/default.glsl.h"
-#include "shaders/bbox.glsl.h"
+#if defined(OS_LINUX)
+#include "shaders/default.ogl.h"
+#include "shaders/bbox.ogl.h"
+#elif defined(OS_MACOS)
+#include "shaders/default.mtl.h"
+#include "shaders/bbox.mtl.h"
+#elif defined(OS_WINDOWS)
+#include "shaders/default.d3d.h"
+#include "shaders/bbox.d3d.h"
+#endif
+
 #include "data_icons.h"
 #include "data_style.h"
 #include "module_md1.h"
@@ -55,7 +64,7 @@ typedef enum {
   APP_MD1_ERR_FILE_OPEN,
   // APP_MD1_ERR_DIR_OPEN,
   APP_MD1_ERR_ICON_INIT,
-  // APP_MD1_ERR_MODULE_MD1,
+  APP_MD1_ERR_MODULE_MD1,
   APP_MD1_ERR__COUNT,
 } AppMd1Error;
 
@@ -87,44 +96,64 @@ static struct {
   Str8 input_path;
   IOFile input_io_file;
   FL512_Str8 error_text;
-  sg_pass_action pass_action;
   struct {
-    sg_pipeline pipeline;
-    sg_bindings bindings;
     sg_pass_action pass_action;
-    F32* vbuf;
-    Sz vbuf_size;
-  } model;
+  } display;
   struct {
-    sg_pipeline pipeline;
-    sg_bindings bindings;
-    F32* vbuf;
-    Sz vbuf_size;
-  } bbox;
+    struct {
+      sg_pipeline pipeline;
+      sg_bindings bindings;
+      sg_buffer vertex_data;
+      sg_image render_target;
+      sg_view render_target_view;
+      F32* vbuf;
+      Sz vbuf_size;
+    } normal;
+    struct {
+      sg_pipeline pipeline;
+      sg_bindings bindings;
+      F32* vbuf;
+      Sz vbuf_size;
+    } bbox;
+  } offscreen;
 } g_state;
 
 /* ===================================================== */
 /*                      DECLERATIONS                     */
 /* ===================================================== */
 
-static Nothing app_md1_init(void);
+static Nothing app_md1_init(Nothing);
 static AppMd1Error app_md1_init_style(struct nk_style* s);
-static AppMd1Error app_md1_init_icons();
+static AppMd1Error app_md1_init_icons(Nothing);
 static AppMd1Error app_md1_init_icon(AppMd1Image* app_icon,
                                      CBuf buffer,
                                      Sz size);
+static AppMd1Error app_md1_init_display_pipeline();
+static AppMd1Error app_md1_init_offscreen_pipeline();
 
-static Nothing app_md1_cleanup(void);
-static Nothing app_md1_cleanup_reload();
-static AppMd1Error app_md1_cleanup_icons();
+static Nothing app_md1_cleanup(Nothing);
+static Nothing app_md1_cleanup_reload(Nothing);
+static AppMd1Error app_md1_cleanup_icons(Nothing);
 static AppMd1Error app_md1_cleanup_icon(AppMd1Image* app_icon);
+static AppMd1Error app_md1_cleanup_3d(Nothing);
 
 static Nothing app_md1_handle_user_input_events(const sapp_event* e);
 static AppMd1Error app_md1_handle_drop_event(Str8 path);
 
-static Nothing app_md1_frame(void);
-static U32 app_md1_draw(struct nk_context* ctx);
-
+static Nothing app_md1_frame(Nothing);
+static U32 app_md1_draw_ui(struct nk_context* ctx);
+static Nothing app_md1_draw_mode_empty(struct nk_context* ctx,
+                                       nk_flags window_flags,
+                                       U32 window_width,
+                                       U32 window_height);
+static Nothing app_md1_draw_mode_failed(struct nk_context* ctx,
+                                        nk_flags window_flags,
+                                        U32 window_width,
+                                        U32 window_height);
+static Nothing app_md1_draw_mode_md1_loaded(struct nk_context* ctx,
+                                            nk_flags window_flags,
+                                            U32 window_width,
+                                            U32 window_height);
 /* ===================================================== */
 /*                       FUNCTIONS                       */
 /* ===================================================== */
@@ -169,7 +198,7 @@ sokol_main(I32 argc, char* argv[]) {
 /* ===================================================== */
 
 static Nothing
-app_md1_init(void) {
+app_md1_init(Nothing) {
   start_profiling(1);
 
   g_state.arena = arena_create();
@@ -187,92 +216,14 @@ app_md1_init(void) {
 
   g_state.mode = APP_MD1_MODE_EMPTY;
 
-  // // load default Md1 file
-  // Str8 path = S(sapp_userdata());
+  app_md1_init_display_pipeline();
 
-  // // NDBuffer ndb = {0};
-  // IOFile io_file = {0};
-  // IOError ioerr = io_load_file(g_state.arena, path, &io_file);
-  // if (ioerr != IO_ERR_SUCCESS) {
-  //   // NOTE: this is a playground!
-  // }
+  if (CS(g_state.input_path) != NULL) {
+    log_info("loading '%s'", CS(g_state.input_path));
+    app_md1_handle_drop_event(g_state.input_path);
+  }
 
-  // md1_load(&g_state.md1, &io_file);
-  // md1_get_vertices(&g_state.md1, 0, 0, &g_state.model.vbuf,
-  //                  &g_state.model.vbuf_size);
-
-  // // MODEL
-
-  // // render pass action
-  // g_state.pass_action = (sg_pass_action){
-  //     .colors[0] = {.load_action = SG_LOADACTION_CLEAR,
-  //                   .clear_value = {0.125f, 0.25f, 0.35f, 1.0f}},
-  // };
-
-  // // bindings
-  // g_state.model.bindings.views[VIEW_default_tex] = g_state.md1.skins[0].view;
-  // g_state.model.bindings.samplers[SMP_default_smp] =
-  //     g_state.md1.skins[0].sampler;
-
-  // g_state.model.bindings.vertex_buffers[0] =
-  // sg_make_buffer(&(sg_buffer_desc){
-  //     .data =
-  //         {
-  //             .ptr = g_state.model.vbuf,
-  //             .size = g_state.model.vbuf_size,
-  //         },
-  //     .label = "vertex-buffer-model",
-  // });
-
-  // // build shader
-  // g_state.model.pipeline = sg_make_pipeline(&(sg_pipeline_desc){
-  //     .shader =
-  //         sg_make_shader(default_md1_model_shader_desc(sg_query_backend())),
-  //     .primitive_type = SG_PRIMITIVETYPE_TRIANGLES,
-  //     .cull_mode = SG_CULLMODE_NONE,
-  //     .depth = {.compare = SG_COMPAREFUNC_LESS_EQUAL, .write_enabled = true},
-  //     .layout =
-  //         {
-  //             .attrs =
-  //                 {
-  //                     [ATTR_default_md1_model_position] =
-  //                         {.format = SG_VERTEXFORMAT_FLOAT3},
-  //                     [ATTR_default_md1_model_texcoord0] =
-  //                         {.format = SG_VERTEXFORMAT_FLOAT2},
-  //                 },
-  //         },
-  // });
-
-  // // BBOX
-
-  // g_state.bbox.vbuf = (F32*)g_state.md1.gpu.bbox_vertex_buffer;
-  // g_state.bbox.vbuf_size = sizeof(g_state.md1.gpu.bbox_vertex_buffer);
-
-  // g_state.bbox.bindings.vertex_buffers[0] = sg_make_buffer(&(sg_buffer_desc){
-  //     .data =
-  //         {
-  //             .ptr = g_state.bbox.vbuf,
-  //             .size = g_state.bbox.vbuf_size,
-  //         },
-  //     .label = "vertex-buffer-bbox",
-  // });
-
-  // // build shader
-  // g_state.bbox.pipeline = sg_make_pipeline(&(sg_pipeline_desc){
-  //     .shader =
-  //     sg_make_shader(bbox_md1_bbox_shader_desc(sg_query_backend())),
-  //     .primitive_type = SG_PRIMITIVETYPE_LINES,
-  //     .cull_mode = SG_CULLMODE_NONE,
-  //     .depth = {.compare = SG_COMPAREFUNC_LESS_EQUAL, .write_enabled =
-  //     false}, .layout =
-  //         {
-  //             .attrs =
-  //                 {
-  //                     [ATTR_bbox_md1_bbox_position] =
-  //                         {.format = SG_VERTEXFORMAT_FLOAT3},
-  //                 },
-  //         },
-  // });
+  app_md1_init_icons();
 
   end_profiling();
 }
@@ -372,7 +323,7 @@ cleanup:
 /* ===================================================== */
 
 static AppMd1Error
-app_md1_init_icons() {
+app_md1_init_icons(Nothing) {
   start_profiling(1);
 
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
@@ -470,8 +421,81 @@ cleanup:
 
 /* ===================================================== */
 
+static AppMd1Error
+app_md1_init_display_pipeline() {
+  start_profiling(1);
+
+  AppMd1Error err = APP_MD1_ERR_SUCCESS;
+
+  // TODO:
+  // do i need to set any value for this pass_action?
+  g_state.display.pass_action = (sg_pass_action){};
+
+cleanup:
+  end_profiling();
+  return err;
+}
+
+/* ===================================================== */
+
+static AppMd1Error
+app_md1_init_offscreen_pipeline() {
+  start_profiling(1);
+
+  AppMd1Error err = APP_MD1_ERR_SUCCESS;
+
+  // main 3d model pipeline
+  sg_buffer_desc vertex_buffer_desc = {
+      .data = {.ptr = g_state.offscreen.normal.vbuf,
+               .size = g_state.offscreen.normal.vbuf_size}};
+  sg_buffer vertex_buffer = sg_make_buffer(&vertex_buffer_desc);
+  sg_shader shader =
+      sg_make_shader(default_md1_model_shader_desc(sg_query_backend()));
+
+  g_state.offscreen.normal.bindings.views[VIEW_default_tex] =
+      g_state.md1.skins[0].view;
+  g_state.offscreen.normal.bindings.samplers[SMP_default_smp] =
+      g_state.md1.skins[0].sampler;
+  g_state.offscreen.normal.bindings.vertex_buffers[0] = vertex_buffer;
+
+  g_state.offscreen.normal.pipeline = sg_make_pipeline(&(sg_pipeline_desc){
+      .shader = shader,
+      .primitive_type = SG_PRIMITIVETYPE_TRIANGLES,
+      .cull_mode = SG_CULLMODE_NONE,
+      .depth = {.compare = SG_COMPAREFUNC_LESS_EQUAL, .write_enabled = true},
+      .layout = {.attrs = {[ATTR_default_md1_model_position] =
+                               {.format = SG_VERTEXFORMAT_FLOAT3},
+                           [ATTR_default_md1_model_texcoord0] = {
+                               .format = SG_VERTEXFORMAT_FLOAT2}}}});
+
+  // bbox pipeline
+  g_state.offscreen.bbox.vbuf = (F32*)g_state.md1.gpu.bbox_vertex_buffer;
+  g_state.offscreen.bbox.vbuf_size = sizeof(g_state.md1.gpu.bbox_vertex_buffer);
+  sg_buffer_desc bbox_vertex_buffer_desc = {
+      .data = {.ptr = g_state.offscreen.bbox.vbuf,
+               .size = g_state.offscreen.bbox.vbuf_size}};
+  sg_buffer bbox_vertex_buffer = sg_make_buffer(&bbox_vertex_buffer_desc);
+  sg_shader bbox_shader =
+      sg_make_shader(bbox_md1_bbox_shader_desc(sg_query_backend()));
+  g_state.offscreen.bbox.bindings.vertex_buffers[0] = bbox_vertex_buffer;
+
+  g_state.offscreen.bbox.pipeline = sg_make_pipeline(&(sg_pipeline_desc){
+      .shader = bbox_shader,
+      .primitive_type = SG_PRIMITIVETYPE_LINES,
+      .cull_mode = SG_CULLMODE_NONE,
+      .depth = {.compare = SG_COMPAREFUNC_LESS_EQUAL, .write_enabled = false},
+      .layout = {.attrs = {[ATTR_bbox_md1_bbox_position] = {
+                               .format = SG_VERTEXFORMAT_FLOAT3}}}});
+
+cleanup:
+  end_profiling();
+  return err;
+}
+
+/* ===================================================== */
+
 static Nothing
-app_md1_cleanup(void) {
+app_md1_cleanup(Nothing) {
   start_profiling(1);
 
   md1_unload(&g_state.md1);
@@ -490,7 +514,7 @@ app_md1_cleanup(void) {
 /* ===================================================== */
 
 static Nothing
-app_md1_cleanup_reload() {
+app_md1_cleanup_reload(Nothing) {
   start_profiling(1);
 
   AppMd1Mode old_mode = g_state.mode;
@@ -498,6 +522,8 @@ app_md1_cleanup_reload() {
   // g_state.is_extracting_requested = FALSE;
   // g_state.is_packaging_requested = FALSE;
   // g_state.requested_extracting_md1_item = 0;
+
+  app_md1_cleanup_3d();
 
   fl512_str8_reset(&g_state.error_text);
 
@@ -513,7 +539,7 @@ app_md1_cleanup_reload() {
 /* ===================================================== */
 
 static AppMd1Error
-app_md1_cleanup_icons() {
+app_md1_cleanup_icons(Nothing) {
   start_profiling(1);
 
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
@@ -568,6 +594,28 @@ cleanup:
 
 /* ===================================================== */
 
+// TODO:
+// complete this
+static AppMd1Error
+app_md1_cleanup_3d(Nothing) {
+  start_profiling(1);
+
+  AppMd1Error err = APP_MD1_ERR_SUCCESS;
+
+  sg_destroy_buffer(g_state.offscreen.normal.vertex_data);
+  sg_destroy_image(g_state.offscreen.normal.render_target);
+  sg_destroy_view(g_state.offscreen.normal.render_target_view);
+  // sg_destroy_sampler();
+  // sg_destroy_shader();
+  sg_destroy_pipeline(g_state.offscreen.normal.pipeline);
+
+cleanup:
+  end_profiling();
+  return err;
+}
+
+/* ===================================================== */
+
 static Nothing
 app_md1_handle_user_input_events(const sapp_event* event) {
   start_profiling(1);
@@ -613,42 +661,30 @@ app_md1_handle_drop_event(Str8 path) {
 
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
 
-  Bool is_directory = FALSE;
-  IOError ioerr = io_is_path_a_directory(path, &is_directory);
-  if (IO_ERR_SUCCESS != ioerr) {
-    g_state.mode = APP_MD1_MODE_FAILED;
-    err = APP_MD1_ERR_DROP;
-    goto cleanup;
-  }
-
   if (g_state.mode == APP_MD1_MODE_LOADED) {
     app_md1_cleanup_reload();
   }
 
-  ioerr = io_open_file(g_state.arena, path, &g_state.input_io_file);
-  if (IO_ERR_SUCCESS != ioerr) {
-    char err_text[APP_MD1_MAX_ERROR_LENGTH] = {0};
-    snprintf(err_text, APP_MD1_MAX_ERROR_LENGTH, "failed to open '%s'",
-             CS(path));
-    fl512_str8_set(&g_state.error_text, err_text);
+  NDBuffer ndb = {0};
+  IOFile io_file = {0};
+  IOError ioerr = io_load_file(g_state.arena, path, &io_file);
+  if (ioerr != IO_ERR_SUCCESS) {
     err = APP_MD1_ERR_FILE_OPEN;
-    g_state.mode = APP_MD1_MODE_FAILED;
     goto cleanup;
   }
 
-  // TODO:
-  // fix this (copied from pak)
-  // PakError perr = pak_load_from_io_file(&g_state.pak,
-  // &g_state.input_io_file); if (perr != PAK_ERR_SUCCESS) {
-  //   char err_text[APP_MD1_MAX_ERROR_LENGTH] = {0};
-  //   snprintf(err_text, APP_MD1_MAX_ERROR_LENGTH, "failed to load '%s' items",
-  //            CS(path));
-  //   fl512_str8_set(&g_state.error_text, err_text);
-  //   err = APP_MD1_ERR_MODULE_PAK;
-  //   g_state.mode = APP_MD1_MODE_FAILED;
-  //   goto cleanup;
-  // }
+  Md1Error mderr = md1_load(&g_state.md1, &io_file);
+  if (MD1_ERR_SUCCESS != mderr) {
+    err = APP_MD1_ERR_MODULE_MD1;
+    goto cleanup;
+  }
 
+  md1_get_vertices(&g_state.md1, 0, 0, &g_state.offscreen.normal.vbuf,
+                   &g_state.offscreen.normal.vbuf_size);
+
+  app_md1_init_offscreen_pipeline();
+
+  // render pass action
 
   g_state.mode = APP_MD1_MODE_LOADED;
   g_state.input_path = path;
@@ -661,67 +697,25 @@ cleanup:
 /* ===================================================== */
 
 static Nothing
-app_md1_frame(void) {
+app_md1_frame(Nothing) {
   start_profiling(1);
   start_frame_profiling();
 
-  // Md1* m = &g_state.md1;
-
-  // F32 field_of_view = 60.0;
-  // F32 view_aspect_ratio = sapp_widthf() / sapp_heightf();
-  // F32 camera_distance = m->bbox.radius * 3;
-  // hmm_vec3 view_center = HMM_Vec3(0.0f, 0.0f, 0.0f);
-  // hmm_vec3 camera_position = HMM_Vec3(m->bbox.center.X, m->bbox.center.Y,
-  //                                     m->bbox.center.Z + camera_distance);
-  // hmm_mat4 proj = HMM_Perspective(field_of_view, view_aspect_ratio,
-  //                                 m->bbox.radius / 100, m->bbox.radius *
-  //                                 100);
-  // hmm_mat4 view = HMM_LookAt(camera_position, view_center, HMM_Vec3(0, 1,
-  // 0)); hmm_mat4 center = HMM_Translate(HMM_MultiplyVec3f(m->bbox.center,
-  // -1.0f)); hmm_mat4 rot_x = HMM_Rotate(-90.0f, HMM_Vec3(1.0f, 0.0f, 0.0f));
-  // hmm_mat4 rot_z = HMM_Rotate(-90.0f, HMM_Vec3(0.0f, 0.0f, 1.0f));
-  // hmm_mat4 rot = HMM_MultiplyMat4(rot_x, rot_z);
-  // hmm_mat4 model = HMM_MultiplyMat4(rot, center);
-  // hmm_mat4 mvp = HMM_MultiplyMat4(proj, HMM_MultiplyMat4(view, model));
-
-  // default_vs_params_t vs_params = {.mvp = mvp};
-
-  // sg_begin_pass(&(sg_pass){.action = g_state.pass_action,
-  //                          .swapchain = sglue_swapchain()});
-
-  // sg_apply_pipeline(g_state.model.pipeline);
-  // sg_apply_bindings(&g_state.model.bindings);
-  // sg_apply_uniforms(UB_default_vs_params, &SG_RANGE(vs_params));
-  // sg_draw(0, g_state.model.vbuf_size / 5, 1);
-
-  // sg_apply_pipeline(g_state.bbox.pipeline);
-  // sg_apply_bindings(&g_state.bbox.bindings);
-  // sg_apply_uniforms(UB_default_vs_params, &SG_RANGE(vs_params));
-  // sg_draw(0, MD1_BBOX_VERTEX_COUNT, 1);
-
-  // sg_end_pass();
-  // sg_commit();
-
-  //----
   struct nk_context* ctx = snk_new_frame();
-
   if (g_state.is_app_styled == FALSE) {
     app_md1_init_style(&ctx->style);
     g_state.is_app_styled = TRUE;
   }
 
-  app_md1_draw(ctx);
-  sg_begin_pass(
-      &(sg_pass){.action =
-                     {
-                         .colors[0] = {.load_action = SG_LOADACTION_CLEAR},
-                     },
-                 .swapchain = sglue_swapchain()});
+  app_md1_draw_ui(ctx);
+  sg_begin_pass(&(sg_pass){
+      .action = g_state.display.pass_action,
+      .swapchain = sglue_swapchain(),
+  });
   snk_render(sapp_width(), sapp_height());
 
   sg_end_pass();
   sg_commit();
-  //----
 
   end_frame_profiling();
   end_profiling();
@@ -730,7 +724,7 @@ app_md1_frame(void) {
 /* ===================================================== */
 
 static U32
-app_md1_draw(struct nk_context* ctx) {
+app_md1_draw_ui(struct nk_context* ctx) {
   start_profiling(1);
 
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
@@ -743,17 +737,14 @@ app_md1_draw(struct nk_context* ctx) {
 
   nk_style_hide_cursor(ctx);
 
-  // if (g_state.mode == APP_PAK_MODE_EMPTY) {
-  //   app_md1_draw_mode_empty(ctx, window_flags, window_width, window_height);
-  // } else if (g_state.mode == APP_PAK_MODE_PAK_LOADED) {
-  //   app_md1_draw_mode_md1_loaded(ctx, window_flags, window_width,
-  //                                window_height);
-  // } else if (g_state.mode == APP_PAK_MODE_DIR_LOADED) {
-  //   app_md1_draw_mode_dir_loaded(ctx, window_flags, window_width,
-  //                                window_height);
-  // } else if (g_state.mode == APP_PAK_MODE_FAILED) {
-  //   app_md1_draw_mode_failed(ctx, window_flags, window_width, window_height);
-  // }
+  if (g_state.mode == APP_MD1_MODE_EMPTY) {
+    app_md1_draw_mode_empty(ctx, window_flags, window_width, window_height);
+  } else if (g_state.mode == APP_MD1_MODE_LOADED) {
+    app_md1_draw_mode_md1_loaded(ctx, window_flags, window_width,
+                                 window_height);
+  } else if (g_state.mode == APP_MD1_MODE_FAILED) {
+    app_md1_draw_mode_failed(ctx, window_flags, window_width, window_height);
+  }
 
   Bool is_window_closed = !nk_window_is_closed(ctx, window_title);
 
@@ -761,5 +752,104 @@ app_md1_draw(struct nk_context* ctx) {
   return is_window_closed;
 }
 
+/* ===================================================== */
+
+static Nothing
+app_md1_draw_mode_empty(struct nk_context* ctx,
+                        nk_flags window_flags,
+                        U32 window_width,
+                        U32 window_height) {
+  start_profiling(1);
+
+  static char label_line_1[] = "drop a .MDL or .GLTF file for rendering";
+  static char label_line_2[] =
+      "note that you can convert .MDL to .GLTF and vice versa";
+
+  if (nk_begin(ctx, "", nk_rect(0, 0, window_width, window_height),
+               window_flags)) {
+    struct nk_rect content_region = nk_window_get_content_region(ctx);
+    const struct nk_user_font* font = ctx->style.font;
+
+    F32 line_width = font->width(font->userdata, font->height, label_line_2,
+                                 (int)strlen(label_line_2));
+
+    F32 text_height = font->height;
+    F32 text_pad_x = ctx->style.text.padding.x;
+    F32 text_pad_y = ctx->style.text.padding.y;
+
+    struct nk_rect r1 = {
+        .x = content_region.x + (content_region.w - line_width) * 0.5f,
+        .y = content_region.y + (content_region.h - (text_height * 4)) * 0.5f,
+        .w = line_width,
+        .h = text_height,
+    };
+
+    struct nk_rect r2 = {
+        .x = content_region.x + (content_region.w - line_width) * 0.5f,
+        .y = r1.y + text_height,
+        .w = line_width,
+        .h = text_height,
+    };
+
+    nk_layout_space_begin(ctx, NK_STATIC, content_region.h, 2);
+    nk_layout_space_push(ctx, r1);
+    nk_label(ctx, label_line_1, NK_TEXT_CENTERED);
+    nk_layout_space_push(ctx, r2);
+    nk_label(ctx, label_line_2, NK_TEXT_CENTERED);
+    nk_layout_space_end(ctx);
+  }
+  nk_end(ctx);
+
+  end_profiling();
+}
 
 /* ===================================================== */
+
+static Nothing
+app_md1_draw_mode_failed(struct nk_context* ctx,
+                         nk_flags window_flags,
+                         U32 window_width,
+                         U32 window_height) {
+  start_profiling(1);
+
+  if (nk_begin(ctx, "", nk_rect(0, 0, window_width, window_height),
+               window_flags)) {
+    struct nk_rect content_region = nk_window_get_content_region(ctx);
+    const struct nk_user_font* font = ctx->style.font;
+
+    F32 text_width = font->width(font->userdata, font->height,
+                                 g_state.error_text.cstr, fl512_str8_length());
+    F32 text_height = font->height;
+    F32 text_pad_x = ctx->style.text.padding.x;
+    F32 text_pad_y = ctx->style.text.padding.y;
+    F32 element_width = text_width + (10.0f * text_pad_x);
+    F32 element_height = text_height + (10.0f * text_pad_y);
+
+    struct nk_rect r = {
+        .x = content_region.x + (content_region.w - element_width) * 0.5f,
+        .y = content_region.y + (content_region.h - element_height) * 0.5f,
+        .w = element_width,
+        .h = element_height,
+    };
+
+    nk_layout_row_dynamic(ctx, content_region.h, 1);
+    nk_label_wrap(ctx, CS(g_state.error_text));
+  }
+  nk_end(ctx);
+
+  end_profiling();
+}
+
+/* ===================================================== */
+
+static Nothing
+app_md1_draw_mode_md1_loaded(struct nk_context* ctx,
+                             nk_flags window_flags,
+                             U32 window_width,
+                             U32 window_height) {
+  start_profiling(1);
+
+  // YO!
+
+  end_profiling();
+}
