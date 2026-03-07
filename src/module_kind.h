@@ -124,6 +124,7 @@ cleanup:
 }
 
 KindError
+// cppcheck-suppress unusedFunction
 kind_guess_entry(Str8 path, Kind* kind) {
   start_profiling(1);
 
@@ -339,6 +340,7 @@ cleanup:
 }
 
 KindError
+// cppcheck-suppress unusedFunction
 kind_guess_file(CStr path, Kind* kind) {
   start_profiling(1);
 
@@ -351,7 +353,7 @@ kind_guess_file(CStr path, Kind* kind) {
 
   FILE* f = fopen(path, "rb");
 
-  assert(f != 0);
+  runtime_assert(f != 0);
   assert(fseek(f, 0, SEEK_END) == 0);
 
   rewind(f);
@@ -363,12 +365,12 @@ kind_guess_file(CStr path, Kind* kind) {
 
   err = guess_file_type(buf, kind);
 
-cleanup:
   end_profiling();
   return err;
 }
 
 KindError
+// cppcheck-suppress unusedFunction
 kind_guess_buffer(CStr data, Kind* kind) {
   start_profiling(1);
 
@@ -382,7 +384,6 @@ kind_guess_buffer(CStr data, Kind* kind) {
 
   err = guess_file_type(buf, kind);
 
-cleanup:
   end_profiling();
   return err;
 }

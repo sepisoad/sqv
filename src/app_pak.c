@@ -126,8 +126,8 @@ static AppPakError app_pak_init_icon(AppPakImage* app_icon,
 
 static Nothing app_pak_cleanup();
 static Nothing app_pak_cleanup_reload();
-static AppPakError app_pak_cleanup_icons();
-static AppPakError app_pak_cleanup_icon(AppPakImage* app_icon);
+static Nothing app_pak_cleanup_icons();
+static Nothing app_pak_cleanup_icon(AppPakImage* app_icon);
 
 static Nothing app_pak_handle_user_input_events(const sapp_event* event);
 static AppPakError app_pak_handle_drop_event(Str8 path);
@@ -269,7 +269,6 @@ app_pak_init_style(struct nk_style* s) {
   window->tooltip_border = STYLE.global.border.size;
   window->popup_border = STYLE.global.border.size;
   window->min_row_height_padding = STYLE.global.border.size;
-  window->group_border = STYLE.global.border.size;
 
   window->border_color.r = STYLE.global.border.color.r;
   window->border_color.g = STYLE.global.border.color.g;
@@ -331,7 +330,6 @@ app_pak_init_style(struct nk_style* s) {
   button->active.data.color.g = STYLE.button.color.active.g;
   button->active.data.color.b = STYLE.button.color.active.b;
 
-cleanup:
   end_profiling();
   return err;
 }
@@ -478,58 +476,32 @@ app_pak_cleanup_reload() {
 
 /* ===================================================== */
 
-static AppPakError
+static Nothing
 app_pak_cleanup_icons() {
   start_profiling(1);
 
-  AppPakError err = APP_PAK_ERR_SUCCESS;
+  app_pak_cleanup_icon(&g_icons.home);
+  app_pak_cleanup_icon(&g_icons.back);
+  app_pak_cleanup_icon(&g_icons.package);
+  app_pak_cleanup_icon(&g_icons.extract);
+  app_pak_cleanup_icon(&g_icons.folder);
+  app_pak_cleanup_icon(&g_icons.file);
 
-  err = app_pak_cleanup_icon(&g_icons.home);
-  if (err != APP_PAK_ERR_SUCCESS) {
-    goto cleanup;
-  }
-  err = app_pak_cleanup_icon(&g_icons.back);
-  if (err != APP_PAK_ERR_SUCCESS) {
-    goto cleanup;
-  }
-  err = app_pak_cleanup_icon(&g_icons.package);
-  if (err != APP_PAK_ERR_SUCCESS) {
-    goto cleanup;
-  }
-  err = app_pak_cleanup_icon(&g_icons.extract);
-  if (err != APP_PAK_ERR_SUCCESS) {
-    goto cleanup;
-  }
-  err = app_pak_cleanup_icon(&g_icons.folder);
-  if (err != APP_PAK_ERR_SUCCESS) {
-    goto cleanup;
-  }
-  err = app_pak_cleanup_icon(&g_icons.file);
-  if (err != APP_PAK_ERR_SUCCESS) {
-    goto cleanup;
-  }
-
-cleanup:
   end_profiling();
-  return err;
 }
 
 /* ===================================================== */
 
-static AppPakError
+static Nothing
 app_pak_cleanup_icon(AppPakImage* app_icon) {
   start_profiling(1);
-
-  AppPakError err = APP_PAK_ERR_SUCCESS;
 
   sg_destroy_view(app_icon->view);
   sg_destroy_sampler(app_icon->sampler);
   sg_destroy_image(app_icon->image);
   snk_destroy_image(app_icon->ui_image);
 
-cleanup:
   end_profiling();
-  return err;
 }
 
 /* ===================================================== */
@@ -695,8 +667,6 @@ static U32
 app_pak_draw(struct nk_context* ctx) {
   start_profiling(1);
 
-  AppPakError err = APP_PAK_ERR_SUCCESS;
-
   static char window_title[] = "SQV::Pak Explorer";
   static nk_flags window_flags = NK_WINDOW_BORDER;
 
@@ -731,11 +701,10 @@ app_pak_draw_mode_empty(struct nk_context* ctx,
                         U32 window_height) {
   start_profiling(1);
 
-  static char label_line_1[] = "drop a .PAK file for extraction";
-  static char label_line_2[] = "or drop a folder for packaging as .PAK file";
-
   if (nk_begin(ctx, "", nk_rect(0, 0, window_width, window_height),
                window_flags)) {
+    static char label_line_1[] = "drop a .PAK file for extraction";
+    static char label_line_2[] = "or drop a folder for packaging as .PAK file";
     struct nk_rect content_region = nk_window_get_content_region(ctx);
     const struct nk_user_font* font = ctx->style.font;
 
@@ -743,8 +712,6 @@ app_pak_draw_mode_empty(struct nk_context* ctx,
                                  (int)strlen(label_line_2));
 
     F32 text_height = font->height;
-    F32 text_pad_x = ctx->style.text.padding.x;
-    F32 text_pad_y = ctx->style.text.padding.y;
 
     struct nk_rect r1 = {
         .x = content_region.x + (content_region.w - line_width) * 0.5f,
@@ -783,24 +750,7 @@ app_pak_draw_mode_failed(struct nk_context* ctx,
 
   if (nk_begin(ctx, "", nk_rect(0, 0, window_width, window_height),
                window_flags)) {
-    struct nk_rect content_region = nk_window_get_content_region(ctx);
-    const struct nk_user_font* font = ctx->style.font;
-
-    F32 text_width = font->width(font->userdata, font->height,
-                                 g_state.error_text.cstr, fl512_str8_length());
-    F32 text_height = font->height;
-    F32 text_pad_x = ctx->style.text.padding.x;
-    F32 text_pad_y = ctx->style.text.padding.y;
-    F32 element_width = text_width + (10.0f * text_pad_x);
-    F32 element_height = text_height + (10.0f * text_pad_y);
-
-    struct nk_rect r = {
-        .x = content_region.x + (content_region.w - element_width) * 0.5f,
-        .y = content_region.y + (content_region.h - element_height) * 0.5f,
-        .w = element_width,
-        .h = element_height,
-    };
-
+    const struct nk_rect content_region = nk_window_get_content_region(ctx);
     nk_layout_row_dynamic(ctx, content_region.h, 1);
     nk_label_wrap(ctx, CS(g_state.error_text));
   }
@@ -874,8 +824,6 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
           ctx, "loaded_mode_middle_region",
           nk_rect(0, STYLE.toolbar.height, window_width, middle_region_height),
           NK_WINDOW_SCROLL_AUTO_HIDE | NK_WINDOW_BORDER)) {
-    const struct nk_user_font* font = ctx->style.font;
-    F32 text_height = font->height;
     app_pak_draw_widget_pak_explorer_area(ctx, window_width,
                                           middle_region_height);
   }
@@ -914,7 +862,7 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
               &g_state.input_io_file,
               fl1024_str8_view(g_state.export_path_buffer));
           if (PAK_ERR_SUCCESS != perr) {
-            PakItem* pak_item = g_state.requested_extracting_pak_item;
+            const PakItem* const pak_item = g_state.requested_extracting_pak_item;
             char err_text[APP_PAK_MAX_ERROR_LENGTH] = {0};
             snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH,
                      "failed to extract item '%s' into '%s'",
@@ -1019,9 +967,6 @@ app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
           ctx, "loaded_mode_middle_region",
           nk_rect(0, STYLE.toolbar.height, window_width, middle_region_height),
           NK_WINDOW_SCROLL_AUTO_HIDE | NK_WINDOW_BORDER)) {
-    const struct nk_user_font* font = ctx->style.font;
-    F32 text_height = font->height;
-
     app_pak_draw_widget_dir_explorer_area(ctx, window_width,
                                           middle_region_height);
   }
@@ -1151,11 +1096,6 @@ app_pak_draw_widget_pak_explorer_area(struct nk_context* ctx,
 }
 
 /* ===================================================== */
-
-static IOItem*
-array_ionode_get(IOItem* parent, U32 index) {
-  not_implemented();
-}
 
 static Nothing
 app_pak_draw_widget_dir_explorer_area(struct nk_context* ctx,
@@ -1319,9 +1259,6 @@ app_pak_draw_widget_explorer_dir_icon(struct nk_context* ctx,
                        STYLE.explorer.icon.image.width, 1);
 
   // icon image context menue
-  struct nk_rect bounds;
-  bounds = nk_widget_bounds(ctx);
-
   if (nk_button_image(ctx, *image)) {
     if (is_directory) {
       g_state.current_dir_io_item = node;

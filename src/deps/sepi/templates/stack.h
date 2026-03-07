@@ -114,7 +114,8 @@ stack__class__clean(Stack_Class_* stack) {
 }
 
 U32
-stack__class__length(Stack_Class_* stack) {
+// cppcheck-suppress unusedFunction
+stack__class__length(const Stack_Class_* stack) {
   return stack->length;
 }
 

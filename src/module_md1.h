@@ -223,25 +223,6 @@ Md1Error md1_unload(Md1* md1);
 
 mount_slave_profiling_context();
 
-static Nothing
-md1_load_image(CBuf ptr, Buf pixels, Sz sz) {
-  start_profiling(1);
-
-  assert(pixels != 0);
-  assert(sz > 0);
-
-  Buf indices = (Buf)ptr;
-  for (U32 i = 0, j = 0; i < sz; i++, j += 4) {
-    U32 index = indices[i];
-    pixels[j + 0] = quake1_palette[index][0];  // red
-    pixels[j + 1] = quake1_palette[index][1];  // green
-    pixels[j + 2] = quake1_palette[index][2];  // blue
-    pixels[j + 3] = 255;                       // alpha, always opaque
-  }
-
-  end_profiling();
-}
-
 static Md1Error
 md1_load_skins(Md1* md1, IOFile* io_file) {
   start_profiling(1);
@@ -263,7 +244,7 @@ md1_load_skins(Md1* md1, IOFile* io_file) {
   runtime_assert(skins != 0);
 
   for (U32 skin_idx = 0; skin_idx < details->skins_count; skin_idx++) {
-    MD1SkinType* st = (MD1SkinType*)ND_ADDR(&io_file->buffer);
+    const MD1SkinType* st = (MD1SkinType*)ND_ADDR(&io_file->buffer);
     ND_MOVE(&io_file->buffer, sizeof(MD1SkinType));
 
     if (MD1_SKIN_SINGLE == *st) {
@@ -272,7 +253,7 @@ md1_load_skins(Md1* md1, IOFile* io_file) {
       assert(data != 0);
 
       // constructing pixel data
-      U8* raw_data = (U8*)ND_ADDR(&io_file->buffer);
+      const U8* const raw_data = (U8*)ND_ADDR(&io_file->buffer);
       for (U32 raw_idx = 0, rgba = 0; raw_idx < skin_sz; raw_idx++, rgba += 4) {
         U32 palette_idx = raw_data[raw_idx];
         data[rgba + 0] = quake1_palette[palette_idx][0]; /* RED */
@@ -354,13 +335,13 @@ md1_load_triangles(Md1* md1, IOFile* io_file, Md1FacedTriangle** fts) {
   assert(io_file->buffer.base != 0);
   assert(fts != 0);
 
-  Md1Details* details = &md1->details;
-  Arena* a = md1->arena;
+  const Md1Details* const details = &md1->details;
+  Arena* arena = md1->arena;
   Sz fts_sz = sizeof(Md1FacedTriangle) * details->triangles_count;
-  Sz idices_sz = sizeof(U32) * details->triangles_count * 3;
+  // Sz idices_sz = sizeof(U32) * details->triangles_count * 3;
   Md1Error err = MD1_ERR_SUCCESS;
 
-  *fts = arena_push(a, fts_sz, alignof(Md1FacedTriangle), TRUE);
+  *fts = arena_push(arena, fts_sz, alignof(Md1FacedTriangle), TRUE);
   runtime_assert(*fts != 0);
 
   for (U32 i = 0, j = 0; i < details->triangles_count; i++, j += 3) {
@@ -391,7 +372,7 @@ md1_has_pose_name_changed(Str new, CStr old) {
     }
   }
 
-  if (strlen(old) <= 0) {
+  if (strlen(old) == 0) {
     end_profiling();
     return TRUE;
   }
@@ -532,13 +513,15 @@ md1_load_single_frame(Md1* md1,
     md1->gpu.bbox_vertex_buffer_size = size;
   }
 
-  Md1NormalVertex* nv = (Md1NormalVertex*)ND_ADDR(&io_file->buffer);
-  Sz nv_size = sizeof(Md1NormalVertex);
+  // Md1NormalVertex* nv = (Md1NormalVertex*)ND_ADDR(&io_file->buffer);
+
   Md1Vertex* frame_verts =
       md1->vertices + (details->vertices_count * frame_idx);
 
   for (U32 i = 0; i < details->vertices_count; i++) {
     Md1NormalVertex nv = {0};
+    Sz nv_size = sizeof(Md1NormalVertex);
+
     // NOTE: basically 'Md1NormalVertex' is composed of 4 one byte elements
     //       so we do not need to be worried about endianness and we can
     //       safely copy the memory here!
@@ -571,7 +554,7 @@ md1_load_frames(Md1* md1, IOFile* io_file) {
 
   Md1Details* details = &md1->details;
   Arena* a = md1->arena;
-  U32 pose_frames = 0;
+  // U32 pose_frames = 0;
   char frame_name[MD1_MAX_FRAME_NAME_LEN] = {0};
   Bool is_bbox_loaded = FALSE;
   Md1Error err = MD1_ERR_SUCCESS;
@@ -597,7 +580,8 @@ md1_load_frames(Md1* md1, IOFile* io_file) {
     ND_I32(&io_file->buffer, &ft);
 
     if (MD1_FT_SINGLE == ft) {
-      md1_load_single_frame(md1, io_file, frame_idx, frame_name, &is_bbox_loaded);
+      md1_load_single_frame(md1, io_file, frame_idx, frame_name,
+                            &is_bbox_loaded);
     } else {
       runtime_assert("NOT IMPLEMENTED!");
     }
@@ -607,7 +591,7 @@ md1_load_frames(Md1* md1, IOFile* io_file) {
   return err;
 }
 
-Md1Error
+static Md1Error
 md1_make_display_list(Md1* md1, Md1UV* uvs, Md1FacedTriangle* faced_triangles) {
   start_profiling(1);
 
@@ -659,104 +643,6 @@ md1_make_display_list(Md1* md1, Md1UV* uvs, Md1FacedTriangle* faced_triangles) {
       }
     }
   }
-
-  end_profiling();
-  return err;
-}
-
-static Md1Error
-md1_make_display_list_v2(Md1* md1,
-                         Md1UV* uvs,
-                         Md1FacedTriangle* faced_triangles) {
-  start_profiling(1);
-
-  Md1Error err = MD1_ERR_SUCCESS;
-  Md1Details* details = &md1->details;
-  Arena* a = md1->arena;
-  U32 mesh_indices_count = 0;
-  U32 mesh_vertices_count = 0;
-
-  // TODO: use scratch buffwe for this
-  Md1MeshVertices* mesh_vertices =
-      arena_push(a, details->triangles_count * 3 * sizeof(Md1MeshVertices),
-                 alignof(Md1MeshVertices), TRUE);
-
-  Sz index_buffer_size = details->triangles_count * 3 * sizeof(U32);
-  U32* index_buffer = arena_push(a, index_buffer_size, alignof(U32), TRUE);
-
-  for (U32 triangle_index = 0; triangle_index < details->triangles_count;
-       triangle_index++) {
-    U32 mesh_vertex_index = 0;
-    for (U32 triangle_vertex_index = 0; triangle_vertex_index < 3;
-         triangle_vertex_index++, mesh_indices_count++) {
-      U32 vertex_index =
-          faced_triangles[triangle_index].vertices_idx[triangle_vertex_index];
-      F32 u = uvs[vertex_index].u;
-      F32 v = uvs[vertex_index].v;
-
-      if (!faced_triangles[triangle_index].is_front_face &&
-          uvs[vertex_index].is_on_seam) {
-        u += details->skin_width / 2;
-      }
-
-      u = (u + 0.5) / details->skin_width;
-      v = (v + 0.5) / details->skin_height;
-
-      for (mesh_vertex_index = 0; mesh_vertex_index < mesh_vertices_count;
-           mesh_vertex_index++) {
-        if (mesh_vertices[mesh_vertex_index].vertex_index == vertex_index &&
-            mesh_vertices[mesh_vertex_index].uv[0] == u &&
-            mesh_vertices[mesh_vertex_index].uv[1] == v) {
-          index_buffer[mesh_indices_count] = mesh_vertex_index;
-          break;
-        }
-      }
-
-      if (mesh_vertex_index == mesh_vertices_count) {
-        index_buffer[mesh_indices_count] = mesh_vertices_count;
-        mesh_vertices[mesh_vertices_count].vertex_index = vertex_index;
-        mesh_vertices[mesh_vertices_count].uv[0] = u;
-        mesh_vertices[mesh_vertices_count].uv[1] = v;
-        mesh_vertices_count++;
-      }
-    }
-  }
-
-  U32 vbuf_vert_idx = 0;
-  Sz elems_count = (3 + 2);
-  Sz vbuf_sz =
-      details->frames_count * mesh_vertices_count * elems_count * sizeof(F32);
-
-  md1->gpu.frames_vertex_buffer_v2 = arena_push(a, vbuf_sz, alignof(F32), TRUE);
-
-  for (U32 frame_index = 0; frame_index < details->frames_count;
-       frame_index++) {
-    const Md1Vertex* frame_verts =
-        md1->vertices + (details->vertices_count * frame_index);
-    for (U32 mesh_vertex_index = 0; mesh_vertex_index < mesh_vertices_count;
-         mesh_vertex_index++) {
-      U32 vertex_index = mesh_vertices[mesh_vertex_index].vertex_index;
-      F32 x = (frame_verts[vertex_index].vertex.X * details->scale.X) +
-              details->translate.X;
-      F32 y = (frame_verts[vertex_index].vertex.Y * details->scale.Y) +
-              details->translate.Y;
-      F32 z = (frame_verts[vertex_index].vertex.Z * details->scale.Z) +
-              details->translate.Z;
-      F32 u = mesh_vertices[mesh_vertex_index].uv[0];
-      F32 v = mesh_vertices[mesh_vertex_index].uv[1];
-
-      md1->gpu.frames_vertex_buffer_v2[vbuf_vert_idx++] = x;
-      md1->gpu.frames_vertex_buffer_v2[vbuf_vert_idx++] = y;
-      md1->gpu.frames_vertex_buffer_v2[vbuf_vert_idx++] = z;
-      md1->gpu.frames_vertex_buffer_v2[vbuf_vert_idx++] = u;
-      md1->gpu.frames_vertex_buffer_v2[vbuf_vert_idx++] = v;
-    }
-  }
-
-  md1->gpu.frame_vertex_buffer_size =
-      elems_count * mesh_vertices_count * sizeof(F32);
-  md1->gpu.index_buffer_size = index_buffer_size;
-  md1->gpu.index_buffer = index_buffer;
 
   end_profiling();
   return err;
@@ -880,44 +766,11 @@ md1_get_vertices(const Md1* md1,
   assert(pose_frame_idx < md1->poses[pose_idx].frames_count);
 
   Md1Error err = MD1_ERR_SUCCESS;
-  Md1Pose* pose = &md1->poses[pose_idx];
+  const Md1Pose* const pose = &md1->poses[pose_idx];
   *frame_vbuf =
       &md1->gpu.frames_vertex_buffer[(pose->first_frame + pose_frame_idx) *
                                      md1->gpu.frame_vertex_buffer_size];
   *frame_vertex_buffer_size = md1->gpu.frame_vertex_buffer_size * sizeof(F32);
-
-  end_profiling();
-  return err;
-}
-
-Md1Error
-md1_get_vertices_v2(Md1* md1,
-                    U32 pose_idx,
-                    U32 frame_idx,
-                    F32** vbuf,
-                    Sz* vbuf_size,
-                    U32** ibuf,
-                    Sz* ibuf_size) {
-  start_profiling(1);
-
-  assert(md1 != 0);
-  assert(vbuf != 0);
-  assert(vbuf_size != 0);
-  assert(ibuf != 0);
-  assert(ibuf_size != 0);
-  assert(pose_idx < md1->details.poses_count);
-  assert(frame_idx < md1->poses[pose_idx].frames_count);
-
-  Md1Error err = MD1_ERR_SUCCESS;
-  Md1Details* details = &md1->details;
-  Md1Pose* pose = &md1->poses[pose_idx];
-  U32 vbuf_loc =
-      (pose->first_frame + frame_idx) * md1->gpu.frame_vertex_buffer_size;
-
-  *vbuf = &md1->gpu.frames_vertex_buffer_v2[vbuf_loc];
-  *vbuf_size = md1->gpu.frame_vertex_buffer_size;
-  *ibuf = md1->gpu.index_buffer;
-  *ibuf_size = md1->gpu.index_buffer_size;
 
   end_profiling();
   return err;

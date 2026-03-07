@@ -145,6 +145,7 @@ cleanup:
 }
 
 _Class_*
+// cppcheck-suppress unusedFunction
 map__class__delete(Map_Class_* map, Str8 key) {
   start_profiling(1);
 
@@ -179,6 +180,7 @@ cleanup:
 }
 
 Nothing
+// cppcheck-suppress unusedFunction
 map__class__clean(Map_Class_* map) {
   start_profiling(1);
 
@@ -192,6 +194,7 @@ map__class__clean(Map_Class_* map) {
 }
 
 Nothing
+// cppcheck-suppress unusedFunction
 map__class__keys(Map_Class_* map, Str8** keys, U64* length) {
   start_profiling(1);
 
@@ -203,7 +206,7 @@ map__class__keys(Map_Class_* map, Str8** keys, U64* length) {
   *keys = arena_push(map->arena, sizeof(Str8) * map->keys_count, alignof(Str8), TRUE);
 
   for (U64 key_list_index = 0; key_list_index < map->max_keys_list_length; key_list_index++) {
-    Map_Class_Node* iter = map->keys_list[key_list_index];
+    const Map_Class_Node* iter = map->keys_list[key_list_index];
     while(0 != iter) {
       (*keys)[key_index++] = iter->key;
       iter = iter->next;

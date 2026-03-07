@@ -209,20 +209,21 @@ newaction {
   trigger = "shader",
   description = "Compile shaders into C headers",
   execute = function()
-    local host = os.host()
+    os.execute("sokol-shdc -m default -i src/shaders/default.glsl -l glsl410 -f sokol -o src/shaders/default.ogl.h")
+    os.execute("sokol-shdc -m bbox -i src/shaders/bbox.glsl -l glsl410 -f sokol -o src/shaders/bbox.ogl.h")
+    os.execute("sokol-shdc -m default -i src/shaders/default.glsl -l metal_macos -f sokol -o src/shaders/default.mtl.h")
+    os.execute("sokol-shdc -m bbox -i src/shaders/bbox.glsl -l metal_macos -f sokol -o src/shaders/bbox.mtl.h")
+    os.execute("sokol-shdc -m default -i src/shaders/default.glsl -l hlsl5 -f sokol -o src/shaders/default.d3d.h")
+    os.execute("sokol-shdc -m bbox -i src/shaders/bbox.glsl -l hlsl5 -f sokol -o src/shaders/bbox.d3d.h")
+  end
+}
 
-    if host == "linux" then
-      os.execute("sokol-shdc -m default -i src/shaders/default.glsl -l glsl410 -f sokol -o src/shaders/default.ogl.h")
-      os.execute("sokol-shdc -m bbox -i src/shaders/bbox.glsl -l glsl410 -f sokol -o src/shaders/bbox.ogl.h")
-    elseif host == "macosx" then
-      os.execute("sokol-shdc -m default -i src/shaders/default.glsl -l metal_macos -f sokol -o src/shaders/default.mtl.h")
-      os.execute("sokol-shdc -m bbox -i src/shaders/bbox.glsl -l metal_macos -f sokol -o src/shaders/bbox.mtl.h")
-    elseif host == "windows" then
-      os.execute("sokol-shdc -m default -i src/shaders/default.glsl -l hlsl5 -f sokol -o src/shaders/default.d3d.h")
-      os.execute("sokol-shdc -m bbox -i src/shaders/bbox.glsl -l hlsl5 -f sokol -o src/shaders/bbox.d3d.h")
-    else
-    end
-
+-- ACTION::analyze
+newaction {
+  trigger = "analyze",
+  description = "run static code analysis using cppcheck",
+  execute = function()
+    os.execute("/usr/local/bin/cppcheck . -i res -i scripts -i src/deps/hmm -i src/deps/log -i src/deps/nuklear -i src/deps/rapidhash -i src/deps/sokol -i src/deps/stb -i src/deps/tracy -i src/shaders --enable=all --quiet --suppress=missingIncludeSystem --check-level=exhaustive --inline-suppr")
   end
 }
 

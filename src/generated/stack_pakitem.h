@@ -112,7 +112,8 @@ stack_pakitem_clean(StackPakItem* stack) {
 }
 
 U32
-stack_pakitem_length(StackPakItem* stack) {
+// cppcheck-suppress unusedFunction
+stack_pakitem_length(const StackPakItem* stack) {
   return stack->length;
 }
 

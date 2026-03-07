@@ -116,13 +116,14 @@ mount_slave_profiling_context();
 
 // TODO:
 // use Str8
-static PakError
-pak_get_path_depth(CStr path, U32 length, U32* depth) {
+static U32
+pak_get_path_depth(CStr path, U32 length) {
   start_profiling(1);
 
   assert(path != 0);
   assert(length > 0);
-  assert(depth != 0);
+
+  U32 depth = 0;
 
   for (U32 index = 0; index < length; index++) {
     if (path[index] == 0) {
@@ -130,19 +131,19 @@ pak_get_path_depth(CStr path, U32 length, U32* depth) {
     }
 
     if (path[index] == '/') {
-      *depth = *depth + 1;
+      depth = depth + 1;
     }
   }
 
   end_profiling();
-  return PAK_ERR_SUCCESS;
+  return depth;
 }
 
 /* ===================================================== */
 
 // TODO:
 // use Str8
-static PakError
+static Nothing
 pak_get_path_at_depth(CStr path,
                       U32 length,
                       U32 depth,
@@ -167,12 +168,11 @@ pak_get_path_at_depth(CStr path,
   }
 
   end_profiling();
-  return PAK_ERR_SUCCESS;
 }
 
 // TODO:
 // use Str8
-static PakError
+static Nothing
 pak_get_name_at_depth(CStr path,
                       U32 length,
                       U32 depth,
@@ -200,27 +200,26 @@ pak_get_name_at_depth(CStr path,
   }
 
   end_profiling();
-  return PAK_ERR_SUCCESS;
 }
 
 /* ===================================================== */
 
-static I32 pak_item_sort(const void *a, const void *b) {
-    const PakItem* pak_item_a = *(const PakItem**)a;
-    const PakItem* pak_item_b = *(const PakItem**)b;
+static I32
+pak_item_sort(const void* a, const void* b) {
+  const PakItem* pak_item_a = *(const PakItem**)a;
+  const PakItem* pak_item_b = *(const PakItem**)b;
 
-    if (pak_item_a->is_directory && !pak_item_b->is_directory) {
-        return -1;
-    }
-    if (!pak_item_a->is_directory && pak_item_b->is_directory) {
-        return 1;
-    }
+  if (pak_item_a->is_directory && !pak_item_b->is_directory) {
+    return -1;
+  }
+  if (!pak_item_a->is_directory && pak_item_b->is_directory) {
+    return 1;
+  }
 
-    return 0;
+  return 0;
 }
 
 /* ===================================================== */
-
 
 static PakError
 pak_read_entries_from_io_file(Pak* pak, IOFile* io_file) {
@@ -248,28 +247,15 @@ pak_read_entries_from_io_file(Pak* pak, IOFile* io_file) {
     io_move_file_position(io_file, sizeof(I32));
     io_move_file_position(io_file, sizeof(I32));
 
-    U32 path_depth = 0;
-    err = pak_get_path_depth(entry_str, PAK_ENTRY_NAME_LEN, &path_depth);
-    if (err != PAK_ERR_SUCCESS) {
-      goto cleanup;
-    }
-
+    U32 path_depth = pak_get_path_depth(entry_str, PAK_ENTRY_NAME_LEN);
     PakCounter* last_counter = root_counter;
     for (U32 depth_index = 0; depth_index < path_depth + 1; depth_index++) {
       char path[PAK_ENTRY_NAME_LEN] = {0};
       char name[PAK_ENTRY_NAME_LEN] = {0};
 
-      err = pak_get_path_at_depth(entry_str, PAK_ENTRY_NAME_LEN,
-                                  depth_index + 1, &path[0]);
-      if (err != PAK_ERR_SUCCESS) {
-        goto cleanup;
-      }
-
-      err = pak_get_name_at_depth(path, strlen(path), depth_index, &name[0]);
-      if (err != PAK_ERR_SUCCESS) {
-        goto cleanup;
-      }
-
+      pak_get_path_at_depth(entry_str, PAK_ENTRY_NAME_LEN, depth_index + 1,
+                            &path[0]);
+      pak_get_name_at_depth(path, strlen(path), depth_index, &name[0]);
       PakCounter* existing_counter = map_pakcounter_get(&map_counts, S(path));
       if (existing_counter) {
         last_counter = existing_counter;
@@ -301,7 +287,7 @@ pak_read_entries_from_io_file(Pak* pak, IOFile* io_file) {
 
   map_pakitem_push(&map_items, S("."), root_pak_item);
 
-  PakItem* last_pak_item = root_pak_item;
+  PakItem* last_pak_item = 0;
   for (U32 index = 0; index < pak->items_count; index++) {
     char entry_str[PAK_ENTRY_NAME_LEN] = {0};
     I32 entry_size = 0;
@@ -311,35 +297,23 @@ pak_read_entries_from_io_file(Pak* pak, IOFile* io_file) {
     io_read_into_i32(io_file, &entry_offset);
     io_read_into_i32(io_file, &entry_size);
 
-    U32 path_depth = 0;
-    err = pak_get_path_depth(entry_str, PAK_ENTRY_NAME_LEN, &path_depth);
-    if (err != PAK_ERR_SUCCESS) {
-      goto cleanup;
-    }
-
+    U32 path_depth = pak_get_path_depth(entry_str, PAK_ENTRY_NAME_LEN);
     last_pak_item = root_pak_item;
     for (U32 depth_index = 0; depth_index < path_depth + 1; depth_index++) {
       char path[PAK_ENTRY_NAME_LEN] = {0};
       char name[PAK_ENTRY_NAME_LEN] = {0};
 
-      err = pak_get_path_at_depth(entry_str, PAK_ENTRY_NAME_LEN,
-                                  depth_index + 1, &path[0]);
-      if (err != PAK_ERR_SUCCESS) {
-        goto cleanup;
-      }
-
-      err = pak_get_name_at_depth(path, strlen(path), depth_index, &name[0]);
-      if (err != PAK_ERR_SUCCESS) {
-        goto cleanup;
-      }
-
+      pak_get_path_at_depth(entry_str, PAK_ENTRY_NAME_LEN, depth_index + 1,
+                            &path[0]);
+      pak_get_name_at_depth(path, strlen(path), depth_index, &name[0]);
       PakItem* existing_pak_item = map_pakitem_get(&map_items, S(path));
       if (existing_pak_item) {
         last_pak_item = existing_pak_item;
         continue;
       }
 
-      PakCounter* counter = map_pakcounter_get(&map_counts, S(path));
+      const PakCounter* const counter =
+          map_pakcounter_get(&map_counts, S(path));
       assert(0 != counter);
 
       PakItem* new_pak_item =
@@ -383,7 +357,6 @@ pak_read_entries_from_io_file(Pak* pak, IOFile* io_file) {
     }
   }
 
-cleanup:
   arena_scratch_end(sortmem);
   end_profiling();
   return err;
@@ -592,10 +565,14 @@ pak_make_from_ioitem(Arena* arena,
   assert(io_item != 0);
   assert(out_err != 0);
 
+  // TODO:
+  // do i need out_err?
+  ignore(out_err);
+
   PakError err = PAK_ERR_SUCCESS;
   ArenaScratch fnmem = arena_scratch_begin(arena);
 
-  IOItem* current_directory = 0;
+  const IOItem* current_directory = 0;
   StackIOItem* stack_directories = stack_ioitem_create(fnmem.arena);
 
   stack_ioitem_push(stack_directories, io_item);
@@ -630,13 +607,13 @@ pak_make_from_ioitem(Arena* arena,
             fl56_str8(children[index].path.cstr + (base_path.length + 1));
 
         Sz pak_item_size = 0;
-        IOError ioerro = io_get_file_size(children[index].path, &pak_item_size);
+        ioerr = io_get_file_size(children[index].path, &pak_item_size);
         if (IO_ERR_SUCCESS != ioerr) {
           err = PAK_ERR_PAK_CREATION_ERROR;
           goto cleanup;
         }
 
-        if (pak_item_size <= 0) {
+        if (pak_item_size == 0) {
           err = PAK_ERR_ITEM_ZERO_SIZE;
           goto cleanup;
         }

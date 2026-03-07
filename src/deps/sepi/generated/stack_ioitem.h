@@ -112,7 +112,8 @@ stack_ioitem_clean(StackIOItem* stack) {
 }
 
 U32
-stack_ioitem_length(StackIOItem* stack) {
+// cppcheck-suppress unusedFunction
+stack_ioitem_length(const StackIOItem* stack) {
   return stack->length;
 }
 

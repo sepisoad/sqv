@@ -62,7 +62,6 @@ typedef enum {
   APP_MD1_ERR_SUCCESS = 1,
   APP_MD1_ERR_DROP,
   APP_MD1_ERR_FILE_OPEN,
-  // APP_MD1_ERR_DIR_OPEN,
   APP_MD1_ERR_ICON_INIT,
   APP_MD1_ERR_MODULE_MD1,
   APP_MD1_ERR__COUNT,
@@ -92,7 +91,7 @@ static struct {
   AppMd1Mode mode;
   Bool is_app_styled;
   Md1 md1;
-  U32 zoom;
+  // U32 zoom;
   Str8 input_path;
   IOFile input_io_file;
   FL512_Str8 error_text;
@@ -159,6 +158,7 @@ static Nothing app_md1_draw_mode_md1_loaded(struct nk_context* ctx,
 /* ===================================================== */
 
 sapp_desc
+// cppcheck-suppress unusedFunction
 sokol_main(I32 argc, char* argv[]) {
   start_profiling(1);
 
@@ -253,7 +253,6 @@ app_md1_init_style(struct nk_style* s) {
   window->tooltip_border = STYLE.global.border.size;
   window->popup_border = STYLE.global.border.size;
   window->min_row_height_padding = STYLE.global.border.size;
-  window->group_border = STYLE.global.border.size;
 
   window->border_color.r = STYLE.global.border.color.r;
   window->border_color.g = STYLE.global.border.color.g;
@@ -315,7 +314,6 @@ app_md1_init_style(struct nk_style* s) {
   button->active.data.color.g = STYLE.button.color.active.g;
   button->active.data.color.b = STYLE.button.color.active.b;
 
-cleanup:
   end_profiling();
   return err;
 }
@@ -328,47 +326,22 @@ app_md1_init_icons(Nothing) {
 
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
 
-  // err = app_md1_init_icon(&g_icons.home, icon_home_png,
-  // sizeof(icon_home_png)); if (err != APP_MD1_ERR_SUCCESS) {
-  //   goto cleanup;
-  // }
-
-  // err = app_md1_init_icon(&g_icons.back, icon_back_png,
-  // sizeof(icon_back_png)); if (err != APP_MD1_ERR_SUCCESS) {
-  //   goto cleanup;
-  // }
-
-  // err = app_md1_init_icon(&g_icons.package, icon_package_png,
-  //                         sizeof(icon_package_png));
-  // if (err != APP_MD1_ERR_SUCCESS) {
-  //   goto cleanup;
-  // }
-
-  // err = app_md1_init_icon(&g_icons.extract, icon_extract_png,
-  //                         sizeof(icon_extract_png));
-  // if (err != APP_MD1_ERR_SUCCESS) {
-  //   goto cleanup;
-  // }
-
-  // err = app_md1_init_icon(&g_icons.folder, icon_folder_png,
-  //                         sizeof(icon_folder_png));
-  // if (err != APP_MD1_ERR_SUCCESS) {
-  //   goto cleanup;
-  // }
-
-  // err = app_md1_init_icon(&g_icons.file, icon_file_png,
-  // sizeof(icon_file_png)); if (err != APP_MD1_ERR_SUCCESS) {
-  //   goto cleanup;
-  // }
-
-cleanup:
-  end_profiling();
+  // app_md1_init_icon(&g_icons.home, icon_home_png, sizeof(icon_home_png));
+  // app_md1_init_icon(&g_icons.back, icon_back_png, sizeof(icon_back_png));
+  // app_md1_init_icon(&g_icons.package, icon_package_png,
+  //                   sizeof(icon_package_png));
+  // app_md1_init_icon(&g_icons.extract, icon_extract_png,
+  //                   sizeof(icon_extract_png));
+  // app_md1_init_icon(&g_icons.folder, icon_folder_png,
+  // sizeof(icon_folder_png)); app_md1_init_icon(&g_icons.file, icon_file_png,
+  // sizeof(icon_file_png)); end_profiling();
   return err;
 }
 
 /* ===================================================== */
 
 static AppMd1Error
+// cppcheck-suppress unusedFunction
 app_md1_init_icon(AppMd1Image* app_icon, CBuf buffer, Sz size) {
   start_profiling(1);
 
@@ -431,7 +404,6 @@ app_md1_init_display_pipeline() {
   // do i need to set any value for this pass_action?
   g_state.display.pass_action = (sg_pass_action){};
 
-cleanup:
   end_profiling();
   return err;
 }
@@ -487,7 +459,6 @@ app_md1_init_offscreen_pipeline() {
       .layout = {.attrs = {[ATTR_bbox_md1_bbox_position] = {
                                .format = SG_VERTEXFORMAT_FLOAT3}}}});
 
-cleanup:
   end_profiling();
   return err;
 }
@@ -539,6 +510,7 @@ app_md1_cleanup_reload(Nothing) {
 /* ===================================================== */
 
 static AppMd1Error
+// cppcheck-suppress unusedFunction
 app_md1_cleanup_icons(Nothing) {
   start_profiling(1);
 
@@ -569,7 +541,6 @@ app_md1_cleanup_icons(Nothing) {
   //   goto cleanup;
   // }
 
-cleanup:
   end_profiling();
   return err;
 }
@@ -577,6 +548,7 @@ cleanup:
 /* ===================================================== */
 
 static AppMd1Error
+// cppcheck-suppress unusedFunction
 app_md1_cleanup_icon(AppMd1Image* app_icon) {
   start_profiling(1);
 
@@ -587,7 +559,6 @@ app_md1_cleanup_icon(AppMd1Image* app_icon) {
   sg_destroy_image(app_icon->image);
   snk_destroy_image(app_icon->ui_image);
 
-cleanup:
   end_profiling();
   return err;
 }
@@ -609,7 +580,6 @@ app_md1_cleanup_3d(Nothing) {
   // sg_destroy_shader();
   sg_destroy_pipeline(g_state.offscreen.normal.pipeline);
 
-cleanup:
   end_profiling();
   return err;
 }
@@ -665,7 +635,7 @@ app_md1_handle_drop_event(Str8 path) {
     app_md1_cleanup_reload();
   }
 
-  NDBuffer ndb = {0};
+  // NDBuffer ndb = {0};
   IOFile io_file = {0};
   IOError ioerr = io_load_file(g_state.arena, path, &io_file);
   if (ioerr != IO_ERR_SUCCESS) {
@@ -727,8 +697,6 @@ static U32
 app_md1_draw_ui(struct nk_context* ctx) {
   start_profiling(1);
 
-  AppMd1Error err = APP_MD1_ERR_SUCCESS;
-
   static char window_title[] = "SQV::Md1 Viewer";
   static nk_flags window_flags = NK_WINDOW_BORDER;
 
@@ -761,12 +729,12 @@ app_md1_draw_mode_empty(struct nk_context* ctx,
                         U32 window_height) {
   start_profiling(1);
 
-  static char label_line_1[] = "drop a .MDL or .GLTF file for rendering";
-  static char label_line_2[] =
-      "note that you can convert .MDL to .GLTF and vice versa";
-
   if (nk_begin(ctx, "", nk_rect(0, 0, window_width, window_height),
                window_flags)) {
+    static char label_line_1[] = "drop a .MDL or .GLTF file for rendering";
+    static char label_line_2[] =
+        "note that you can convert .MDL to .GLTF and vice versa";
+
     struct nk_rect content_region = nk_window_get_content_region(ctx);
     const struct nk_user_font* font = ctx->style.font;
 
@@ -774,16 +742,12 @@ app_md1_draw_mode_empty(struct nk_context* ctx,
                                  (int)strlen(label_line_2));
 
     F32 text_height = font->height;
-    F32 text_pad_x = ctx->style.text.padding.x;
-    F32 text_pad_y = ctx->style.text.padding.y;
-
     struct nk_rect r1 = {
         .x = content_region.x + (content_region.w - line_width) * 0.5f,
         .y = content_region.y + (content_region.h - (text_height * 4)) * 0.5f,
         .w = line_width,
         .h = text_height,
     };
-
     struct nk_rect r2 = {
         .x = content_region.x + (content_region.w - line_width) * 0.5f,
         .y = r1.y + text_height,
@@ -815,23 +779,6 @@ app_md1_draw_mode_failed(struct nk_context* ctx,
   if (nk_begin(ctx, "", nk_rect(0, 0, window_width, window_height),
                window_flags)) {
     struct nk_rect content_region = nk_window_get_content_region(ctx);
-    const struct nk_user_font* font = ctx->style.font;
-
-    F32 text_width = font->width(font->userdata, font->height,
-                                 g_state.error_text.cstr, fl512_str8_length());
-    F32 text_height = font->height;
-    F32 text_pad_x = ctx->style.text.padding.x;
-    F32 text_pad_y = ctx->style.text.padding.y;
-    F32 element_width = text_width + (10.0f * text_pad_x);
-    F32 element_height = text_height + (10.0f * text_pad_y);
-
-    struct nk_rect r = {
-        .x = content_region.x + (content_region.w - element_width) * 0.5f,
-        .y = content_region.y + (content_region.h - element_height) * 0.5f,
-        .w = element_width,
-        .h = element_height,
-    };
-
     nk_layout_row_dynamic(ctx, content_region.h, 1);
     nk_label_wrap(ctx, CS(g_state.error_text));
   }
@@ -849,7 +796,10 @@ app_md1_draw_mode_md1_loaded(struct nk_context* ctx,
                              U32 window_height) {
   start_profiling(1);
 
-  // YO!
+  ignore(ctx);
+  ignore(window_flags);
+  ignore(window_width);
+  ignore(window_height);
 
   end_profiling();
 }

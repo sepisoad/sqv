@@ -146,6 +146,7 @@ cleanup:
 }
 
 PakCounter*
+// cppcheck-suppress unusedFunction
 map_pakcounter_delete(MapPakCounter* map, Str8 key) {
   start_profiling(1);
 
@@ -180,6 +181,7 @@ cleanup:
 }
 
 Nothing
+// cppcheck-suppress unusedFunction
 map_pakcounter_clean(MapPakCounter* map) {
   start_profiling(1);
 
@@ -193,6 +195,7 @@ map_pakcounter_clean(MapPakCounter* map) {
 }
 
 Nothing
+// cppcheck-suppress unusedFunction
 map_pakcounter_keys(MapPakCounter* map, Str8** keys, U64* length) {
   start_profiling(1);
 
@@ -206,7 +209,7 @@ map_pakcounter_keys(MapPakCounter* map, Str8** keys, U64* length) {
 
   for (U64 key_list_index = 0; key_list_index < map->max_keys_list_length;
        key_list_index++) {
-    MapPakCounterNode* iter = map->keys_list[key_list_index];
+    const MapPakCounterNode* iter = map->keys_list[key_list_index];
     while (0 != iter) {
       (*keys)[key_index++] = iter->key;
       iter = iter->next;
