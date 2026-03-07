@@ -227,6 +227,15 @@ newaction {
   end
 }
 
+-- ACTION::tidy
+newaction {
+  trigger = "analyze-clang",
+  description = "run clang static analyzer",
+  execute = function()
+    os.execute("/opt/homebrew/opt/llvm/bin/scan-build --status-bugs make")
+  end
+}
+
 -- ACTION::licence
 newaction {
   trigger = "license",

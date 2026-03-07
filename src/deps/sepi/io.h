@@ -376,7 +376,7 @@ cleanup:
   }
 
   end_profiling();
-  return IO_ERR_SUCCESS;
+  return err;
 }
 
 IOError
