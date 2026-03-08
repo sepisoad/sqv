@@ -29,12 +29,12 @@ typedef I8 Bool;
 
 typedef void Nothing;
 typedef void* RawPtr;
+typedef const void* SafePtr;
 typedef intptr_t IPtr;
 typedef uintptr_t Ptr;
 typedef const intptr_t CIPtr;
 typedef const uintptr_t CPtr;
 typedef ptrdiff_t PtrDiff;
-
 typedef U8* Buf;
 typedef const U8* CBuf;
 typedef char* Str;
@@ -258,7 +258,7 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 #define assert(condition) (void)(condition)
 #endif
 
-#define abort(message) runtime_assert(!#message)
+#define abort(message) runtime_assert(0 && #message)
 #define not_implemented() abort("NOT IMPLEMENTED!")
 
 /* ===================================================== */

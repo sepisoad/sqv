@@ -187,7 +187,6 @@ sokol_main(I32 argc, char* argv[]) {
       .max_dropped_files = 1,
       .window_title = "SQV :: MD1 Viewer",
       .icon.sokol_default = TRUE,
-      .icon.sokol_default = TRUE,
       .logger.func = slog_func,
       .high_dpi = TRUE,
   };
@@ -348,7 +347,7 @@ app_md1_init_icon(AppMd1Image* app_icon, CBuf buffer, Sz size) {
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
 
   I32 w, h, c = 0;
-  CBuf data = stbi_load_from_memory(buffer, size, &w, &h, &c, 4);
+  CBuf data = stbi_load_from_memory(buffer, (I32)size, &w, &h, &c, 4);
   if (0 == data) {
     err = APP_MD1_ERR_ICON_INIT;
     fl512_str8_set(&g_state.error_text,

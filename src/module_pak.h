@@ -205,7 +205,7 @@ pak_get_name_at_depth(CStr path,
 /* ===================================================== */
 
 static I32
-pak_item_sort(const void* a, const void* b) {
+pak_item_sort(SafePtr a, SafePtr b) {
   const PakItem* pak_item_a = *(const PakItem**)a;
   const PakItem* pak_item_b = *(const PakItem**)b;
 
@@ -255,7 +255,7 @@ pak_read_entries_from_io_file(Pak* pak, IOFile* io_file) {
 
       pak_get_path_at_depth(entry_str, PAK_ENTRY_NAME_LEN, depth_index + 1,
                             &path[0]);
-      pak_get_name_at_depth(path, strlen(path), depth_index, &name[0]);
+      pak_get_name_at_depth(path, (U32)strlen(path), depth_index, &name[0]);
       PakCounter* existing_counter = map_pakcounter_get(&map_counts, S(path));
       if (existing_counter) {
         last_counter = existing_counter;
@@ -305,7 +305,7 @@ pak_read_entries_from_io_file(Pak* pak, IOFile* io_file) {
 
       pak_get_path_at_depth(entry_str, PAK_ENTRY_NAME_LEN, depth_index + 1,
                             &path[0]);
-      pak_get_name_at_depth(path, strlen(path), depth_index, &name[0]);
+      pak_get_name_at_depth(path, (U32)strlen(path), depth_index, &name[0]);
       PakItem* existing_pak_item = map_pakitem_get(&map_items, S(path));
       if (existing_pak_item) {
         last_pak_item = existing_pak_item;
@@ -391,7 +391,7 @@ pak_load_from_io_file(Pak* pak, IOFile* io_file) {
     goto cleanup;
   }
 
-  pak->items_count = size / sizeof(PakRawEntry);
+  pak->items_count = (U16)(size / sizeof(PakRawEntry));
   err = pak_read_entries_from_io_file(pak, io_file);
   if (err != PAK_ERR_SUCCESS) {
     goto cleanup;

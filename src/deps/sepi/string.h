@@ -90,13 +90,13 @@ typedef struct {
 Str8 str8(CStr cstr);
 Str8 str8_raw(RawPtr rptr, Sz length);
 Str8 str8_clone(Arena* arena, Str8 str);
-Str8 str8_slice(Arena* arena, Str8 str, U32 from, U32 to);
+Str8 str8_slice(Arena* arena, Str8 str, Sz from, Sz to);
 Str8 str8_zero(void);
 Str8 str8_join(Arena* arena, Str8 str_a, Str8 str_b, char separator);
 Nothing str8_reset(Str8* ptr);
 Bool str8_is_equal(Str8 a, Str8 b);
-I32 str8_find_first(Str8 str, I8 chr);
-I32 str8_find_last(Str8 str, I8 chr);
+I64 str8_find_first(Str8 str, I8 chr);
+I64 str8_find_last(Str8 str, I8 chr);
 Bool str8_equal(Str8 str_a, Str8 str_b, StringCompareFlags flags);
 
 // Buf8
@@ -112,23 +112,48 @@ Buf8 buf8(CBuf cbuf, Sz size);
       default: str8((CStr)(cstr)))
 #define SL(str) (str).length
 
-#define IsWhiteSpaceChar(c)                                                  \
-  ((c) == ' ' || (c) == '\n' || (c) == '\t' || (c) == '\r' || (c) == '\f' || \
-   (c) == '\v')
+/////
 
-#define IsUpperCaseChar(c) ('A' <= (c) && (c) <= 'Z')
+static inline Bool
+is_white_space_char(U8 c) {
+  return (c == ' ' || c == '\n' || c == '\t' || c == '\r' || c == '\f' ||
+          c == '\v');
+}
 
-#define IsLowerCaseChar(c) ('a' <= (c) && (c) <= 'z')
+static inline Bool
+is_upper_case_char(U8 c) {
+  return ('A' <= c && c <= 'Z');
+}
 
-#define is_alpha_char(c) (IsUpperCaseChar((c)) || IsLowerCaseChar((c)))
+static inline Bool
+is_lower_case_char(U8 c) {
+  return ('a' <= c && c <= 'z');
+}
 
-#define IsSlashChar(c) ((c) == '/' || (c) == '\\')
+static inline Bool
+is_alpha_char(U8 c) {
+  return is_upper_case_char(c) || is_lower_case_char(c);
+}
 
-#define IsDigitChar(c) ('0' <= (c) && (c) <= '9')
+static inline Bool
+is_slash_char(U8 c) {
+  return (c == '/' || c == '\\');
+}
 
-#define ToLowerChar(c) (IsUpperCaseChar(c) ? ((c) + ('a' - 'A')) : (c))
+static inline Bool
+is_digit_char(U8 c) {
+  return ('0' <= (c) && (c) <= '9');
+}
 
-#define ToUpperChar(c) (IsLowerCaseChar(c) ? ((c) + ('A' - 'a')) : (c))
+static inline U8
+to_lower_char(U8 c) {
+  return is_upper_case_char(c) ? c + 32 : c;
+}
+
+static inline U8
+to_upper_char(U8 c) {
+  return is_lower_case_char(c) ? c - 32 : c;
+}
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -198,7 +223,7 @@ str8_clone(Arena* arena, Str8 str) {
 }
 
 Str8
-str8_slice(Arena* arena, Str8 str, U32 from, U32 to) {
+str8_slice(Arena* arena, Str8 str, Sz from, Sz to) {
   start_profiling(1);
 
   assert(arena != 0);
@@ -290,14 +315,14 @@ cleanup:
   return result;
 }
 
-I32
+I64
 str8_find_first(Str8 str, I8 chr) {
   start_profiling(1);
 
   assert(str.cstr != 0);
   assert(str.length > 0);
 
-  I32 index = 0;
+  I64 index = 0;
   Bool found = FALSE;
 
   for (; index < (I32)str.length; index++) {
@@ -314,14 +339,14 @@ str8_find_first(Str8 str, I8 chr) {
   return -1;
 }
 
-I32
+I64
 str8_find_last(Str8 str, I8 chr) {
   start_profiling(1);
 
   assert(str.cstr != 0);
   assert(str.length > 0);
 
-  I32 index = str.length;
+  I64 index = str.length;
   Bool found = FALSE;
 
   for (; index > 0; index--) {
@@ -362,12 +387,12 @@ str8_equal(Str8 str_a, Str8 str_b, StringCompareFlags flags) {
       U8 char_a = str_a.cstr[i];
       U8 char_b = str_b.cstr[i];
       if (case_insensitive) {
-        char_a = ToUpperChar(char_a);
-        char_b = ToUpperChar(char_b);
+        char_a = to_upper_char(char_a);
+        char_b = to_upper_char(char_b);
       }
       if (slash_insensitive) {
-        char_a = IsSlashChar(char_a) ? '/' : char_a;
-        char_b = IsSlashChar(char_b) ? '/' : char_b;
+        char_a = is_slash_char(char_a) ? '/' : char_a;
+        char_b = is_slash_char(char_b) ? '/' : char_b;
       }
       if (char_a != char_b) {
         result = 0;

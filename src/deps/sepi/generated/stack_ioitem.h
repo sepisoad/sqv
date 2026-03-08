@@ -111,7 +111,7 @@ stack_ioitem_clean(StackIOItem* stack) {
   end_profiling();
 }
 
-U32
+U64
 // cppcheck-suppress unusedFunction
 stack_ioitem_length(const StackIOItem* stack) {
   return stack->length;

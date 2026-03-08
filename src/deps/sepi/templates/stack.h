@@ -113,7 +113,7 @@ stack__class__clean(Stack_Class_* stack) {
   end_profiling();
 }
 
-U32
+U64
 // cppcheck-suppress unusedFunction
 stack__class__length(const Stack_Class_* stack) {
   return stack->length;

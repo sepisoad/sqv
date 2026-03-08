@@ -194,12 +194,17 @@ arena_push(Arena* arena,
         requested_commit_size =
             align_up(size_to_allocate + arena_header_size, memory_alignment);
       }
-      new_arena_block =
-          arena_create(.requested_reserve_size = requested_reserve_size,
-                       .requested_commit_size = requested_commit_size,
-                       .caller_file_name =
-                           (CStr)current_block->caller_file_name,
-                       .caller_file_line = current_block->caller_file_line);
+      // new_arena_block =
+      //     arena_create(.requested_reserve_size = requested_reserve_size,
+      //                  .requested_commit_size = requested_commit_size,
+      //                  .caller_file_name =
+      //                      (CStr)current_block->caller_file_name,
+      //                  .caller_file_line = current_block->caller_file_line);
+      new_arena_block = arena_create_(&(ArenaParams){
+          .requested_reserve_size = requested_reserve_size,
+          .requested_commit_size = requested_commit_size,
+          .caller_file_name = (CStr)current_block->caller_file_name,
+          .caller_file_line = current_block->caller_file_line});
     }
 
     new_arena_block->base_position =

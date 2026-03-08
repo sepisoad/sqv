@@ -389,7 +389,7 @@ app_pak_init_icon(AppPakImage* app_icon, CBuf buffer, Sz size) {
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
   I32 w, h, c = 0;
-  CBuf data = stbi_load_from_memory(buffer, size, &w, &h, &c, 4);
+  CBuf data = stbi_load_from_memory(buffer, (U32)size, &w, &h, &c, 4);
   if (0 == data) {
     err = APP_PAK_ERR_ICON_INIT;
     fl512_str8_set(&g_state.error_text,
@@ -1239,7 +1239,7 @@ app_pak_draw_widget_explorer_pak_icon(struct nk_context* ctx,
   // icon text
   nk_layout_row_static(ctx, STYLE.explorer.icon.text.height,
                        STYLE.explorer.icon.text.width, 1);
-  nk_text_wrap(ctx, CS(text), SL(text));
+  nk_text_wrap(ctx, CS(text), (I32)SL(text));
 
   end_profiling();
 }
@@ -1268,7 +1268,7 @@ app_pak_draw_widget_explorer_dir_icon(struct nk_context* ctx,
   // icon text
   nk_layout_row_static(ctx, STYLE.explorer.icon.text.height,
                        STYLE.explorer.icon.text.width, 1);
-  nk_text_wrap(ctx, CS(text), SL(text));
+  nk_text_wrap(ctx, CS(text), (I32)SL(text));
 
   end_profiling();
 }

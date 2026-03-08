@@ -24,9 +24,15 @@ workspace "ProjectWorkspace"
   filter { "configurations:Debug", "system:macosx" }
     -- FUCK MACOS, i have to disable ASAN for now!
 
+    -- yes address sanitizer
     -- buildoptions { "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
     -- linkoptions  { "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
 
+    -- in between
+    -- buildoptions { "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
+    -- linkoptions  { "-fsanitize=undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
+
+    -- no address sanitizer
     buildoptions { "-fsanitize=undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
     linkoptions  { "-fsanitize=undefined", "-fno-omit-frame-pointer", "-Wno-initializer-overrides" }
 
@@ -130,8 +136,15 @@ project "lib_sepi"
   targetdir ".build/"
   objdir ".build/obj"
   targetname "sepi"
-  buildoptions { "-Wno-deprecated-declarations" }
   files { "src/deps/sepi/sepi.c" }
+  buildoptions { "-Wno-deprecated-declarations" }
+
+  filter "configurations:Debug"
+    buildoptions { "-Wall", "-Wextra", "-Wconversion", "-Wdouble-promotion", "-Wno-unused-parameter", "-Wno-unused-function", "-Wno-sign-conversion"}
+
+  filter {}
+
+
 
 
 --
@@ -149,6 +162,9 @@ project "app_pak"
   includedirs { "src", "src/deps" }
   links { "lib_log:static", "lib_stb:static", "lib_sepi:static", "lib_sokol:static", }
   files { "src/app_pak.c" }
+
+  filter "configurations:Debug"
+    buildoptions { "-Wall", "-Wextra", "-Wconversion", "-Wdouble-promotion", "-Wno-unused-parameter", "-Wno-unused-function", "-Wno-sign-conversion"}
 
   filter "system:macosx"
     defines { "SOKOL_METAL" }
@@ -176,6 +192,9 @@ project "app_md1"
   includedirs { "src", "src/deps" }
   links { "lib_log:static", "lib_stb:static", "lib_hmm:static", "lib_sepi:static", "lib_sokol:static", }
   files { "src/app_md1.c" }
+
+  filter "configurations:Debug"
+    buildoptions { "-Wall", "-Wextra", "-Wconversion", "-Wdouble-promotion", "-Wno-unused-parameter", "-Wno-unused-function", "-Wno-sign-conversion"}
 
   filter "system:macosx"
     defines { "SOKOL_METAL" }

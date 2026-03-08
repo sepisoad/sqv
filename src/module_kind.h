@@ -136,7 +136,7 @@ kind_guess_entry(Str8 path, Kind* kind) {
   StringCompareFlags compare = StringCompareFlag_CaseInsensitive;
   *kind = KIND_UNKNOWN;
 
-  I32 dot_index = str8_find_last(path, '.') - 1;
+  I64 dot_index = str8_find_last(path, '.') - 1;
   if (dot_index < 0) {
     err = KIND_ERR_INVALID;
     goto cleanup;

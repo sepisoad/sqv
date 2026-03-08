@@ -289,7 +289,7 @@ md1_load_skins(Md1* md1, IOFile* io_file) {
           .texture = {.image = skins[skin_idx].image},
       });
     } else {
-      runtime_assert("NOT IMPLEMENTED!");
+      not_implemented();
     }
   }
 
@@ -450,7 +450,7 @@ md1_load_single_frame(Md1* md1,
     F32 z = (md1->bbox.max.Z - md1->bbox.min.Z);
 
     // calc bounding sphere radius
-    md1->bbox.radius = sqrt((x * x) + (y * y) + (z * z)) / 2.0;
+    md1->bbox.radius = sqrtf((x * x) + (y * y) + (z * z)) / 2.0f;
 
     // bounding box vertex array
 
@@ -583,7 +583,7 @@ md1_load_frames(Md1* md1, IOFile* io_file) {
       md1_load_single_frame(md1, io_file, frame_idx, frame_name,
                             &is_bbox_loaded);
     } else {
-      runtime_assert("NOT IMPLEMENTED!");
+      not_implemented();
     }
   }
 
@@ -632,8 +632,8 @@ md1_make_display_list(Md1* md1, Md1UV* uvs, Md1FacedTriangle* faced_triangles) {
           u += details->skin_width / 2;
         }
 
-        u = (u + 0.5) / details->skin_width;
-        v = (v + 0.5) / details->skin_height;
+        u = (u + 0.5f) / details->skin_width;
+        v = (v + 0.5f) / details->skin_height;
 
         md1->gpu.frames_vertex_buffer[vbuf_vert_idx++] = x;
         md1->gpu.frames_vertex_buffer[vbuf_vert_idx++] = y;

@@ -91,7 +91,7 @@ struct IOItem {
   Sz file_size;
   Sz total_files_size;
   U32 total_files_count;
-  U16 children_count;
+  U32 children_count;
   Bool is_directory;
 };
 
@@ -449,7 +449,7 @@ cleanup:
 }
 
 static I32
-io_item_sort(const void* a, const void* b) {
+io_item_sort(SafePtr a, SafePtr b) {
   const IOItem io_item_a = *(const IOItem*)a;
   const IOItem io_item_b = *(const IOItem*)b;
 
@@ -471,7 +471,7 @@ _io_make_directory_recursively(Str8 path) {
   assert(SL(path) > 0);
 
   IOError err = IO_ERR_SUCCESS;
-  U32 original_length = SL(path);
+  Sz original_length = SL(path);
 
   for (U32 index = 0; index < SL(path); index++) {
     if (CS(path)[index] == IO_PATH_SEPARATOR) {
@@ -579,14 +579,15 @@ io_get_path_base_name(Arena* arena, Str8 path, Str8* out) {
   assert(out != 0);
 
   IOError err = IO_ERR_SUCCESS;
-  U32 last_index = SL(path) - 1;  // index of the last character
-  U32 last_segment_index = 0;
+
+  Sz last_index = SL(path) - 1;  // index of the last character
+  Sz last_segment_index = 0;
 
   if (IO_PATH_SEPARATOR == CS(path)[last_index]) {
     last_index--;
   }
 
-  for (U32 index = last_index; index >= 0; index--) {
+  for (Sz index = last_index; index >= 0; index--) {
     if (CS(path)[index] == IO_PATH_SEPARATOR) {
       last_segment_index = index + 1;
       break;
@@ -608,10 +609,10 @@ io_get_path_directory_name(Arena* arena, Str8 path, Str8* out) {
   assert(out != 0);
 
   IOError err = IO_ERR_SUCCESS;
-  U32 last_index = SL(path) - 1;  // index of the last character
-  U32 last_segment_index = last_index;
+  Sz last_index = SL(path) - 1;  // index of the last character
+  Sz last_segment_index = last_index;
 
-  for (U32 index = last_index; index >= 0; index--) {
+  for (Sz index = last_index; index >= 0; index--) {
     if (CS(path)[index] == IO_PATH_SEPARATOR) {
       last_segment_index = index;
       break;
