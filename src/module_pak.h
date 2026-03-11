@@ -628,7 +628,7 @@ pak_make_from_ioitem(Arena* arena,
 
         Buf buf = {0};
         io_slurp_path_to_buffer(loopmem.arena, children[index].path, &buf);
-        io_write_from_buffer(&pak_io_file, pak_item_size, (RawPtr)buf.cbuf);
+        io_write_from_buffer(&pak_io_file, pak_item_size, (RawPtr)buf.base);
         io_set_file_position(&pak_io_file, saved_position);
 
         current_data_position += pak_item_size;

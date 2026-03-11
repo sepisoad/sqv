@@ -6,6 +6,7 @@
 #include <sepi/base.h>
 #include <sepi/endian.h>
 #include <sepi/string.h>
+#include <sepi/buffer.h>
 #include <sepi/platform.h>
 #include <sepi/arena.h>
 #include <sepi/io.h>

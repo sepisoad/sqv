@@ -244,8 +244,8 @@ md1_load_skins(Md1* md1, IOFile* io_file) {
   runtime_assert(skins != 0);
 
   for (U32 skin_idx = 0; skin_idx < details->skins_count; skin_idx++) {
-    const MD1SkinType* st = (MD1SkinType*)ND_ADDR(&io_file->buffer);
-    ND_MOVE(&io_file->buffer, sizeof(MD1SkinType));
+    const MD1SkinType* st = (MD1SkinType*)buf_get_position(io_file->buffer);
+    buf_move_offset(io_file->buffer, sizeof(MD1SkinType));
 
     if (MD1_SKIN_SINGLE == *st) {
       Sz data_sz = sizeof(U8) * skin_sz * channels;
@@ -253,7 +253,7 @@ md1_load_skins(Md1* md1, IOFile* io_file) {
       assert(data != 0);
 
       // constructing pixel data
-      const U8* const raw_data = (U8*)ND_ADDR(&io_file->buffer);
+      const U8* const raw_data = (U8*)buf_get_position(io_file->buffer);
       for (U32 raw_idx = 0, rgba = 0; raw_idx < skin_sz; raw_idx++, rgba += 4) {
         U32 palette_idx = raw_data[raw_idx];
         data[rgba + 0] = quake1_palette[palette_idx][0]; /* RED */
@@ -261,7 +261,7 @@ md1_load_skins(Md1* md1, IOFile* io_file) {
         data[rgba + 2] = quake1_palette[palette_idx][2]; /* BLUE */
         data[rgba + 3] = 255; /* ALPHA - always opaque */
       }
-      ND_MOVE(&io_file->buffer, skin_sz);
+      buf_move_offset(io_file->buffer, skin_sz);
 
       // allocating texture data
       skins[skin_idx].image = sg_make_image(&(sg_image_desc){
@@ -317,9 +317,9 @@ md1_load_uvs(const Md1* md1, IOFile* io_file, Md1UV** uvs) {
   runtime_assert(*uvs != 0);
 
   for (U32 i = 0; i < details->vertices_count; i++) {
-    ND_I32(&io_file->buffer, &(*uvs)[i].is_on_seam);
-    ND_I32(&io_file->buffer, &(*uvs)[i].u);
-    ND_I32(&io_file->buffer, &(*uvs)[i].v);
+    buf_read_i32(io_file->buffer, &(*uvs)[i].is_on_seam);
+    buf_read_i32(io_file->buffer, &(*uvs)[i].u);
+    buf_read_i32(io_file->buffer, &(*uvs)[i].v);
   }
 
   end_profiling();
@@ -347,10 +347,10 @@ md1_load_triangles(Md1* md1, IOFile* io_file, Md1FacedTriangle** fts) {
   for (U32 i = 0, j = 0; i < details->triangles_count; i++, j += 3) {
     I32 a, b, c, f = 0;
 
-    ND_I32(&io_file->buffer, &f);
-    ND_I32(&io_file->buffer, &a);
-    ND_I32(&io_file->buffer, &b);
-    ND_I32(&io_file->buffer, &c);
+    buf_read_i32(io_file->buffer, &f);
+    buf_read_i32(io_file->buffer, &a);
+    buf_read_i32(io_file->buffer, &b);
+    buf_read_i32(io_file->buffer, &c);
 
     (*fts)[i].is_front_face = f;
     (*fts)[i].vertices_idx[0] = a;
@@ -405,8 +405,8 @@ md1_load_single_frame(Md1* md1,
   Sz frame_single_size = sizeof(MD1FrameSingle);
   MD1FrameSingle frame_single = {0};
 
-  memcpy(&frame_single, ND_ADDR(&io_file->buffer), frame_single_size);
-  ND_MOVE(&io_file->buffer, frame_single_size);
+  memcpy(&frame_single, buf_get_position(io_file->buffer), frame_single_size);
+  buf_move_offset(io_file->buffer, frame_single_size);
 
   if (md1_has_pose_name_changed(frame_single.name, frame_name) &&
       frame_idx > 0) {
@@ -513,7 +513,7 @@ md1_load_single_frame(Md1* md1,
     md1->gpu.bbox_vertex_buffer_size = size;
   }
 
-  // Md1NormalVertex* nv = (Md1NormalVertex*)ND_ADDR(&io_file->buffer);
+  // Md1NormalVertex* nv = (Md1NormalVertex*)buf_get_position(io_file->buffer);
 
   Md1Vertex* frame_verts =
       md1->vertices + (details->vertices_count * frame_idx);
@@ -525,7 +525,7 @@ md1_load_single_frame(Md1* md1,
     // NOTE: basically 'Md1NormalVertex' is composed of 4 one byte elements
     //       so we do not need to be worried about endianness and we can
     //       safely copy the memory here!
-    memcpy(&nv, ND_ADDR(&io_file->buffer), nv_size);
+    memcpy(&nv, buf_get_position(io_file->buffer), nv_size);
 
     frame_verts[i].vertex.X = nv.vertex[0];
     frame_verts[i].vertex.Y = nv.vertex[1];
@@ -537,7 +537,7 @@ md1_load_single_frame(Md1* md1,
     frame_verts[i].normal.Y = quake1_normals[nv.normal_idx][1];
     frame_verts[i].normal.Z = quake1_normals[nv.normal_idx][2];
 
-    ND_MOVE(&io_file->buffer, sizeof(Md1NormalVertex));
+    buf_move_offset(io_file->buffer, sizeof(Md1NormalVertex));
   }
 
   end_profiling();
@@ -577,7 +577,7 @@ md1_load_frames(Md1* md1, IOFile* io_file) {
 
   for (U32 frame_idx = 0; frame_idx < details->frames_count; frame_idx++) {
     MD1FrameType ft = 0;
-    ND_I32(&io_file->buffer, &ft);
+    buf_read_i32(io_file->buffer, &ft);
 
     if (MD1_FT_SINGLE == ft) {
       md1_load_single_frame(md1, io_file, frame_idx, frame_name,
@@ -661,27 +661,27 @@ md1_load(Md1* md1, IOFile* io_file) {
   zero_memory(md1, sizeof(Md1));
   Md1RawHeader rh = {0};
 
-  ND_I32(&io_file->buffer, &rh.magic_code);
-  ND_I32(&io_file->buffer, &rh.version);
-  ND_F32(&io_file->buffer, &rh.scale[0]);
-  ND_F32(&io_file->buffer, &rh.scale[1]);
-  ND_F32(&io_file->buffer, &rh.scale[2]);
-  ND_F32(&io_file->buffer, &rh.translate[0]);
-  ND_F32(&io_file->buffer, &rh.translate[1]);
-  ND_F32(&io_file->buffer, &rh.translate[2]);
-  ND_F32(&io_file->buffer, &rh.bounding_radius);
-  ND_F32(&io_file->buffer, &rh.eye_position[0]);
-  ND_F32(&io_file->buffer, &rh.eye_position[1]);
-  ND_F32(&io_file->buffer, &rh.eye_position[2]);
-  ND_I32(&io_file->buffer, &rh.skins_count);
-  ND_I32(&io_file->buffer, &rh.skin_width);
-  ND_I32(&io_file->buffer, &rh.skin_height);
-  ND_I32(&io_file->buffer, &rh.vertices_count);
-  ND_I32(&io_file->buffer, &rh.triangles_count);
-  ND_I32(&io_file->buffer, &rh.frames_count);
-  ND_I32(&io_file->buffer, &rh.sync_type);
-  ND_I32(&io_file->buffer, &rh.flags);
-  ND_F32(&io_file->buffer, &rh.size);
+  buf_read_i32(io_file->buffer, &rh.magic_code);
+  buf_read_i32(io_file->buffer, &rh.version);
+  buf_read_f32(io_file->buffer, &rh.scale[0]);
+  buf_read_f32(io_file->buffer, &rh.scale[1]);
+  buf_read_f32(io_file->buffer, &rh.scale[2]);
+  buf_read_f32(io_file->buffer, &rh.translate[0]);
+  buf_read_f32(io_file->buffer, &rh.translate[1]);
+  buf_read_f32(io_file->buffer, &rh.translate[2]);
+  buf_read_f32(io_file->buffer, &rh.bounding_radius);
+  buf_read_f32(io_file->buffer, &rh.eye_position[0]);
+  buf_read_f32(io_file->buffer, &rh.eye_position[1]);
+  buf_read_f32(io_file->buffer, &rh.eye_position[2]);
+  buf_read_i32(io_file->buffer, &rh.skins_count);
+  buf_read_i32(io_file->buffer, &rh.skin_width);
+  buf_read_i32(io_file->buffer, &rh.skin_height);
+  buf_read_i32(io_file->buffer, &rh.vertices_count);
+  buf_read_i32(io_file->buffer, &rh.triangles_count);
+  buf_read_i32(io_file->buffer, &rh.frames_count);
+  buf_read_i32(io_file->buffer, &rh.sync_type);
+  buf_read_i32(io_file->buffer, &rh.flags);
+  buf_read_f32(io_file->buffer, &rh.size);
 
   Md1Details* details = &md1->details;
 

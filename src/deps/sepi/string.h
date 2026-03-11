@@ -5,6 +5,8 @@
 /*                     DEPENDENCIES                      */
 /* ===================================================== */
 
+#include <tracy/tracy.h>
+
 #include <sepi/base.h>
 #include <sepi/arena.h>
 
@@ -104,9 +106,6 @@ Bool str_is_equal(Str a, Str b);
 I64 str_find_first(Str str, I8 chr);
 I64 str_find_last(Str str, I8 chr);
 Bool str_equal(Str str_a, Str str_b, StringCompareFlags flags);
-
-// Buf
-Buf buf(const U8* cbuf, Sz size);
 
 // Macros
 #define ZS(str) (str).zstr
@@ -411,18 +410,6 @@ str_equal(Str str_a, Str str_b, StringCompareFlags flags) {
   return result;
 }
 
-Buf
-buf(const U8* cbuf, Sz size) {
-  start_profiling(1);
-
-  assert(cbuf != 0);
-  assert(size > 0);
-
-  Buf result = {.cbuf = cbuf, .size = size};
-
-  end_profiling();
-  return result;
-}
 
 /* ===================================================== */
 /*                          END                          */

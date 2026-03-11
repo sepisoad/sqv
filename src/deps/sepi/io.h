@@ -26,6 +26,7 @@
 #include <sepi/arena.h>
 #include <sepi/string.h>
 #include <sepi/endian.h>
+#include <sepi/buffer.h>
 
 /* ===================================================== */
 /*                       CONSTANTS                       */
@@ -77,7 +78,7 @@ typedef enum {
 typedef struct IOFile IOFile;
 struct IOFile {
   Str path;
-  NDBuffer buffer;
+  Buf buffer;
   FILE* file;
   Sz file_size;
 };
@@ -309,7 +310,8 @@ io_close_file(IOFile* io_file) {
   if (!io_file->file) {
     fclose(io_file->file);
   }
-  nd_reset(&io_file->buffer);
+
+  buf_reset(io_file->buffer);
   zero_memory(io_file, sizeof(IOFile));
 
   end_profiling();
@@ -385,7 +387,7 @@ io_dump_buffer_to_path(Str path, Buf data) {
 
   assert(ZS(path) != 0);
   assert(SL(path) > 0);
-  assert(data.cbuf != 0);
+  assert(data.base != 0);
   assert(data.size > 0);
 
   IOError err = IO_ERR_SUCCESS;
@@ -396,7 +398,7 @@ io_dump_buffer_to_path(Str path, Buf data) {
     goto cleanup;
   }
 
-  Sz write_size = fwrite(data.cbuf, 1, data.size, f);
+  Sz write_size = fwrite(data.base, 1, data.size, f);
   if (write_size != data.size) {
     err = IO_ERR_MKFILE;
     goto cleanup;
