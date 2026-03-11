@@ -35,10 +35,8 @@ typedef uintptr_t Ptr;
 typedef const intptr_t CIPtr;
 typedef const uintptr_t CPtr;
 typedef ptrdiff_t PtrDiff;
-typedef U8* Buf;
-typedef const U8* CBuf;
-typedef char* Str;
-typedef const char* CStr;
+typedef char* ZStr;
+typedef const char* CZStr;
 
 typedef struct Empty Empty;
 struct Empty {};
@@ -51,6 +49,17 @@ struct Empty {};
 #define DEBUG_MODE
 #else
 #undef DEBUG_MODE
+#endif /* DEBUG_MODE */
+
+#ifdef DEBUG_MODE
+#include <stdio.h>
+#define dbg(format, ...)           \
+  do {                             \
+    printf(format, ##__VA_ARGS__); \
+    printf("\n");                  \
+  } while (0);
+#else
+#define dbg(format, ...)
 #endif /* DEBUG_MODE */
 
 /* ===================================================== */
@@ -153,6 +162,25 @@ struct Empty {};
   max(alignof(int),            \
       max(alignof(long),       \
           max(alignof(long long), max(alignof(double), alignof(void*)))))
+
+/* ===================================================== */
+/*                       FEATURES                        */
+/* ===================================================== */
+
+#if defined(CC_GCC) || defined(CC_CLANG) || defined(CC_MSVC)
+#define typeof(type) __typeof__(type)
+#else
+#error "typeof() not supported!"
+#endif
+
+#if defined(CC_GCC) || defined(CC_CLANG)
+#define thread_local __thread
+#elif defined(CC_MSVC)
+#define thread_local __declspec(thread)
+#else
+#error "typeof() not supported!"
+#endif
+
 
 /* ===================================================== */
 /*                        BITOPS                         */
@@ -260,21 +288,6 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 
 #define abort(message) runtime_assert(0 && #message)
 #define not_implemented() abort("NOT IMPLEMENTED!")
-
-/* ===================================================== */
-/*                     DEBUG LOGGER                      */
-/* ===================================================== */
-
-#ifdef DEBUG_MODE
-#include <stdio.h>
-#define dbg(format, ...)           \
-  do {                             \
-    printf(format, ##__VA_ARGS__); \
-    printf("\n");                  \
-  } while (0);
-#else
-#define dbg(format, ...)
-#endif /* DEBUG_MODE */
 
 /* ===================================================== */
 /*                      PROFILING                        */

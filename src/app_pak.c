@@ -83,8 +83,8 @@ typedef struct {
 
 mount_master_profiling_context();
 
-DefineFStr8(APP_PAK_MAX_EXPORT_PATH_LENGTH);
-DefineFStr8(APP_PAK_MAX_ERROR_LENGTH);
+DefineFStr(APP_PAK_MAX_EXPORT_PATH_LENGTH);
+DefineFStr(APP_PAK_MAX_ERROR_LENGTH);
 
 static struct {
   AppPakImage home;
@@ -106,9 +106,9 @@ static struct {
   IOFile input_io_file;
   IOItem input_io_item;
   IOItem* current_dir_io_item;
-  Str8 input_path;
-  FL1024_Str8 export_path_buffer;
-  FL512_Str8 error_text;
+  Str input_path;
+  Str1024 export_path_buffer;
+  Str512 error_text;
 
   Arena* arena;
 } g_state;
@@ -121,7 +121,7 @@ static Nothing app_pak_init();
 static AppPakError app_pak_init_style(struct nk_style* s);
 static AppPakError app_pak_init_icons();
 static AppPakError app_pak_init_icon(AppPakImage* app_icon,
-                                     CBuf buffer,
+                                     const U8* buffer,
                                      Sz size);
 
 static Nothing app_pak_cleanup();
@@ -130,9 +130,9 @@ static Nothing app_pak_cleanup_icons();
 static Nothing app_pak_cleanup_icon(AppPakImage* app_icon);
 
 static Nothing app_pak_handle_user_input_events(const sapp_event* event);
-static AppPakError app_pak_handle_drop_event(Str8 path);
-static AppPakError app_pak_handle_pak(Str8 path);
-static AppPakError app_pak_handle_dir(Str8 path);
+static AppPakError app_pak_handle_drop_event(Str path);
+static AppPakError app_pak_handle_pak(Str path);
+static AppPakError app_pak_handle_dir(Str path);
 
 static Nothing app_pak_frame();
 static U32 app_pak_draw(struct nk_context* ctx);
@@ -166,12 +166,12 @@ static Nothing app_pak_draw_widget_explorer_pak_icon(struct nk_context* ctx,
                                                      PakItem* node,
                                                      Bool is_directory,
                                                      struct nk_image* image,
-                                                     Str8 text);
+                                                     Str text);
 static Nothing app_pak_draw_widget_explorer_dir_icon(struct nk_context* ctx,
                                                      IOItem* node,
                                                      Bool is_directory,
                                                      struct nk_image* image,
-                                                     Str8 text);
+                                                     Str text);
 
 /* ===================================================== */
 /*                       FUNCTIONS                       */
@@ -234,8 +234,8 @@ app_pak_init(void) {
 
   g_state.mode = APP_PAK_MODE_EMPTY;
 
-  if (CS(g_state.input_path) != NULL) {
-    log_info("loading '%s'", CS(g_state.input_path));
+  if (ZS(g_state.input_path) != NULL) {
+    log_info("loading '%s'", ZS(g_state.input_path));
     app_pak_handle_drop_event(g_state.input_path);
   }
 
@@ -383,17 +383,16 @@ cleanup:
 /* ===================================================== */
 
 static AppPakError
-app_pak_init_icon(AppPakImage* app_icon, CBuf buffer, Sz size) {
+app_pak_init_icon(AppPakImage* app_icon, const U8* buffer, Sz size) {
   start_profiling(1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
 
   I32 w, h, c = 0;
-  CBuf data = stbi_load_from_memory(buffer, (U32)size, &w, &h, &c, 4);
+  const U8* data = stbi_load_from_memory(buffer, (U32)size, &w, &h, &c, 4);
   if (0 == data) {
     err = APP_PAK_ERR_ICON_INIT;
-    fl512_str8_set(&g_state.error_text,
-                   "failed to load icon image from memory");
+    str512_set(&g_state.error_text, "failed to load icon image from memory");
     goto cleanup;
   }
   start_memory_profiling(data, size);
@@ -463,8 +462,8 @@ app_pak_cleanup_reload() {
   g_state.is_packaging_requested = FALSE;
   g_state.requested_extracting_pak_item = 0;
 
-  fl512_str8_reset(&g_state.error_text);
-  fl1024_str8_reset(&g_state.export_path_buffer);
+  str512_reset(&g_state.error_text);
+  str1024_reset(&g_state.export_path_buffer);
   io_close_file(&g_state.input_io_file);
   if (APP_PAK_MODE_PAK_LOADED == old_mode) {
     pak_unload(&g_state.pak);
@@ -527,7 +526,7 @@ app_pak_handle_user_input_events(const sapp_event* event) {
 /* ===================================================== */
 
 static AppPakError
-app_pak_handle_drop_event(Str8 path) {
+app_pak_handle_drop_event(Str path) {
   start_profiling(1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
@@ -554,7 +553,7 @@ cleanup:
 /* ===================================================== */
 
 static AppPakError
-app_pak_handle_pak(Str8 path) {
+app_pak_handle_pak(Str path) {
   start_profiling(1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
@@ -570,8 +569,8 @@ app_pak_handle_pak(Str8 path) {
   if (IO_ERR_SUCCESS != ioerr) {
     char err_text[APP_PAK_MAX_ERROR_LENGTH] = {0};
     snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH, "failed to open '%s'",
-             CS(path));
-    fl512_str8_set(&g_state.error_text, err_text);
+             ZS(path));
+    str512_set(&g_state.error_text, err_text);
     err = APP_PAK_ERR_FILE_OPEN;
     g_state.mode = APP_PAK_MODE_FAILED;
     goto cleanup;
@@ -581,8 +580,8 @@ app_pak_handle_pak(Str8 path) {
   if (perr != PAK_ERR_SUCCESS) {
     char err_text[APP_PAK_MAX_ERROR_LENGTH] = {0};
     snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH, "failed to load '%s' items",
-             CS(path));
-    fl512_str8_set(&g_state.error_text, err_text);
+             ZS(path));
+    str512_set(&g_state.error_text, err_text);
     err = APP_PAK_ERR_MODULE_PAK;
     g_state.mode = APP_PAK_MODE_FAILED;
     goto cleanup;
@@ -600,7 +599,7 @@ cleanup:
 /* ===================================================== */
 
 static AppPakError
-app_pak_handle_dir(Str8 path) {
+app_pak_handle_dir(Str path) {
   start_profiling(1);
 
   AppPakError err = APP_PAK_ERR_SUCCESS;
@@ -752,7 +751,7 @@ app_pak_draw_mode_failed(struct nk_context* ctx,
                window_flags)) {
     const struct nk_rect content_region = nk_window_get_content_region(ctx);
     nk_layout_row_dynamic(ctx, content_region.h, 1);
-    nk_label_wrap(ctx, CS(g_state.error_text));
+    nk_label_wrap(ctx, ZS(g_state.error_text));
   }
   nk_end(ctx);
 
@@ -801,7 +800,7 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
     }
 
     PakItem* pak_item = (PakItem*)g_state.current_pak_item;
-    nk_label(ctx, pak_item->path.cstr,
+    nk_label(ctx, ZS(pak_item->path),
              NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
   }
   nk_end(ctx);
@@ -840,34 +839,33 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
       nk_layout_row_dynamic(ctx, STYLE.dialog.font.height, 1);
       nk_label(ctx, "output path:", NK_TEXT_LEFT);
       nk_edit_string_zero_terminated(
-          ctx, NK_EDIT_FIELD, CS(g_state.export_path_buffer),
+          ctx, NK_EDIT_FIELD, ZS(g_state.export_path_buffer),
           APP_PAK_MAX_EXPORT_PATH_LENGTH, nk_filter_default);
       nk_layout_row_dynamic(ctx, 0, 3);
       if (nk_button_label(ctx, "ok")) {
         if (0 == g_state.requested_extracting_pak_item) {
-          PakError perr =
-              pak_extract(&g_state.pak, &g_state.input_io_file,
-                          fl1024_str8_view(g_state.export_path_buffer));
+          PakError perr = pak_extract(&g_state.pak, &g_state.input_io_file,
+                                      str1024_view(g_state.export_path_buffer));
           if (PAK_ERR_SUCCESS != perr) {
             char err_text[APP_PAK_MAX_ERROR_LENGTH] = {0};
             snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH,
                      "failed to extract pak file into '%s'",
-                     CS(g_state.export_path_buffer));
-            fl512_str8_set(&g_state.error_text, err_text);
+                     ZS(g_state.export_path_buffer));
+            str512_set(&g_state.error_text, err_text);
             g_state.mode = APP_PAK_MODE_FAILED;
           }
         } else {
           PakError perr = pak_extract_item(
               &g_state.pak, g_state.requested_extracting_pak_item,
-              &g_state.input_io_file,
-              fl1024_str8_view(g_state.export_path_buffer));
+              &g_state.input_io_file, str1024_view(g_state.export_path_buffer));
           if (PAK_ERR_SUCCESS != perr) {
-            const PakItem* const pak_item = g_state.requested_extracting_pak_item;
+            const PakItem* const pak_item =
+                g_state.requested_extracting_pak_item;
             char err_text[APP_PAK_MAX_ERROR_LENGTH] = {0};
             snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH,
                      "failed to extract item '%s' into '%s'",
-                     pak_item->name.cstr, CS(g_state.export_path_buffer));
-            fl512_str8_set(&g_state.error_text, err_text);
+                     ZS(pak_item->name), ZS(g_state.export_path_buffer));
+            str512_set(&g_state.error_text, err_text);
             g_state.mode = APP_PAK_MODE_FAILED;
           }
         }
@@ -897,7 +895,7 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
                        STYLE.statusbar.height),
                NK_WINDOW_NO_SCROLLBAR)) {
     nk_layout_row_dynamic(ctx, 0, 1);
-    nk_label(ctx, CS(g_state.input_io_file.path),
+    nk_label(ctx, ZS(g_state.input_io_file.path),
              NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
   }
   nk_end(ctx);
@@ -944,7 +942,7 @@ app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
       }
     }
 
-    nk_label(ctx, CS(g_state.current_dir_io_item->path),
+    nk_label(ctx, ZS(g_state.current_dir_io_item->path),
              NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
   }
   nk_end(ctx);
@@ -985,28 +983,28 @@ app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
       nk_layout_row_dynamic(ctx, STYLE.dialog.font.height, 1);
       nk_label(ctx, "output path:", NK_TEXT_LEFT);
       nk_edit_string_zero_terminated(
-          ctx, NK_EDIT_FIELD, CS(g_state.export_path_buffer),
+          ctx, NK_EDIT_FIELD, ZS(g_state.export_path_buffer),
           APP_PAK_MAX_EXPORT_PATH_LENGTH, nk_filter_default);
       nk_layout_row_dynamic(ctx, 0, 3);
       if (nk_button_label(ctx, "ok")) {
         PakError pakerr = pak_make_from_ioitem(
             g_state.arena, &g_state.input_io_item, g_state.input_path,
-            fl1024_str8_view(g_state.export_path_buffer), &g_state.error_text);
+            str1024_view(g_state.export_path_buffer), &g_state.error_text);
         if (PAK_ERR_SUCCESS != pakerr) {
           char err_text[APP_PAK_MAX_ERROR_LENGTH] = {0};
           if (PAK_ERR_PATH_LENGTH_TOO_LONG == pakerr) {
             snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH,
                      "failed to generate pak file from '%s' because '%s' path "
                      "length is longer than '%d' characters",
-                     CS(g_state.input_path), CS(g_state.error_text),
+                     ZS(g_state.input_path), ZS(g_state.error_text),
                      PAK_ENTRY_NAME_LEN);
           } else {
             snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH,
                      "failed to generate pak file from '%s'",
-                     CS(g_state.input_path));
+                     ZS(g_state.input_path));
           }
 
-          fl512_str8_set(&g_state.error_text, err_text);
+          str512_set(&g_state.error_text, err_text);
           g_state.mode = APP_PAK_MODE_FAILED;
         }
         g_state.is_packaging_requested = FALSE;
@@ -1031,7 +1029,7 @@ app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
                        STYLE.statusbar.height),
                NK_WINDOW_NO_SCROLLBAR)) {
     nk_layout_row_dynamic(ctx, 0, 1);
-    nk_label(ctx, CS(g_state.input_io_item.path),
+    nk_label(ctx, ZS(g_state.input_io_item.path),
              NK_TEXT_ALIGN_LEFT | NK_TEXT_ALIGN_MIDDLE);
   }
   nk_end(ctx);
@@ -1204,7 +1202,7 @@ app_pak_draw_widget_explorer_pak_icon(struct nk_context* ctx,
                                       PakItem* node,
                                       Bool is_directory,
                                       struct nk_image* image,
-                                      Str8 text) {
+                                      Str text) {
   start_profiling(1);
 
   // icon image
@@ -1239,7 +1237,7 @@ app_pak_draw_widget_explorer_pak_icon(struct nk_context* ctx,
   // icon text
   nk_layout_row_static(ctx, STYLE.explorer.icon.text.height,
                        STYLE.explorer.icon.text.width, 1);
-  nk_text_wrap(ctx, CS(text), (I32)SL(text));
+  nk_text_wrap(ctx, ZS(text), (I32)SL(text));
 
   end_profiling();
 }
@@ -1251,7 +1249,7 @@ app_pak_draw_widget_explorer_dir_icon(struct nk_context* ctx,
                                       IOItem* node,
                                       Bool is_directory,
                                       struct nk_image* image,
-                                      Str8 text) {
+                                      Str text) {
   start_profiling(1);
 
   // icon image
@@ -1268,7 +1266,7 @@ app_pak_draw_widget_explorer_dir_icon(struct nk_context* ctx,
   // icon text
   nk_layout_row_static(ctx, STYLE.explorer.icon.text.height,
                        STYLE.explorer.icon.text.width, 1);
-  nk_text_wrap(ctx, CS(text), (I32)SL(text));
+  nk_text_wrap(ctx, ZS(text), (I32)SL(text));
 
   end_profiling();
 }

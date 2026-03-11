@@ -25,7 +25,7 @@ typedef struct ArenaParams ArenaParams;
 struct ArenaParams {
   U64 requested_reserve_size;
   U64 requested_commit_size;
-  CStr caller_file_name;
+  CZStr caller_file_name;
   U32 caller_file_line;
 };
 
@@ -40,7 +40,7 @@ struct Arena {
   U64 reserved_size;
   U64 base_position;
   U64 offset;
-  CStr caller_file_name;
+  CZStr caller_file_name;
   U32 caller_file_line;
 };
 
@@ -194,16 +194,10 @@ arena_push(Arena* arena,
         requested_commit_size =
             align_up(size_to_allocate + arena_header_size, memory_alignment);
       }
-      // new_arena_block =
-      //     arena_create(.requested_reserve_size = requested_reserve_size,
-      //                  .requested_commit_size = requested_commit_size,
-      //                  .caller_file_name =
-      //                      (CStr)current_block->caller_file_name,
-      //                  .caller_file_line = current_block->caller_file_line);
       new_arena_block = arena_create_(&(ArenaParams){
           .requested_reserve_size = requested_reserve_size,
           .requested_commit_size = requested_commit_size,
-          .caller_file_name = (CStr)current_block->caller_file_name,
+          .caller_file_name = (CZStr)current_block->caller_file_name,
           .caller_file_line = current_block->caller_file_line});
     }
 

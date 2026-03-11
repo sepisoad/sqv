@@ -76,7 +76,7 @@ typedef enum {
 
 typedef struct IOFile IOFile;
 struct IOFile {
-  Str8 path;
+  Str path;
   NDBuffer buffer;
   FILE* file;
   Sz file_size;
@@ -86,8 +86,8 @@ typedef struct IOItem IOItem;
 struct IOItem {
   IOItem* parent;
   IOItem* children;
-  Str8 name;
-  Str8 path;
+  Str name;
+  Str path;
   Sz file_size;
   Sz total_files_size;
   U32 total_files_count;
@@ -99,27 +99,27 @@ struct IOItem {
 /*                          API                          */
 /* ===================================================== */
 
-IOError io_create_file(Arena* arena, Str8 path, IOFile* io_file);
+IOError io_create_file(Arena* arena, Str path, IOFile* io_file);
 IOError io_create_file_with_size(Arena* arena,
-                                 Str8 path,
+                                 Str path,
                                  Sz size,
                                  IOFile* io_file);
-IOError io_open_file(Arena* arena, Str8 path, IOFile* io_file);
+IOError io_open_file(Arena* arena, Str path, IOFile* io_file);
 IOError io_close_file(IOFile* io_file);
-IOError io_load_file(Arena* a, Str8 path, IOFile* io_file);
-IOError io_get_file_size(Str8 path, Sz* out);
-IOError io_dump_buffer_to_path(Str8 path, Buf8 data);
-IOError io_slurp_path_to_buffer(Arena* arena, Str8 path, Buf8* data);
-IOError io_is_path_a_file(Str8 path, Bool* is_file);
-IOError io_is_path_a_directory(Str8 path, Bool* is_dir);
-IOError io_make_directory(Str8 path, IOFlags flags);
+IOError io_load_file(Arena* a, Str path, IOFile* io_file);
+IOError io_get_file_size(Str path, Sz* out);
+IOError io_dump_buffer_to_path(Str path, Buf data);
+IOError io_slurp_path_to_buffer(Arena* arena, Str path, Buf* data);
+IOError io_is_path_a_file(Str path, Bool* is_file);
+IOError io_is_path_a_directory(Str path, Bool* is_dir);
+IOError io_make_directory(Str path, IOFlags flags);
 IOError io_read_directory(Arena* arena,
-                          Str8 path,
+                          Str path,
                           IOItem* io_item,
                           IOFlags flags);
-IOError io_get_directory_children_count(Str8 path, U32* count, IOFlags flags);
-IOError io_get_path_base_name(Arena* arena, Str8 path, Str8* out);
-IOError io_get_path_directory_name(Arena* arena, Str8 path, Str8* out);
+IOError io_get_directory_children_count(Str path, U32* count, IOFlags flags);
+IOError io_get_path_base_name(Arena* arena, Str path, Str* out);
+IOError io_get_path_directory_name(Arena* arena, Str path, Str* out);
 
 static inline U64
 io_get_file_position(IOFile* io_file) {
@@ -213,36 +213,36 @@ mount_slave_profiling_context();
 #include <sepi/generated/stack_ioitem.h>
 
 static IOError _io_read_directory(Arena* arena,
-                                  Str8 path,
+                                  Str path,
                                   IOItem* io_item,
                                   IOFlags flags);
 static IOError _io_read_directory_recursively(Arena* arena,
-                                              Str8 path,
+                                              Str path,
                                               IOItem* io_item,
                                               IOFlags flags);
-static IOError _io_make_directory(Str8 path);
-static IOError _io_make_directory_recursively(Str8 path);
+static IOError _io_make_directory(Str path);
+static IOError _io_make_directory_recursively(Str path);
 
 static I32 io_item_sort(const void* a, const void* b);
 
 IOError
-io_create_file(Arena* arena, Str8 path, IOFile* io_file) {
+io_create_file(Arena* arena, Str path, IOFile* io_file) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(SL(path) > 0);
   assert(io_file != 0);
 
   IOError err = IO_ERR_SUCCESS;
 
-  io_file->file = fopen(CS(path), "wb");
+  io_file->file = fopen(ZS(path), "wb");
   if (0 == io_file->file) {
     err = IO_ERR_FILE_OPEN;
     goto cleanup;
   }
 
   io_file->file_size = 0;
-  io_file->path = str8_clone(arena, path);
+  io_file->path = str_clone(arena, path);
 
 cleanup:
   if (io_file->file && err != IO_ERR_SUCCESS) {
@@ -254,10 +254,10 @@ cleanup:
 }
 
 IOError
-io_open_file(Arena* arena, Str8 path, IOFile* io_file) {
+io_open_file(Arena* arena, Str path, IOFile* io_file) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(SL(path) > 0);
   assert(io_file != 0);
 
@@ -271,7 +271,7 @@ io_open_file(Arena* arena, Str8 path, IOFile* io_file) {
     goto cleanup;
   }
 
-  io_file->file = fopen(CS(path), "rb");
+  io_file->file = fopen(ZS(path), "rb");
   if (0 == io_file->file) {
     err = IO_ERR_FILE_OPEN;
     goto cleanup;
@@ -281,7 +281,7 @@ io_open_file(Arena* arena, Str8 path, IOFile* io_file) {
   fseek(io_file->file, 0, SEEK_END);
 
   io_file->file_size = (Sz)ftell(io_file->file);
-  io_file->path = str8_clone(arena, path);
+  io_file->path = str_clone(arena, path);
 
   // TODO: handle error cases
   rewind(io_file->file);
@@ -305,7 +305,7 @@ io_close_file(IOFile* io_file) {
 
   fflush(io_file->file);
 
-  str8_reset(&io_file->path);
+  str_reset(&io_file->path);
   if (!io_file->file) {
     fclose(io_file->file);
   }
@@ -317,11 +317,11 @@ io_close_file(IOFile* io_file) {
 }
 
 IOError
-io_load_file(Arena* arena, Str8 path, IOFile* io_file) {
+io_load_file(Arena* arena, Str path, IOFile* io_file) {
   start_profiling(1);
 
   assert(arena != 0);
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(SL(path) > 0);
   assert(io_file != 0);
 
@@ -335,7 +335,7 @@ io_load_file(Arena* arena, Str8 path, IOFile* io_file) {
     goto cleanup;
   }
 
-  io_file->file = fopen(CS(path), "rb");
+  io_file->file = fopen(ZS(path), "rb");
   if (0 == io_file->file) {
     err = IO_ERR_FILE_OPEN;
     goto cleanup;
@@ -359,7 +359,7 @@ io_load_file(Arena* arena, Str8 path, IOFile* io_file) {
   rewind(io_file->file);
 
   io_file->buffer.base =
-      (CBuf)arena_push(arena, io_file->buffer.size, alignof(U8), FALSE);
+      (const U8*)arena_push(arena, io_file->buffer.size, alignof(U8), FALSE);
   runtime_assert(io_file->buffer.base != 0);
 
   Sz rsize = fread((void*)io_file->buffer.base, 1, io_file->buffer.size,
@@ -380,17 +380,17 @@ cleanup:
 }
 
 IOError
-io_dump_buffer_to_path(Str8 path, Buf8 data) {
+io_dump_buffer_to_path(Str path, Buf data) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(SL(path) > 0);
   assert(data.cbuf != 0);
   assert(data.size > 0);
 
   IOError err = IO_ERR_SUCCESS;
 
-  FILE* f = fopen(CS(path), "wb");
+  FILE* f = fopen(ZS(path), "wb");
   if (0 == f) {
     err = IO_ERR_MKFILE;
     goto cleanup;
@@ -413,15 +413,15 @@ cleanup:
 }
 
 IOError
-io_slurp_path_to_buffer(Arena* arena, Str8 path, Buf8* data) {
+io_slurp_path_to_buffer(Arena* arena, Str path, Buf* data) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(SL(path) > 0);
 
   IOError err = IO_ERR_SUCCESS;
 
-  FILE* f = fopen(CS(path), "rb");
+  FILE* f = fopen(ZS(path), "rb");
   if (0 == f) {
     err = IO_ERR_MKFILE;
     goto cleanup;
@@ -431,14 +431,14 @@ io_slurp_path_to_buffer(Arena* arena, Str8 path, Buf8* data) {
   Sz size = ftell(f);
   rewind(f);
 
-  U8* buf = arena_push(arena, sizeof(U8) * size, alignof(U8), TRUE);
-  Sz read_size = fread(buf, 1, size, f);
+  U8* mem = arena_push(arena, sizeof(U8) * size, alignof(U8), TRUE);
+  Sz read_size = fread(mem, 1, size, f);
   if (read_size != size) {
     err = IO_ERR_SLURP;
     goto cleanup;
   }
 
-  *data = buf8(buf, size);
+  *data = buf(mem, size);
 
 cleanup:
   if (f) {
@@ -464,19 +464,19 @@ io_item_sort(SafePtr a, SafePtr b) {
 }
 
 static IOError
-_io_make_directory_recursively(Str8 path) {
+_io_make_directory_recursively(Str path) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(SL(path) > 0);
 
   IOError err = IO_ERR_SUCCESS;
   Sz original_length = SL(path);
 
   for (U32 index = 0; index < SL(path); index++) {
-    if (CS(path)[index] == IO_PATH_SEPARATOR) {
+    if (ZS(path)[index] == IO_PATH_SEPARATOR) {
       SL(path) = index;
-      Str hack = (Str)&CS(path)[index];
+      ZStr hack = (ZStr)&ZS(path)[index];
       *hack = 0;
       err = _io_make_directory(path);
       SL(path) = original_length;
@@ -500,7 +500,7 @@ cleanup:
 }
 
 IOError
-io_make_directory(Str8 path, IOFlags flags) {
+io_make_directory(Str path, IOFlags flags) {
   if (flags & IO_MAKE_DIR_RECURSIVE) {
     return _io_make_directory_recursively(path);
   } else {
@@ -509,7 +509,7 @@ io_make_directory(Str8 path, IOFlags flags) {
 }
 
 IOError
-io_read_directory(Arena* arena, Str8 path, IOItem* io_item, IOFlags flags) {
+io_read_directory(Arena* arena, Str path, IOItem* io_item, IOFlags flags) {
   if (flags & IO_READ_DIR_RECURSIVE) {
     return _io_read_directory_recursively(arena, path, io_item, flags);
   } else {
@@ -519,13 +519,13 @@ io_read_directory(Arena* arena, Str8 path, IOItem* io_item, IOFlags flags) {
 
 static IOError
 _io_read_directory_recursively(Arena* arena,
-                               Str8 path,
+                               Str path,
                                IOItem* io_item,
                                IOFlags flags) {
   start_profiling(1);
 
   assert(arena != 0);
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(SL(path) > 0);
 
   IOError err = IO_ERR_SUCCESS;
@@ -550,8 +550,8 @@ _io_read_directory_recursively(Arena* arena,
     for (U16 index = 0; index < last->children_count; index++) {
       IOItem* child = last->children + index;
       if (child->is_directory) {
-        Str8 new_path =
-            str8_join(arena, last->path, child->name, IO_PATH_SEPARATOR);
+        Str new_path =
+            str_join(arena, last->path, child->name, IO_PATH_SEPARATOR);
         err = _io_read_directory(arena, new_path, child, flags);
         if (IO_ERR_SUCCESS != err) {
           goto cleanup;
@@ -571,10 +571,10 @@ cleanup:
 }
 
 IOError
-io_get_path_base_name(Arena* arena, Str8 path, Str8* out) {
+io_get_path_base_name(Arena* arena, Str path, Str* out) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(SL(path) > 0);
   assert(out != 0);
 
@@ -583,28 +583,28 @@ io_get_path_base_name(Arena* arena, Str8 path, Str8* out) {
   Sz last_index = SL(path) - 1;  // index of the last character
   Sz last_segment_index = 0;
 
-  if (IO_PATH_SEPARATOR == CS(path)[last_index]) {
+  if (IO_PATH_SEPARATOR == ZS(path)[last_index]) {
     last_index--;
   }
 
   for (Sz index = last_index; index >= 0; index--) {
-    if (CS(path)[index] == IO_PATH_SEPARATOR) {
+    if (ZS(path)[index] == IO_PATH_SEPARATOR) {
       last_segment_index = index + 1;
       break;
     }
   }
 
-  *out = str8_clone(arena, S(path.cstr + last_segment_index));
+  *out = str_clone(arena, S(ZS(path) + last_segment_index));
 
   end_profiling();
   return err;
 }
 
 IOError
-io_get_path_directory_name(Arena* arena, Str8 path, Str8* out) {
+io_get_path_directory_name(Arena* arena, Str path, Str* out) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(SL(path) > 0);
   assert(out != 0);
 
@@ -613,13 +613,13 @@ io_get_path_directory_name(Arena* arena, Str8 path, Str8* out) {
   Sz last_segment_index = last_index;
 
   for (Sz index = last_index; index >= 0; index--) {
-    if (CS(path)[index] == IO_PATH_SEPARATOR) {
+    if (ZS(path)[index] == IO_PATH_SEPARATOR) {
       last_segment_index = index;
       break;
     }
   }
 
-  *out = str8_slice(arena, path, 0, last_segment_index);
+  *out = str_slice(arena, path, 0, last_segment_index);
 
   end_profiling();
   return err;
@@ -632,17 +632,17 @@ io_get_path_directory_name(Arena* arena, Str8 path, Str8* out) {
 #if defined(OS_LINUX)
 
 IOError
-io_is_path_a_file(Str8 path, Bool* is_file) {
+io_is_path_a_file(Str path, Bool* is_file) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(path.size > 0);
   assert(is_file != 0);
 
   IOError err = IO_ERR_SUCCESS;
 
   struct stat info = {0};
-  if (-1 == stat(CS(path), &info)) {
+  if (-1 == stat(ZS(path), &info)) {
     err = IO_ERR_STAT;
     goto cleanup;
   }
@@ -659,17 +659,17 @@ cleanup:
 }
 
 IOError
-io_is_path_a_directory(Str8 path, Bool* is_dir) {
+io_is_path_a_directory(Str path, Bool* is_dir) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(path.size > 0);
   assert(is_dir != 0);
 
   IOError err = IO_ERR_SUCCESS;
 
   struct stat info = {0};
-  if (-1 == stat(CS(path), &info)) {
+  if (-1 == stat(ZS(path), &info)) {
     err = IO_ERR_STAT;
     goto cleanup;
   }
@@ -686,10 +686,10 @@ cleanup:
 }
 
 static IOError
-_io_read_directory(Arena* arena, Str8 path, IOItem* parent, IOFlags flags) {
+_io_read_directory(Arena* arena, Str path, IOItem* parent, IOFlags flags) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(path.size > 0);
   assert(parent != 0);
 
@@ -703,10 +703,10 @@ cleanup:
 }
 
 IOError
-io_get_directory_children_count(Str8 path, U32* count, IOFlags flags) {
+io_get_directory_children_count(Str path, U32* count, IOFlags flags) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(path.size > 0);
   assert(count != 0);
 
@@ -720,15 +720,15 @@ cleanup:
 }
 
 static IOError
-_io_make_directory(Str8 path) {
+_io_make_directory(Str path) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(path.size > 0);
 
   IOError err = IO_ERR_SUCCESS;
 
-  if (mkdir((char*)CS(path), 0755) == -1) {
+  if (mkdir((char*)ZS(path), 0755) == -1) {
     if (EEXIST != errno) {
       err = IO_ERR_MKDIR;
       goto cleanup;
@@ -747,10 +747,10 @@ cleanup:
 #elif defined(OS_MACOS)
 
 IOError
-io_create_file_with_size(Arena* arena, Str8 path, Sz size, IOFile* io_file) {
+io_create_file_with_size(Arena* arena, Str path, Sz size, IOFile* io_file) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(SL(path) > 0);
   assert(size > 0);
   assert(io_file != 0);
@@ -782,17 +782,17 @@ cleanup:
 }
 
 IOError
-io_is_path_a_file(Str8 path, Bool* is_file) {
+io_is_path_a_file(Str path, Bool* is_file) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(SL(path) > 0);
   assert(is_file != 0);
 
   IOError err = IO_ERR_SUCCESS;
 
   struct stat info = {0};
-  if (-1 == stat(CS(path), &info)) {
+  if (-1 == stat(ZS(path), &info)) {
     err = IO_ERR_STAT;
     goto cleanup;
   }
@@ -809,17 +809,17 @@ cleanup:
 }
 
 IOError
-io_is_path_a_directory(Str8 path, Bool* is_dir) {
+io_is_path_a_directory(Str path, Bool* is_dir) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(SL(path) > 0);
   assert(is_dir != 0);
 
   IOError err = IO_ERR_SUCCESS;
 
   struct stat info = {0};
-  if (-1 == stat(CS(path), &info)) {
+  if (-1 == stat(ZS(path), &info)) {
     err = IO_ERR_STAT;
     goto cleanup;
   }
@@ -836,16 +836,16 @@ cleanup:
 }
 
 IOError
-io_get_file_size(Str8 path, Sz* out) {
+io_get_file_size(Str path, Sz* out) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(out != 0);
 
   IOError err = IO_ERR_SUCCESS;
 
   struct stat info = {0};
-  if (-1 == stat(CS(path), &info)) {
+  if (-1 == stat(ZS(path), &info)) {
     err = IO_ERR_STAT;
     goto cleanup;
   }
@@ -863,11 +863,11 @@ cleanup:
 }
 
 static IOError
-_io_read_directory(Arena* arena, Str8 path, IOItem* io_item, IOFlags flags) {
+_io_read_directory(Arena* arena, Str path, IOItem* io_item, IOFlags flags) {
   start_profiling(1);
 
   assert(arena != 0);
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(SL(path) > 0);
   assert(io_item != 0);
 
@@ -890,7 +890,7 @@ _io_read_directory(Arena* arena, Str8 path, IOItem* io_item, IOFlags flags) {
   IOItem* children =
       arena_push(arena, sizeof(IOItem) * children_count, alignof(IOItem), TRUE);
 
-  dir = opendir(CS(path));
+  dir = opendir(ZS(path));
   if (0 == dir) {
     err = IO_ERR_OPENDIR;
     goto cleanup;
@@ -911,14 +911,14 @@ _io_read_directory(Arena* arena, Str8 path, IOItem* io_item, IOFlags flags) {
     }
 
     if (flags & IO_READ_IGNORE_HIDDEN) {
-      if (0 == str8_find_first(S(ent->d_name), '.')) {
+      if (0 == str_find_first(S(ent->d_name), '.')) {
         continue;
       }
     }
 
-    children[children_index].name = str8_clone(arena, S(ent->d_name));
+    children[children_index].name = str_clone(arena, S(ent->d_name));
     children[children_index].path =
-        str8_join(arena, path, S(ent->d_name), IO_PATH_SEPARATOR);
+        str_join(arena, path, S(ent->d_name), IO_PATH_SEPARATOR);
     children[children_index].is_directory = (DT_DIR == ent->d_type);
     children[children_index].parent = io_item;
     if (FALSE == children[children_index].is_directory) {
@@ -934,7 +934,7 @@ _io_read_directory(Arena* arena, Str8 path, IOItem* io_item, IOFlags flags) {
     children_index++;
   } while (TRUE);
 
-  Str8 temp_name;
+  Str temp_name;
   err = io_get_path_base_name(arena, path, &temp_name);
   if (IO_ERR_SUCCESS != err) {
     goto cleanup;
@@ -944,8 +944,8 @@ _io_read_directory(Arena* arena, Str8 path, IOItem* io_item, IOFlags flags) {
 
   io_item->children = children;
   io_item->children_count = children_count;
-  io_item->name = str8_clone(arena, temp_name);
-  io_item->path = str8_clone(arena, path);
+  io_item->name = str_clone(arena, temp_name);
+  io_item->path = str_clone(arena, path);
   io_item->is_directory = TRUE;
 
 cleanup:
@@ -958,10 +958,10 @@ cleanup:
 }
 
 IOError
-io_get_directory_children_count(Str8 path, U32* count, IOFlags flags) {
+io_get_directory_children_count(Str path, U32* count, IOFlags flags) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(path.length > 0);
   assert(count != 0);
 
@@ -975,7 +975,7 @@ io_get_directory_children_count(Str8 path, U32* count, IOFlags flags) {
     goto cleanup;
   }
 
-  dir = opendir(CS(path));
+  dir = opendir(ZS(path));
   if (0 == dir) {
     err = IO_ERR_OPENDIR;
     goto cleanup;
@@ -985,7 +985,7 @@ io_get_directory_children_count(Str8 path, U32* count, IOFlags flags) {
   *count = 0;
   while ((iter = readdir(dir))) {
     if (flags & IO_READ_IGNORE_HIDDEN) {
-      if (0 == str8_find_first(S(iter->d_name), '.')) {
+      if (0 == str_find_first(S(iter->d_name), '.')) {
         continue;
       }
     }
@@ -1002,10 +1002,10 @@ cleanup:
 }
 
 static IOError
-_io_make_directory(Str8 path) {
+_io_make_directory(Str path) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
 
   IOError err = IO_ERR_SUCCESS;
 
@@ -1023,7 +1023,7 @@ _io_make_directory(Str8 path) {
     goto cleanup;
   }
 
-  if (mkdir((char*)CS(path), 0755) == -1) {
+  if (mkdir((char*)ZS(path), 0755) == -1) {
     if (EEXIST != errno) {
       err = IO_ERR_MKDIR;
       goto cleanup;
@@ -1042,16 +1042,16 @@ cleanup:
 #elif defined(OS_WINDOWS)
 
 IOError
-io_is_path_a_file(Str8 path, Bool* is_file) {
+io_is_path_a_file(Str path, Bool* is_file) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(path.size > 0);
   assert(is_file != 0);
 
   IOError err = IO_ERR_SUCCESS;
 
-  DWORD attr = GetFileAttributesW((WCHAR*)CS(path));
+  DWORD attr = GetFileAttributesW((WCHAR*)ZS(path));
   if (attr == INVALID_FILE_ATTRIBUTES) {
     return IO_ERR_STAT;
   }
@@ -1064,16 +1064,16 @@ cleanup:
 }
 
 IOError
-io_is_path_a_directory(Str8 path, Bool* is_dir) {
+io_is_path_a_directory(Str path, Bool* is_dir) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(path.size > 0);
   assert(is_dir != 0);
 
   IOError err = IO_ERR_SUCCESS;
 
-  DWORD attr = GetFileAttributesW((WCHAR*)CS(path));
+  DWORD attr = GetFileAttributesW((WCHAR*)ZS(path));
   if (attr == INVALID_FILE_ATTRIBUTES) {
     return IO_ERR_STAT;
   }
@@ -1086,20 +1086,20 @@ cleanup:
 }
 
 static IOError
-_io_make_directory(Str8 path) {
+_io_make_directory(Str path) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(path.size > 0);
 
   IOError err = IO_ERR_SUCCESS;
 
   WIN32_FILE_ATTRIBUTE_DATA attributes = {0};
-  GetFileAttributesExW((WCHAR*)CS(path), GetFileExInfoStandard, &attributes);
+  GetFileAttributesExW((WCHAR*)ZS(path), GetFileExInfoStandard, &attributes);
   if (attributes.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
     err = IO_ERR_MKDIR;
     goto cleanup;
-  } else if (CreateDirectoryW((WCHAR*)CS(path), 0)) {
+  } else if (CreateDirectoryW((WCHAR*)ZS(path), 0)) {
     err = IO_ERR_MKDIR;
     goto cleanup;
   }
@@ -1110,10 +1110,10 @@ cleanup:
 }
 
 static IOError
-_io_read_directory(Arena* arena, Str8 path, IOItem* parent, IOFlags flags) {
+_io_read_directory(Arena* arena, Str path, IOItem* parent, IOFlags flags) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(path.size > 0);
   assert(parent != 0);
   not_implemented();
@@ -1126,10 +1126,10 @@ cleanup:
 }
 
 IOError
-io_get_directory_children_count(Str8 path, U32* count, IOFlags flags) {
+io_get_directory_children_count(Str path, U32* count, IOFlags flags) {
   start_profiling(1);
 
-  assert(CS(path) != 0);
+  assert(ZS(path) != 0);
   assert(path.size > 0);
   assert(count != 0);
 

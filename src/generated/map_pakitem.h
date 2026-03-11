@@ -28,7 +28,7 @@ typedef struct PakItem PakItem;
 typedef struct MapPakItemNode MapPakItemNode;
 struct MapPakItemNode {
   MapPakItemNode* next;
-  Str8 key;
+  Str key;
   PakItem* value;
 };
 
@@ -45,11 +45,11 @@ struct MapPakItem {
 /* ===================================================== */
 
 MapPakItem map_pakitem_make(Arena* arena, U64 max_keys_list_length);
-Nothing map_pakitem_push(MapPakItem* map, Str8 key, PakItem* value);
-PakItem* map_pakitem_get(MapPakItem* map, Str8 key);
-PakItem* map_pakitem_delete(MapPakItem* map, Str8 key);
+Nothing map_pakitem_push(MapPakItem* map, Str key, PakItem* value);
+PakItem* map_pakitem_get(MapPakItem* map, Str key);
+PakItem* map_pakitem_delete(MapPakItem* map, Str key);
 Nothing map_pakitem_clean(MapPakItem* map);
-Nothing map_pakitem_keys(MapPakItem* map, Str8** keys, U64* length);
+Nothing map_pakitem_keys(MapPakItem* map, Str** keys, U64* length);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -59,7 +59,7 @@ Nothing map_pakitem_keys(MapPakItem* map, Str8** keys, U64* length);
 
 mount_slave_profiling_context();
 
-#define map_pakitem_hasher(str) rapidhash_withSeed(CS((str)), SL((str)), 1987)
+#define map_pakitem_hasher(str) rapidhash_withSeed(ZS((str)), SL((str)), 1987)
 
 MapPakItem
 map_pakitem_make(Arena* arena, U64 max_keys_list_length) {
@@ -82,11 +82,11 @@ map_pakitem_make(Arena* arena, U64 max_keys_list_length) {
 }
 
 Nothing
-map_pakitem_push(MapPakItem* map, Str8 key, PakItem* value) {
+map_pakitem_push(MapPakItem* map, Str key, PakItem* value) {
   start_profiling(1);
 
   assert(map != 0);
-  assert(key.cstr != 0);
+  assert(ZS(key) != 0);
   assert(key.length != 0);
   assert(value != 0);
 
@@ -96,7 +96,7 @@ map_pakitem_push(MapPakItem* map, Str8 key, PakItem* value) {
   MapPakItemNode* iter = first_node;
 
   while (0 != iter) {
-    if (str8_equal(iter->key, key, 0)) {
+    if (str_equal(iter->key, key, 0)) {
       iter->value = value;
       goto cleanup;
     }
@@ -105,7 +105,7 @@ map_pakitem_push(MapPakItem* map, Str8 key, PakItem* value) {
 
   MapPakItemNode* new_node = arena_push(map->arena, sizeof(MapPakItemNode),
                                         alignof(MapPakItemNode), TRUE);
-  new_node->key = str8_clone(map->arena, key);
+  new_node->key = str_clone(map->arena, key);
   new_node->value = value;
 
   if (first_node) {
@@ -119,11 +119,11 @@ cleanup:
 }
 
 PakItem*
-map_pakitem_get(MapPakItem* map, Str8 key) {
+map_pakitem_get(MapPakItem* map, Str key) {
   start_profiling(1);
 
   assert(map != 0);
-  assert(key.cstr != 0);
+  assert(ZS(key) != 0);
   assert(key.length != 0);
 
   PakItem* found = {0};
@@ -132,7 +132,7 @@ map_pakitem_get(MapPakItem* map, Str8 key) {
   MapPakItemNode* iter = map->keys_list[key_index];
 
   while (0 != iter) {
-    if (str8_equal(iter->key, key, 0)) {
+    if (str_equal(iter->key, key, 0)) {
       found = iter->value;
       goto cleanup;
     }
@@ -146,11 +146,11 @@ cleanup:
 
 PakItem*
 // cppcheck-suppress unusedFunction
-map_pakitem_delete(MapPakItem* map, Str8 key) {
+map_pakitem_delete(MapPakItem* map, Str key) {
   start_profiling(1);
 
   assert(map != 0);
-  assert(key.cstr != 0);
+  assert(ZS(key) != 0);
   assert(key.length != 0);
 
   PakItem* found = {0};
@@ -161,7 +161,7 @@ map_pakitem_delete(MapPakItem* map, Str8 key) {
   MapPakItemNode* prev = first;
 
   while (0 != iter) {
-    if (str8_equal(iter->key, key, 0)) {
+    if (str_equal(iter->key, key, 0)) {
       found = iter->value;
       prev->next = iter->next;
       if (iter == first)
@@ -195,7 +195,7 @@ map_pakitem_clean(MapPakItem* map) {
 
 Nothing
 // cppcheck-suppress unusedFunction
-map_pakitem_keys(MapPakItem* map, Str8** keys, U64* length) {
+map_pakitem_keys(MapPakItem* map, Str** keys, U64* length) {
   start_profiling(1);
 
   assert(map != 0);
@@ -203,8 +203,8 @@ map_pakitem_keys(MapPakItem* map, Str8** keys, U64* length) {
   assert(length != 0);
 
   U64 key_index = 0;
-  *keys = arena_push(map->arena, sizeof(Str8) * map->keys_count, alignof(Str8),
-                     TRUE);
+  *keys =
+      arena_push(map->arena, sizeof(Str) * map->keys_count, alignof(Str), TRUE);
 
   for (U64 key_list_index = 0; key_list_index < map->max_keys_list_length;
        key_list_index++) {

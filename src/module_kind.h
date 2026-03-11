@@ -87,9 +87,9 @@ typedef enum {
 /*                          API                          */
 /* ===================================================== */
 
-KindError kind_guess_entry(Str8, Kind*);
-KindError kind_guess_file(CStr, Kind*);
-KindError kind_guess_buffer(CStr, Kind*);
+KindError kind_guess_entry(Str, Kind*);
+KindError kind_guess_file(CZStr, Kind*);
+KindError kind_guess_buffer(CZStr, Kind*);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -100,7 +100,7 @@ KindError kind_guess_buffer(CStr, Kind*);
 mount_slave_profiling_context();
 
 static KindError
-guess_file_type(CStr buf, Kind* kind) {
+guess_file_type(CZStr buf, Kind* kind) {
   start_profiling(1);
 
   assert(buf != 0);
@@ -125,10 +125,10 @@ cleanup:
 
 KindError
 // cppcheck-suppress unusedFunction
-kind_guess_entry(Str8 path, Kind* kind) {
+kind_guess_entry(Str path, Kind* kind) {
   start_profiling(1);
 
-  assert(path.cstr != 0);
+  assert(ZS(path) != 0);
   assert(path.length > 0);
   assert(kind != 0);
 
@@ -136,200 +136,200 @@ kind_guess_entry(Str8 path, Kind* kind) {
   StringCompareFlags compare = StringCompareFlag_CaseInsensitive;
   *kind = KIND_UNKNOWN;
 
-  I64 dot_index = str8_find_last(path, '.') - 1;
+  I64 dot_index = str_find_last(path, '.') - 1;
   if (dot_index < 0) {
     err = KIND_ERR_INVALID;
     goto cleanup;
   }
 
-  Str8 ext = S(&path.cstr[dot_index + 1]);
+  Str ext = S(ZS(path) + (dot_index + 1));
 
-  if (!str8_equal(ext, S("pak"), compare)) {
+  if (!str_equal(ext, S("pak"), compare)) {
     *kind = KIND_PAK;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("pa3"), compare)) {
+  if (!str_equal(ext, S("pa3"), compare)) {
     *kind = KIND_PK3;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("bin"), compare)) {
+  if (!str_equal(ext, S("bin"), compare)) {
     *kind = KIND_BIN;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("dat"), compare)) {
+  if (!str_equal(ext, S("dat"), compare)) {
     *kind = KIND_DAT;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("mdl"), compare)) {
+  if (!str_equal(ext, S("mdl"), compare)) {
     *kind = KIND_MD1;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("md2"), compare)) {
+  if (!str_equal(ext, S("md2"), compare)) {
     *kind = KIND_MD2;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("md3"), compare)) {
+  if (!str_equal(ext, S("md3"), compare)) {
     *kind = KIND_MD3;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("ms2"), compare)) {
+  if (!str_equal(ext, S("ms2"), compare)) {
     *kind = KIND_MS2;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("smd"), compare)) {
+  if (!str_equal(ext, S("smd"), compare)) {
     *kind = KIND_SMD;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("bsp"), compare)) {
+  if (!str_equal(ext, S("bsp"), compare)) {
     *kind = KIND_BSP;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("ent"), compare)) {
+  if (!str_equal(ext, S("ent"), compare)) {
     *kind = KIND_ENT;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("md5mesh"), compare)) {
+  if (!str_equal(ext, S("md5mesh"), compare)) {
     *kind = KIND_MD5MESH;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("md5anim"), compare)) {
+  if (!str_equal(ext, S("md5anim"), compare)) {
     *kind = KIND_MD5ANIM;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("mdanim"), compare)) {
+  if (!str_equal(ext, S("mdanim"), compare)) {
     *kind = KIND_MDANIM;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("bnvib"), compare)) {
+  if (!str_equal(ext, S("bnvib"), compare)) {
     *kind = KIND_BNVIB;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("nav"), compare)) {
+  if (!str_equal(ext, S("nav"), compare)) {
     *kind = KIND_NAV;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("map"), compare)) {
+  if (!str_equal(ext, S("map"), compare)) {
     *kind = KIND_MAP;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("raw"), compare)) {
+  if (!str_equal(ext, S("raw"), compare)) {
     *kind = KIND_RAW;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("dem"), compare)) {
+  if (!str_equal(ext, S("dem"), compare)) {
     *kind = KIND_DEM;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("lit"), compare)) {
+  if (!str_equal(ext, S("lit"), compare)) {
     *kind = KIND_LIT;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("lighs"), compare)) {
+  if (!str_equal(ext, S("lighs"), compare)) {
     *kind = KIND_LIGHTS;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("rtlights"), compare)) {
+  if (!str_equal(ext, S("rtlights"), compare)) {
     *kind = KIND_RTLIGHTS;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("wad"), compare)) {
+  if (!str_equal(ext, S("wad"), compare)) {
     *kind = KIND_WAD;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("lmp"), compare)) {
+  if (!str_equal(ext, S("lmp"), compare)) {
     *kind = KIND_LMP;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("pcx"), compare)) {
+  if (!str_equal(ext, S("pcx"), compare)) {
     *kind = KIND_PCX;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("jpg"), compare)) {
+  if (!str_equal(ext, S("jpg"), compare)) {
     *kind = KIND_JPG;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("png"), compare)) {
+  if (!str_equal(ext, S("png"), compare)) {
     *kind = KIND_PNG;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("tga"), compare)) {
+  if (!str_equal(ext, S("tga"), compare)) {
     *kind = KIND_TGA;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("spr"), compare)) {
+  if (!str_equal(ext, S("spr"), compare)) {
     *kind = KIND_SPR;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("spr32"), compare)) {
+  if (!str_equal(ext, S("spr32"), compare)) {
     *kind = KIND_SPR32;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("skin"), compare)) {
+  if (!str_equal(ext, S("skin"), compare)) {
     *kind = KIND_SKIN;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("wav"), compare)) {
+  if (!str_equal(ext, S("wav"), compare)) {
     *kind = KIND_WAV;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("ogg"), compare)) {
+  if (!str_equal(ext, S("ogg"), compare)) {
     *kind = KIND_OGG;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("mp3"), compare)) {
+  if (!str_equal(ext, S("mp3"), compare)) {
     *kind = KIND_MP3;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("rc"), compare)) {
+  if (!str_equal(ext, S("rc"), compare)) {
     *kind = KIND_RC;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("cfg"), compare)) {
+  if (!str_equal(ext, S("cfg"), compare)) {
     *kind = KIND_CFG;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("txt"), compare)) {
+  if (!str_equal(ext, S("txt"), compare)) {
     *kind = KIND_TXT;
     goto cleanup;
   }
 
-  if (!str8_equal(ext, S("json"), compare)) {
+  if (!str_equal(ext, S("json"), compare)) {
     *kind = KIND_JSON;
     goto cleanup;
   }
@@ -341,7 +341,7 @@ cleanup:
 
 KindError
 // cppcheck-suppress unusedFunction
-kind_guess_file(CStr path, Kind* kind) {
+kind_guess_file(CZStr path, Kind* kind) {
   start_profiling(1);
 
   assert(path != 0);
@@ -371,7 +371,7 @@ kind_guess_file(CStr path, Kind* kind) {
 
 KindError
 // cppcheck-suppress unusedFunction
-kind_guess_buffer(CStr data, Kind* kind) {
+kind_guess_buffer(CZStr data, Kind* kind) {
   start_profiling(1);
 
   assert(data != 0);

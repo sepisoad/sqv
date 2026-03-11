@@ -249,7 +249,7 @@ md1_load_skins(Md1* md1, IOFile* io_file) {
 
     if (MD1_SKIN_SINGLE == *st) {
       Sz data_sz = sizeof(U8) * skin_sz * channels;
-      Buf data = (Buf)arena_push(a, data_sz, alignof(U8), TRUE);
+      U8* data = arena_push(a, data_sz, alignof(U8), TRUE);
       assert(data != 0);
 
       // constructing pixel data
@@ -363,7 +363,7 @@ md1_load_triangles(Md1* md1, IOFile* io_file, Md1FacedTriangle** fts) {
 }
 
 static Bool
-md1_has_pose_name_changed(Str new, CStr old) {
+md1_has_pose_name_changed(ZStr new, CZStr old) {
   start_profiling(1);
 
   for (U32 i = 0; i < MD1_MAX_FRAME_NAME_LEN - 1; i++) {
@@ -390,7 +390,7 @@ static Md1Error
 md1_load_single_frame(Md1* md1,
                       IOFile* io_file,
                       U32 frame_idx,
-                      Str frame_name,
+                      ZStr frame_name,
                       Bool* is_bbox_loaded) {
   start_profiling(1);
 

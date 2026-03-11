@@ -23,93 +23,99 @@ enum {
   StringCompareFlag_SlashInsensitive = (1 << 2),
 };
 
-typedef struct Str8 Str8;
-struct Str8 {
+typedef struct Str Str;
+struct Str {
   Sz length;
-  CStr cstr;
+  const char* zstr;
 };
 
-typedef struct {
-  Sz size;
-  CBuf cbuf;
-} Buf8;
+typedef struct WStr WStr;
+struct WStr {
+  Sz length;
+  const U16* zstr;
+};
 
-#define _DefineFStr8_Internal(length)                                      \
-  typedef struct FL##length##_Str8 {                                       \
-    char cstr[(length) + 1];                                               \
-  } FL##length##_Str8;                                                     \
-                                                                           \
-  static inline U32 fl##length##_str8_length() {                           \
-    return (length);                                                       \
-  }                                                                        \
-                                                                           \
-  static inline FL##length##_Str8 fl##length##_str8(const char* str) {     \
-    assert(str != NULL);                                                   \
-    assert(strlen(str) < (length) + 1);                                    \
-    struct {                                                               \
-      char c[(length) + 1];                                                \
-    } mutable_tmp = {0};                                                   \
-    strncpy(mutable_tmp.c, str, (length));                                 \
-    return *(FL##length##_Str8*)&mutable_tmp;                              \
-  }                                                                        \
-                                                                           \
-  static inline Nothing fl##length##_str8_set(FL##length##_Str8* f,        \
-                                              const char* str) {           \
-    assert(f != NULL);                                                     \
-    assert(str != NULL);                                                   \
-    assert(strlen(str) < (length) + 1);                                    \
-    zero_memory(f->cstr, (length) + 1);                                    \
-    copy_memory(f->cstr, str, strlen(str));                                \
-  }                                                                        \
-                                                                           \
-  static inline Nothing fl##length##_str8_reset(FL##length##_Str8* f) {    \
-    assert(f != NULL);                                                     \
-    zero_memory(f->cstr, (length) + 1);                                    \
-  }                                                                        \
-                                                                           \
-  static inline FL##length##_Str8* fl##length##_str8_clone(                \
-      Arena* arena, FL##length##_Str8 f) {                                 \
-    assert(arena != NULL);                                                 \
-    FL##length##_Str8* res = arena_push(arena, sizeof(FL##length##_Str8),  \
-                                        alignof(FL##length##_Str8), TRUE); \
-    strncpy((char*)res->cstr, f.cstr, (length));                           \
-    return res;                                                            \
-  }                                                                        \
-                                                                           \
-  static inline Str8 fl##length##_str8_view(FL##length##_Str8 f) {         \
-    return str8(f.cstr);                                                   \
+typedef struct UStr UStr;
+struct UStr {
+  Sz length;
+  const U32* zstr;
+};
+
+#define _DefineFStr_Internal(length)                                         \
+  typedef struct Str##length {                                               \
+    char zstr[(length) + 1];                                                 \
+  } Str##length;                                                             \
+                                                                             \
+  static inline U32 str##length##_length() {                                 \
+    return (length);                                                         \
+  }                                                                          \
+                                                                             \
+  static inline Str##length str##length(const char* str) {                   \
+    assert(str != NULL);                                                     \
+    assert(strlen(str) < (length) + 1);                                      \
+    struct {                                                                 \
+      char c[(length) + 1];                                                  \
+    } mutable_tmp = {0};                                                     \
+    strncpy(mutable_tmp.c, str, (length));                                   \
+    return *(Str##length*)&mutable_tmp;                                      \
+  }                                                                          \
+                                                                             \
+  static inline Nothing str##length##_set(Str##length* f, const char* str) { \
+    assert(f != NULL);                                                       \
+    assert(str != NULL);                                                     \
+    assert(strlen(str) < (length) + 1);                                      \
+    zero_memory(f->zstr, (length) + 1);                                      \
+    copy_memory(f->zstr, str, strlen(str));                                  \
+  }                                                                          \
+                                                                             \
+  static inline Nothing str##length##_reset(Str##length* f) {                \
+    assert(f != NULL);                                                       \
+    zero_memory(f->zstr, (length) + 1);                                      \
+  }                                                                          \
+                                                                             \
+  static inline Str##length* str##length##_clone(Arena* arena,               \
+                                                 Str##length f) {            \
+    assert(arena != NULL);                                                   \
+    Str##length* res =                                                       \
+        arena_push(arena, sizeof(Str##length), alignof(Str##length), TRUE);  \
+    strncpy((char*)res->zstr, f.zstr, (length));                             \
+    return res;                                                              \
+  }                                                                          \
+                                                                             \
+  static inline Str str##length##_view(Str##length f) {                      \
+    return str(f.zstr);                                                      \
   }
 
-#define DefineFStr8(length) _DefineFStr8_Internal(length)
+#define DefineFStr(length) _DefineFStr_Internal(length)
 
 /* ===================================================== */
 /*                          API                          */
 /* ===================================================== */
 
-// Str8
-Str8 str8(CStr cstr);
-Str8 str8_raw(RawPtr rptr, Sz length);
-Str8 str8_clone(Arena* arena, Str8 str);
-Str8 str8_slice(Arena* arena, Str8 str, Sz from, Sz to);
-Str8 str8_zero(void);
-Str8 str8_join(Arena* arena, Str8 str_a, Str8 str_b, char separator);
-Nothing str8_reset(Str8* ptr);
-Bool str8_is_equal(Str8 a, Str8 b);
-I64 str8_find_first(Str8 str, I8 chr);
-I64 str8_find_last(Str8 str, I8 chr);
-Bool str8_equal(Str8 str_a, Str8 str_b, StringCompareFlags flags);
+// Str
+Str str(const char* zstr);
+Str str_raw(RawPtr rptr, Sz length);
+Str str_clone(Arena* arena, Str str);
+Str str_slice(Arena* arena, Str str, Sz from, Sz to);
+Str str_zero(void);
+Str str_join(Arena* arena, Str str_a, Str str_b, char separator);
+Nothing str_reset(Str* ptr);
+Bool str_is_equal(Str a, Str b);
+I64 str_find_first(Str str, I8 chr);
+I64 str_find_last(Str str, I8 chr);
+Bool str_equal(Str str_a, Str str_b, StringCompareFlags flags);
 
-// Buf8
-Buf8 buf8(CBuf cbuf, Sz size);
+// Buf
+Buf buf(const U8* cbuf, Sz size);
 
 // Macros
-#define CS(str) (str).cstr
-#define S(cstr)                \
-  _Generic((cstr),             \
-      Str8: (cstr),            \
-      Str: str8((CStr)(cstr)), \
-      CStr: str8((cstr)),      \
-      default: str8((CStr)(cstr)))
+#define ZS(str) (str).zstr
+#define S(zstr)                 \
+  _Generic((zstr),              \
+      Str: (zstr),              \
+      ZStr: str((CZStr)(zstr)), \
+      CZStr: str((zstr)),       \
+      default: str((CZStr)(zstr)))
 #define SL(str) (str).length
 
 /////
@@ -179,121 +185,121 @@ static U8 integer_symbol_reverse[128] = {
 
 // TODO: turn all these functions into inline function
 
-Str8
-str8(CStr cstr) {
+Str
+str(const char* zstr) {
   start_profiling(1);
 
-  assert(cstr != 0);
-  // assert(strlen(cstr) > 0);
+  assert(zstr != 0);
+  // assert(strlen(zstr) > 0);
 
-  Str8 result = {.cstr = cstr, .length = (Sz)strlen(cstr)};
+  Str result = {.zstr = zstr, .length = (Sz)strlen(zstr)};
 
   end_profiling();
   return result;
 }
 
-Str8
-str8_raw(RawPtr rptr, Sz length) {
+Str
+str_raw(RawPtr rptr, Sz length) {
   start_profiling(1);
 
   assert(rptr != 0);
   // assert(length > 0);
 
-  Str8 result = {.cstr = (CStr)rptr, .length = length};
+  Str result = {.zstr = (const char*)rptr, .length = length};
 
   end_profiling();
   return result;
 }
 
-Str8
-str8_clone(Arena* arena, Str8 str) {
+Str
+str_clone(Arena* arena, Str str) {
   start_profiling(1);
 
   assert(arena != 0);
-  assert(str.cstr != 0);
+  assert(str.zstr != 0);
   // assert(str.length > 0);
 
-  Str copy =
+  char* copy =
       arena_push(arena, sizeof(I8) * (str.length + 1), alignof(I8), TRUE);
-  copy_memory(copy, str.cstr, str.length);
-  Str8 result = {.cstr = copy, .length = str.length};
+  copy_memory(copy, str.zstr, str.length);
+  Str result = {.zstr = copy, .length = str.length};
 
   end_profiling();
   return result;
 }
 
-Str8
-str8_slice(Arena* arena, Str8 str, Sz from, Sz to) {
+Str
+str_slice(Arena* arena, Str str, Sz from, Sz to) {
   start_profiling(1);
 
   assert(arena != 0);
-  assert(str.cstr != 0);
+  assert(str.zstr != 0);
   assert(str.length > 0);
   assert(from <= to);
   assert(from <= str.length);
   assert(to <= str.length);
 
   Sz new_length = to - from;
-  Str copy =
+  char* copy =
       arena_push(arena, sizeof(I8) * (new_length + 1), alignof(I8), TRUE);
 
-  copy_memory(copy, str.cstr + from, new_length);
-  Str8 result = {.cstr = copy, .length = new_length};
+  copy_memory(copy, str.zstr + from, new_length);
+  Str result = {.zstr = copy, .length = new_length};
 
   end_profiling();
   return result;
 }
 
-Str8
-str8_zero(void) {
+Str
+str_zero(void) {
   start_profiling(1);
 
-  Str8 result = {0};
+  Str result = {0};
 
   end_profiling();
   return result;
 }
 
-Str8
-str8_join(Arena* arena, Str8 s1, Str8 s2, char separator) {
+Str
+str_join(Arena* arena, Str s1, Str s2, char separator) {
   start_profiling(1);
 
   assert(arena != 0);
-  assert(s1.cstr != 0);
+  assert(s1.zstr != 0);
   assert(s1.length > 0);
-  assert(s2.cstr != 0);
+  assert(s2.zstr != 0);
   assert(s2.length > 0);
   assert(separator != 0);
 
   Sz length = s1.length + s2.length + 1; /*/*/
-  Str str =
+  char* str =
       arena_push(arena, sizeof(I8) * (length + 1 /*0*/), alignof(I8), TRUE);
 
-  memcpy(str, s1.cstr, s1.length);
+  memcpy(str, s1.zstr, s1.length);
   str[s1.length] = separator;
-  memcpy(str + s1.length + 1, s2.cstr, s2.length);
+  memcpy(str + s1.length + 1, s2.zstr, s2.length);
 
   end_profiling();
-  return (Str8){.cstr = str, .length = length};
+  return (Str){.zstr = str, .length = length};
 }
 
 Nothing
-str8_reset(Str8* ptr) {
+str_reset(Str* ptr) {
   start_profiling(1);
 
-  zero_memory((RawPtr)ptr->cstr, ptr->length);
+  zero_memory((RawPtr)ptr->zstr, ptr->length);
   ptr->length = 0;
 
   end_profiling();
 }
 
 Bool
-str8_is_equal(Str8 str_a, Str8 str_b) {
+str_is_equal(Str str_a, Str str_b) {
   start_profiling(1);
 
-  assert(str_a.cstr != 0);
+  assert(str_a.zstr != 0);
   assert(str_a.length > 0);
-  assert(str_b.cstr != 0);
+  assert(str_b.zstr != 0);
   assert(str_b.length > 0);
 
   Bool result = TRUE;
@@ -304,7 +310,7 @@ str8_is_equal(Str8 str_a, Str8 str_b) {
   }
 
   for (U32 index = 0; index < str_a.length; index++) {
-    if (str_a.cstr[index] != str_b.cstr[index]) {
+    if (str_a.zstr[index] != str_b.zstr[index]) {
       result = FALSE;
       goto cleanup;
     }
@@ -316,17 +322,17 @@ cleanup:
 }
 
 I64
-str8_find_first(Str8 str, I8 chr) {
+str_find_first(Str str, I8 chr) {
   start_profiling(1);
 
-  assert(str.cstr != 0);
+  assert(str.zstr != 0);
   assert(str.length > 0);
 
   I64 index = 0;
   Bool found = FALSE;
 
   for (; index < (I32)str.length; index++) {
-    if (str.cstr[index] == chr) {
+    if (str.zstr[index] == chr) {
       found = TRUE;
       break;
     }
@@ -340,17 +346,17 @@ str8_find_first(Str8 str, I8 chr) {
 }
 
 I64
-str8_find_last(Str8 str, I8 chr) {
+str_find_last(Str str, I8 chr) {
   start_profiling(1);
 
-  assert(str.cstr != 0);
+  assert(str.zstr != 0);
   assert(str.length > 0);
 
   I64 index = str.length;
   Bool found = FALSE;
 
   for (; index > 0; index--) {
-    if (str.cstr[index] == chr) {
+    if (str.zstr[index] == chr) {
       found = TRUE;
       break;
     }
@@ -364,18 +370,18 @@ str8_find_last(Str8 str, I8 chr) {
 }
 
 Bool
-str8_equal(Str8 str_a, Str8 str_b, StringCompareFlags flags) {
+str_equal(Str str_a, Str str_b, StringCompareFlags flags) {
   start_profiling(1);
 
-  assert(str_a.cstr != 0);
+  assert(str_a.zstr != 0);
   assert(str_a.length > 0);
-  assert(str_b.cstr != 0);
+  assert(str_b.zstr != 0);
   assert(str_b.length > 0);
 
   Bool result = FALSE;
 
   if (str_a.length == str_b.length && flags == 0) {
-    result = is_memory_equal(str_a.cstr, str_b.cstr, str_b.length);
+    result = is_memory_equal(str_a.zstr, str_b.zstr, str_b.length);
   } else if (str_a.length == str_b.length ||
              (flags & StringCompareFlag_RightSideSloppy)) {
     Bool case_insensitive = (flags & StringCompareFlag_CaseInsensitive);
@@ -384,8 +390,8 @@ str8_equal(Str8 str_a, Str8 str_b, StringCompareFlags flags) {
 
     result = 1;
     for (U64 i = 0; i < length; i += 1) {
-      U8 char_a = str_a.cstr[i];
-      U8 char_b = str_b.cstr[i];
+      U8 char_a = str_a.zstr[i];
+      U8 char_b = str_b.zstr[i];
       if (case_insensitive) {
         char_a = to_upper_char(char_a);
         char_b = to_upper_char(char_b);
@@ -405,14 +411,14 @@ str8_equal(Str8 str_a, Str8 str_b, StringCompareFlags flags) {
   return result;
 }
 
-Buf8
-buf8(CBuf cbuf, Sz size) {
+Buf
+buf(const U8* cbuf, Sz size) {
   start_profiling(1);
 
   assert(cbuf != 0);
   assert(size > 0);
 
-  Buf8 result = {.cbuf = cbuf, .size = size};
+  Buf result = {.cbuf = cbuf, .size = size};
 
   end_profiling();
   return result;

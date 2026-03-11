@@ -84,7 +84,7 @@ typedef struct {
 
 mount_master_profiling_context();
 
-DefineFStr8(APP_MD1_MAX_ERROR_LENGTH);
+DefineFStr(APP_MD1_MAX_ERROR_LENGTH);
 
 static struct {
   Arena* arena;
@@ -92,9 +92,9 @@ static struct {
   Bool is_app_styled;
   Md1 md1;
   // U32 zoom;
-  Str8 input_path;
+  Str input_path;
   IOFile input_io_file;
-  FL512_Str8 error_text;
+  Str512 error_text;
   struct {
     sg_pass_action pass_action;
   } display;
@@ -125,7 +125,7 @@ static Nothing app_md1_init(Nothing);
 static AppMd1Error app_md1_init_style(struct nk_style* s);
 static AppMd1Error app_md1_init_icons(Nothing);
 static AppMd1Error app_md1_init_icon(AppMd1Image* app_icon,
-                                     CBuf buffer,
+                                     const U8* buffer,
                                      Sz size);
 static AppMd1Error app_md1_init_display_pipeline();
 static AppMd1Error app_md1_init_offscreen_pipeline();
@@ -137,7 +137,7 @@ static AppMd1Error app_md1_cleanup_icon(AppMd1Image* app_icon);
 static AppMd1Error app_md1_cleanup_3d(Nothing);
 
 static Nothing app_md1_handle_user_input_events(const sapp_event* e);
-static AppMd1Error app_md1_handle_drop_event(Str8 path);
+static AppMd1Error app_md1_handle_drop_event(Str path);
 
 static Nothing app_md1_frame(Nothing);
 static U32 app_md1_draw_ui(struct nk_context* ctx);
@@ -217,8 +217,8 @@ app_md1_init(Nothing) {
 
   app_md1_init_display_pipeline();
 
-  if (CS(g_state.input_path) != NULL) {
-    log_info("loading '%s'", CS(g_state.input_path));
+  if (ZS(g_state.input_path) != NULL) {
+    log_info("loading '%s'", ZS(g_state.input_path));
     app_md1_handle_drop_event(g_state.input_path);
   }
 
@@ -341,17 +341,16 @@ app_md1_init_icons(Nothing) {
 
 static AppMd1Error
 // cppcheck-suppress unusedFunction
-app_md1_init_icon(AppMd1Image* app_icon, CBuf buffer, Sz size) {
+app_md1_init_icon(AppMd1Image* app_icon, const U8* buffer, Sz size) {
   start_profiling(1);
 
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
 
   I32 w, h, c = 0;
-  CBuf data = stbi_load_from_memory(buffer, (I32)size, &w, &h, &c, 4);
+  const U8* data = stbi_load_from_memory(buffer, (I32)size, &w, &h, &c, 4);
   if (0 == data) {
     err = APP_MD1_ERR_ICON_INIT;
-    fl512_str8_set(&g_state.error_text,
-                   "failed to load icon image from memory");
+    str512_set(&g_state.error_text, "failed to load icon image from memory");
     goto cleanup;
   }
   start_memory_profiling(data, size);
@@ -495,7 +494,7 @@ app_md1_cleanup_reload(Nothing) {
 
   app_md1_cleanup_3d();
 
-  fl512_str8_reset(&g_state.error_text);
+  str512_reset(&g_state.error_text);
 
   io_close_file(&g_state.input_io_file);
   if (APP_MD1_MODE_LOADED == old_mode) {
@@ -625,7 +624,7 @@ app_md1_handle_user_input_events(const sapp_event* event) {
 /* ===================================================== */
 
 static AppMd1Error
-app_md1_handle_drop_event(Str8 path) {
+app_md1_handle_drop_event(Str path) {
   start_profiling(1);
 
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
@@ -779,7 +778,7 @@ app_md1_draw_mode_failed(struct nk_context* ctx,
                window_flags)) {
     struct nk_rect content_region = nk_window_get_content_region(ctx);
     nk_layout_row_dynamic(ctx, content_region.h, 1);
-    nk_label_wrap(ctx, CS(g_state.error_text));
+    nk_label_wrap(ctx, ZS(g_state.error_text));
   }
   nk_end(ctx);
 
