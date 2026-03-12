@@ -133,7 +133,7 @@ kind_guess_entry(Str path, Kind* kind) {
   assert(kind != 0);
 
   KindError err = KIND_ERR_SUCCESS;
-  StringCompareFlags compare = StringCompareFlag_CaseInsensitive;
+  StrCmpFlags compare = STR_CMP_CASE_INSENSITIVE;
   *kind = KIND_UNKNOWN;
 
   I64 dot_index = str_find_last(path, '.') - 1;

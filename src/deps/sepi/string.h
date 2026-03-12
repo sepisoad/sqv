@@ -11,6 +11,10 @@
 #include <sepi/arena.h>
 
 /* ===================================================== */
+/*                  FORWARD DECLERATION                  */
+/* ===================================================== */
+
+/* ===================================================== */
 /*                       CONSTANTS                       */
 /* ===================================================== */
 
@@ -18,11 +22,11 @@
 /*                         TYPES                         */
 /* ===================================================== */
 
-typedef U32 StringCompareFlags;
+typedef U32 StrCmpFlags;
 enum {
-  StringCompareFlag_CaseInsensitive = (1 << 0),
-  StringCompareFlag_RightSideSloppy = (1 << 1),
-  StringCompareFlag_SlashInsensitive = (1 << 2),
+  STR_CMP_CASE_INSENSITIVE = (1 << 0),
+  STR_CMP_CASE_RIGHT_SIDE_SLOPPY = (1 << 1),
+  STR_CMP_CASE_SLASH_INSENSITIVE = (1 << 2),
 };
 
 typedef struct Str Str;
@@ -94,7 +98,6 @@ struct UStr {
 /*                          API                          */
 /* ===================================================== */
 
-// Str
 Str str(const char* zstr);
 Str str_raw(RawPtr rptr, Sz length);
 Str str_clone(Arena* arena, Str str);
@@ -105,9 +108,8 @@ Nothing str_reset(Str* ptr);
 Bool str_is_equal(Str a, Str b);
 I64 str_find_first(Str str, I8 chr);
 I64 str_find_last(Str str, I8 chr);
-Bool str_equal(Str str_a, Str str_b, StringCompareFlags flags);
+Bool str_equal(Str str_a, Str str_b, StrCmpFlags flags);
 
-// Macros
 #define ZS(str) (str).zstr
 #define S(zstr)                 \
   _Generic((zstr),              \
@@ -116,8 +118,6 @@ Bool str_equal(Str str_a, Str str_b, StringCompareFlags flags);
       CZStr: str((zstr)),       \
       default: str((CZStr)(zstr)))
 #define SL(str) (str).length
-
-/////
 
 static inline Bool
 is_white_space_char(U8 c) {
@@ -369,7 +369,7 @@ str_find_last(Str str, I8 chr) {
 }
 
 Bool
-str_equal(Str str_a, Str str_b, StringCompareFlags flags) {
+str_equal(Str str_a, Str str_b, StrCmpFlags flags) {
   start_profiling(1);
 
   assert(str_a.zstr != 0);
@@ -382,9 +382,9 @@ str_equal(Str str_a, Str str_b, StringCompareFlags flags) {
   if (str_a.length == str_b.length && flags == 0) {
     result = is_memory_equal(str_a.zstr, str_b.zstr, str_b.length);
   } else if (str_a.length == str_b.length ||
-             (flags & StringCompareFlag_RightSideSloppy)) {
-    Bool case_insensitive = (flags & StringCompareFlag_CaseInsensitive);
-    Bool slash_insensitive = (flags & StringCompareFlag_SlashInsensitive);
+             (flags & STR_CMP_CASE_RIGHT_SIDE_SLOPPY)) {
+    Bool case_insensitive = (flags & STR_CMP_CASE_INSENSITIVE);
+    Bool slash_insensitive = (flags & STR_CMP_CASE_SLASH_INSENSITIVE);
     U64 length = min(str_a.length, str_b.length);
 
     result = 1;

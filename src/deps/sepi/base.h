@@ -38,6 +38,8 @@ typedef ptrdiff_t PtrDiff;
 typedef char* ZStr;
 typedef const char* CZStr;
 
+typedef U64 Duration;
+
 typedef struct Empty Empty;
 struct Empty {};
 
@@ -97,13 +99,13 @@ struct Empty {};
 
 #if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || \
     defined(__x86_64)
-#define CPU_X64 1
+#define CPU_INTEL_64 1
 #elif defined(i386) || defined(__i386) || defined(__i386__)
-#define CPU_X86 1
+#define CPU_INTEL_32 1
 #elif defined(__aarch64__)
-#define CPU_ARM64 1
+#define CPU_ARM_64 1
 #elif defined(__arm__)
-#define CPU_ARM32 1
+#define CPU_ARM_32 1
 #else
 #error "cpu not supported!"
 #endif
@@ -125,9 +127,19 @@ struct Empty {};
 #define mega_bytes(number) (((U64)(number)) << 20)
 #define giga_bytes(number) (((U64)(number)) << 30)
 #define terra_bytes(number) (((U64)(number)) << 40)
+
 #define thousand(number) ((number) * 1000)
 #define million(number) ((number) * 1000000)
 #define billion(number) ((number) * 1000000000)
+
+#define nanosecond (Duration)1
+#define microsecond (nanosecond * 1000)
+#define millisecond (microsecond * 1000)
+#define second (millisecond * 1000)
+#define minute (second * 60)
+#define hour (minute * 60)
+#define day (hour * 24)
+#define week (day * 7)
 
 /* ===================================================== */
 /*                         UTILS                         */
@@ -140,6 +152,31 @@ struct Empty {};
 
 #define glue_(expression_a, expression_b) expression_a##expression_b
 #define glue(expression_a, expression_b) glue_(expression_a, expression_b)
+
+/* ===================================================== */
+/*                       FEATURES                        */
+/* ===================================================== */
+
+#if defined(CC_GCC) || defined(CC_CLANG) || defined(CC_MSVC)
+#define typeof(type) __typeof__(type)
+#else
+#error "typeof() not supported!"
+#endif
+
+#if defined(CC_GCC) || defined(CC_CLANG)
+#define thread_local __thread
+#elif defined(CC_MSVC)
+#define thread_local __declspec(thread)
+#else
+#error "typeof() not supported!"
+#endif
+
+#define defer(initializer, cleaner) \
+  for (U32 _i_ = ((initializer), 0); !_i_; _i_ += 1, (cleaner))
+
+#define defer_cond(initializer, cleaner)                                 \
+  for (U32 _i_ = 2 * !(initializer); (_i_ == 2 ? ((cleaner), 0) : !_i_); \
+       _i_ += 1, (cleaner))
 
 /* ===================================================== */
 /*                       ALIGNMENT                       */
@@ -162,25 +199,6 @@ struct Empty {};
   max(alignof(int),            \
       max(alignof(long),       \
           max(alignof(long long), max(alignof(double), alignof(void*)))))
-
-/* ===================================================== */
-/*                       FEATURES                        */
-/* ===================================================== */
-
-#if defined(CC_GCC) || defined(CC_CLANG) || defined(CC_MSVC)
-#define typeof(type) __typeof__(type)
-#else
-#error "typeof() not supported!"
-#endif
-
-#if defined(CC_GCC) || defined(CC_CLANG)
-#define thread_local __thread
-#elif defined(CC_MSVC)
-#define thread_local __declspec(thread)
-#else
-#error "typeof() not supported!"
-#endif
-
 
 /* ===================================================== */
 /*                        BITOPS                         */
