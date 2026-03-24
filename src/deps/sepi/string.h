@@ -5,6 +5,8 @@
 /*                     DEPENDENCIES                      */
 /* ===================================================== */
 
+#include <wchar.h>
+
 #include <tracy/tracy.h>
 
 #include <sepi/base.h>
@@ -18,6 +20,11 @@
 /*                       CONSTANTS                       */
 /* ===================================================== */
 
+static U8 str_utf8_class[32] = {
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 3, 3, 4, 5,
+};
+
 /* ===================================================== */
 /*                         TYPES                         */
 /* ===================================================== */
@@ -29,95 +36,141 @@ enum {
   STR_CMP_CASE_SLASH_INSENSITIVE = (1 << 2),
 };
 
+typedef struct StrUnicodeDecode StrUnicodeDecode;
+struct StrUnicodeDecode {
+  U32 inc;
+  U32 codepoint;
+};
+
 typedef struct Str Str;
 struct Str {
+  U8* zstr;
   Sz length;
-  const char* zstr;
 };
 
 typedef struct WStr WStr;
 struct WStr {
+  U16* zstr;
   Sz length;
-  const U16* zstr;
 };
 
 typedef struct UStr UStr;
 struct UStr {
+  U32* zstr;
   Sz length;
-  const U32* zstr;
 };
 
-#define _DefineFStr_Internal(length)                                         \
-  typedef struct Str##length {                                               \
-    char zstr[(length) + 1];                                                 \
-  } Str##length;                                                             \
-                                                                             \
-  static inline U32 str##length##_length() {                                 \
-    return (length);                                                         \
-  }                                                                          \
-                                                                             \
-  static inline Str##length str##length(const char* str) {                   \
-    assert(str != NULL);                                                     \
-    assert(strlen(str) < (length) + 1);                                      \
-    struct {                                                                 \
-      char c[(length) + 1];                                                  \
-    } mutable_tmp = {0};                                                     \
-    strncpy(mutable_tmp.c, str, (length));                                   \
-    return *(Str##length*)&mutable_tmp;                                      \
-  }                                                                          \
-                                                                             \
-  static inline Nothing str##length##_set(Str##length* f, const char* str) { \
-    assert(f != NULL);                                                       \
-    assert(str != NULL);                                                     \
-    assert(strlen(str) < (length) + 1);                                      \
-    zero_memory(f->zstr, (length) + 1);                                      \
-    copy_memory(f->zstr, str, strlen(str));                                  \
-  }                                                                          \
-                                                                             \
-  static inline Nothing str##length##_reset(Str##length* f) {                \
-    assert(f != NULL);                                                       \
-    zero_memory(f->zstr, (length) + 1);                                      \
-  }                                                                          \
-                                                                             \
-  static inline Str##length* str##length##_clone(Arena* arena,               \
-                                                 Str##length f) {            \
-    assert(arena != NULL);                                                   \
-    Str##length* res =                                                       \
-        arena_push(arena, sizeof(Str##length), alignof(Str##length), TRUE);  \
-    strncpy((char*)res->zstr, f.zstr, (length));                             \
-    return res;                                                              \
-  }                                                                          \
-                                                                             \
-  static inline Str str##length##_view(Str##length f) {                      \
-    return str(f.zstr);                                                      \
+#define _DefineFStr_Internal(length)                                        \
+  typedef struct Str##length {                                              \
+    U8 zstr[(length) + 1];                                                  \
+  } Str##length;                                                            \
+                                                                            \
+  static inline U32 str##length##_length() {                                \
+    return (length);                                                        \
+  }                                                                         \
+                                                                            \
+  static inline Str##length str##length(U8* str) {                          \
+    assert(str != NULL);                                                    \
+    assert(str_length(str) < (length) + 1);                                 \
+    struct {                                                                \
+      U8 c[(length) + 1];                                                   \
+    } mutable_tmp = {0};                                                    \
+    copy_memory(mutable_tmp.c, str, (length));                              \
+    return *(Str##length*)&mutable_tmp;                                     \
+  }                                                                         \
+                                                                            \
+  static inline Nothing str##length##_set(Str##length* f, const U8* str) {  \
+    assert(f != NULL);                                                      \
+    assert(str != NULL);                                                    \
+    assert(str_length(str) < (length) + 1);                                 \
+    zero_memory(f->zstr, (length) + 1);                                     \
+    copy_memory(f->zstr, str, str_length(str));                             \
+  }                                                                         \
+                                                                            \
+  static inline Nothing str##length##_reset(Str##length* f) {               \
+    assert(f != NULL);                                                      \
+    zero_memory(f->zstr, (length) + 1);                                     \
+  }                                                                         \
+                                                                            \
+  static inline Str##length* str##length##_clone(Arena* arena,              \
+                                                 Str##length f) {           \
+    assert(arena != NULL);                                                  \
+    Str##length* res =                                                      \
+        arena_push(arena, sizeof(Str##length), alignof(Str##length), TRUE); \
+    copy_memory((U8*)res->zstr, f.zstr, (length));                          \
+    return res;                                                             \
+  }                                                                         \
+                                                                            \
+  static inline Str str##length##_view(Str##length f) {                     \
+    return str(f.zstr);                                                     \
   }
 
 #define DefineFStr(length) _DefineFStr_Internal(length)
+
+#define ZS(str) ((char*)(str).zstr)
+
+#define S(zstr) str((U8*)(zstr))
+
+#define SL(str) (str).length
 
 /* ===================================================== */
 /*                          API                          */
 /* ===================================================== */
 
-Str str(const char* zstr);
+Str str(U8* zstr);
+WStr wstr(U16* zstr);
+UStr ustr(U32* zstr);
+
+Str str_from_wstr(Arena* arena, WStr in);
+Str str_from_ustr(Arena* arena, UStr in);
+WStr wstr_from_str(Arena* arena, Str in);
+UStr ustr_from_str(Arena* arena, Str in);
+
+U32 str_encode(U8* str, U32 codepoint);
+U32 wstr_encode(U16* str, U32 codepoint);
+
+StrUnicodeDecode str_decode(U8* str, U64 max);
+StrUnicodeDecode wstr_decode(U16* str, U64 max);
+
+Sz str_length(const U8* zstr);
+Sz wstr_length(const U16* zstr);
+Sz ustr_length(const U32* zstr);
+
 Str str_raw(RawPtr rptr, Sz length);
+WStr wstr_raw(RawPtr rptr, Sz length);
+UStr ustr_raw(RawPtr rptr, Sz length);
+
 Str str_clone(Arena* arena, Str str);
 Str str_slice(Arena* arena, Str str, Sz from, Sz to);
 Str str_zero(void);
-Str str_join(Arena* arena, Str str_a, Str str_b, char separator);
+Sz str_len(const U8* zstr);
+Str str_join(Arena* arena, Str str_a, Str str_b, U8 separator);
 Nothing str_reset(Str* ptr);
 Bool str_is_equal(Str a, Str b);
 I64 str_find_first(Str str, I8 chr);
 I64 str_find_last(Str str, I8 chr);
 Bool str_equal(Str str_a, Str str_b, StrCmpFlags flags);
 
-#define ZS(str) (str).zstr
-#define S(zstr)                 \
-  _Generic((zstr),              \
-      Str: (zstr),              \
-      ZStr: str((CZStr)(zstr)), \
-      CZStr: str((zstr)),       \
-      default: str((CZStr)(zstr)))
-#define SL(str) (str).length
+static U16
+safe_cast_u16(U32 x) {
+  runtime_assert(x <= MAX_U16);
+  U16 result = (U16)x;
+  return result;
+}
+
+static U32
+safe_cast_u32(U64 x) {
+  runtime_assert(x <= MAX_U32);
+  U32 result = (U32)x;
+  return result;
+}
+
+static I32
+safe_cast_s32(I64 x) {
+  runtime_assert(x <= MAX_I32);
+  I32 result = (I32)x;
+  return result;
+}
 
 static inline Bool
 is_white_space_char(U8 c) {
@@ -168,33 +221,82 @@ to_upper_char(U8 c) {
 
 mount_slave_profiling_context();
 
-static U8 integer_symbol_reverse[128] = {
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-};
-
-// TODO: turn all these functions into inline function
-
 Str
-str(const char* zstr) {
+str(U8* zstr) {
   start_profiling(1);
 
   assert(zstr != 0);
   // assert(strlen(zstr) > 0);
 
-  Str result = {.zstr = zstr, .length = (Sz)strlen(zstr)};
+  Str result = {.zstr = zstr, .length = (Sz)str_length(zstr)};
 
   end_profiling();
   return result;
+}
+
+WStr
+wstr(U16* zstr) {
+  start_profiling(1);
+
+  assert(zstr != 0);
+  // assert(strlen(zstr) > 0);
+
+  WStr result = {.zstr = zstr, .length = (Sz)wstr_length(zstr)};
+
+  end_profiling();
+  return result;
+}
+
+UStr
+ustr(U32* zstr) {
+  start_profiling(1);
+
+  assert(zstr != 0);
+  // assert(strlen(zstr) > 0);
+
+  UStr result = {.zstr = zstr, .length = (Sz)ustr_length(zstr)};
+
+  end_profiling();
+  return result;
+}
+
+Sz
+str_length(const U8* zstr) {
+  start_profiling(1);
+
+  const U8* start = zstr;
+  for (; *zstr; zstr++)
+    ;
+  Sz length = (Sz)(zstr - start);
+
+  end_profiling();
+  return length;
+}
+
+Sz
+wstr_length(const U16* zstr) {
+  start_profiling(1);
+
+  const U16* start = zstr;
+  for (; *zstr; zstr++)
+    ;
+  Sz length = (Sz)(zstr - start);
+
+  end_profiling();
+  return length;
+}
+
+Sz
+ustr_length(const U32* zstr) {
+  start_profiling(1);
+
+  const U32* start = zstr;
+  for (; *zstr; zstr++)
+    ;
+  Sz length = (Sz)(zstr - start);
+
+  end_profiling();
+  return length;
 }
 
 Str
@@ -202,9 +304,32 @@ str_raw(RawPtr rptr, Sz length) {
   start_profiling(1);
 
   assert(rptr != 0);
-  // assert(length > 0);
 
-  Str result = {.zstr = (const char*)rptr, .length = length};
+  Str result = {.zstr = (U8*)rptr, .length = length};
+
+  end_profiling();
+  return result;
+}
+
+WStr
+wstr_raw(RawPtr rptr, Sz length) {
+  start_profiling(1);
+
+  assert(rptr != 0);
+
+  WStr result = {.zstr = (U16*)rptr, .length = length};
+
+  end_profiling();
+  return result;
+}
+
+UStr
+ustr_raw(RawPtr rptr, Sz length) {
+  start_profiling(1);
+
+  assert(rptr != 0);
+
+  UStr result = {.zstr = (U32*)rptr, .length = length};
 
   end_profiling();
   return result;
@@ -216,9 +341,8 @@ str_clone(Arena* arena, Str str) {
 
   assert(arena != 0);
   assert(str.zstr != 0);
-  // assert(str.length > 0);
 
-  char* copy =
+  U8* copy =
       arena_push(arena, sizeof(I8) * (str.length + 1), alignof(I8), TRUE);
   copy_memory(copy, str.zstr, str.length);
   Str result = {.zstr = copy, .length = str.length};
@@ -239,7 +363,7 @@ str_slice(Arena* arena, Str str, Sz from, Sz to) {
   assert(to <= str.length);
 
   Sz new_length = to - from;
-  char* copy =
+  U8* copy =
       arena_push(arena, sizeof(I8) * (new_length + 1), alignof(I8), TRUE);
 
   copy_memory(copy, str.zstr + from, new_length);
@@ -260,7 +384,7 @@ str_zero(void) {
 }
 
 Str
-str_join(Arena* arena, Str s1, Str s2, char separator) {
+str_join(Arena* arena, Str s1, Str s2, U8 separator) {
   start_profiling(1);
 
   assert(arena != 0);
@@ -271,7 +395,7 @@ str_join(Arena* arena, Str s1, Str s2, char separator) {
   assert(separator != 0);
 
   Sz length = s1.length + s2.length + 1; /*/*/
-  char* str =
+  U8* str =
       arena_push(arena, sizeof(I8) * (length + 1 /*0*/), alignof(I8), TRUE);
 
   memcpy(str, s1.zstr, s1.length);
@@ -410,6 +534,195 @@ str_equal(Str str_a, Str str_b, StrCmpFlags flags) {
   return result;
 }
 
+StrUnicodeDecode
+str_decode(U8* str, U64 max) {
+  StrUnicodeDecode result = {1, MAX_U32};
+  U8 byte = str[0];
+  U8 byte_class = str_utf8_class[byte >> 3];
+  switch (byte_class) {
+    case 1: {
+      result.codepoint = byte;
+    } break;
+    case 2: {
+      if (1 < max) {
+        U8 cont_byte = str[1];
+        if (str_utf8_class[cont_byte >> 3] == 0) {
+          result.codepoint = (byte & 0x0000001f) << 6;
+          result.codepoint |= (cont_byte & 0x0000003f);
+          result.inc = 2;
+        }
+      }
+    } break;
+    case 3: {
+      if (2 < max) {
+        U8 cont_byte[2] = {str[1], str[2]};
+        if (str_utf8_class[cont_byte[0] >> 3] == 0 &&
+            str_utf8_class[cont_byte[1] >> 3] == 0) {
+          result.codepoint = (byte & 0x0000000f) << 12;
+          result.codepoint |= ((cont_byte[0] & 0x0000003f) << 6);
+          result.codepoint |= (cont_byte[1] & 0x0000003f);
+          result.inc = 3;
+        }
+      }
+    } break;
+    case 4: {
+      if (3 < max) {
+        U8 cont_byte[3] = {str[1], str[2], str[3]};
+        if (str_utf8_class[cont_byte[0] >> 3] == 0 &&
+            str_utf8_class[cont_byte[1] >> 3] == 0 &&
+            str_utf8_class[cont_byte[2] >> 3] == 0) {
+          result.codepoint = (byte & 0x00000007) << 18;
+          result.codepoint |= ((cont_byte[0] & 0x0000003f) << 12);
+          result.codepoint |= ((cont_byte[1] & 0x0000003f) << 6);
+          result.codepoint |= (cont_byte[2] & 0x0000003f);
+          result.inc = 4;
+        }
+      }
+    }
+  }
+  return result;
+}
+
+StrUnicodeDecode
+wstr_decode(U16* str, U64 max) {
+  StrUnicodeDecode result = {1, MAX_U32};
+  result.codepoint = str[0];
+  result.inc = 1;
+  if (max > 1 && 0xD800 <= str[0] && str[0] < 0xDC00 && 0xDC00 <= str[1] &&
+      str[1] < 0xE000) {
+    result.codepoint =
+        ((str[0] - 0xD800) << 10) | ((str[1] - 0xDC00) + 0x10000);
+    result.inc = 2;
+  }
+  return result;
+}
+
+U32
+str_encode(U8* str, U32 codepoint) {
+  U32 inc = 0;
+  if (codepoint <= 0x7F) {
+    str[0] = (U8)codepoint;
+    inc = 1;
+  } else if (codepoint <= 0x7FF) {
+    str[0] = (0x00000003 << 6) | ((codepoint >> 6) & 0x0000001f);
+    str[1] = (1 << 7) | (codepoint & 0x0000003f);
+    inc = 2;
+  } else if (codepoint <= 0xFFFF) {
+    str[0] = (0x00000007 << 5) | ((codepoint >> 12) & 0x0000000f);
+    str[1] = (1 << 7) | ((codepoint >> 6) & 0x0000003f);
+    str[2] = (1 << 7) | (codepoint & 0x0000003f);
+    inc = 3;
+  } else if (codepoint <= 0x10FFFF) {
+    str[0] = (0x0000000f << 4) | ((codepoint >> 18) & 0x00000007);
+    str[1] = (1 << 7) | ((codepoint >> 12) & 0x0000003f);
+    str[2] = (1 << 7) | ((codepoint >> 6) & 0x0000003f);
+    str[3] = (1 << 7) | (codepoint & 0x0000003f);
+    inc = 4;
+  } else {
+    str[0] = '?';
+    inc = 1;
+  }
+  return inc;
+}
+
+U32
+wstr_encode(U16* str, U32 codepoint) {
+  U32 inc = 1;
+  if (codepoint == MAX_U32) {
+    str[0] = (U16)'?';
+  } else if (codepoint < 0x10000) {
+    str[0] = (U16)codepoint;
+  } else {
+    U32 v = codepoint - 0x10000;
+    str[0] = safe_cast_u16(0xD800 + (v >> 10));
+    str[1] = safe_cast_u16(0xDC00 + (v & 0x000003ff));
+    inc = 2;
+  }
+  return inc;
+}
+
+Str
+str_from_wstr(Arena* arena, WStr in) {
+  Str result = {0};
+  if (in.length) {
+    U64 cap = in.length * 3;
+    U8* str = arena_push_array_0_init(arena, U8, cap + 1);
+    U16* ptr = in.zstr;
+    U16* opl = ptr + in.length;
+    U64 size = 0;
+    StrUnicodeDecode consume;
+    for (; ptr < opl; ptr += consume.inc) {
+      consume = wstr_decode(ptr, opl - ptr);
+      size += str_encode(str + size, consume.codepoint);
+    }
+    str[size] = 0;
+    arena_pop(arena, (cap - size));
+    result = str_raw(str, size);
+  }
+  return result;
+}
+
+WStr
+wstr_from_str(Arena* arena, Str in) {
+  WStr result = {0};
+  if (in.length) {
+    U64 cap = in.length * 2;
+    U16* str = arena_push_array_0_init(arena, U16, cap + 1);
+    U8* ptr = in.zstr;
+    U8* opl = ptr + in.length;
+    U64 size = 0;
+    StrUnicodeDecode consume;
+    for (; ptr < opl; ptr += consume.inc) {
+      consume = str_decode(ptr, opl - ptr);
+      size += wstr_encode(str + size, consume.codepoint);
+    }
+    str[size] = 0;
+    arena_pop(arena, (cap - size) * 2);
+    result = wstr_raw(str, size);
+  }
+  return result;
+}
+
+Str
+str_from_ustr(Arena* arena, UStr in) {
+  Str result = {0};
+  if (in.length) {
+    U64 cap = in.length * 4;
+    U8* str = arena_push_array_0_init(arena, U8, cap + 1);
+    U32* ptr = in.zstr;
+    U32* opl = ptr + in.length;
+    U64 size = 0;
+    for (; ptr < opl; ptr += 1) {
+      size += str_encode(str + size, *ptr);
+    }
+    str[size] = 0;
+    arena_pop(arena, (cap - size));
+    result = str_raw(str, size);
+  }
+  return result;
+}
+
+UStr
+ustr_from_str(Arena* arena, Str in) {
+  UStr result = {0};
+  if (in.length) {
+    U64 cap = in.length;
+    U32* str = arena_push_array_0_init(arena, U32, cap + 1);
+    U8* ptr = in.zstr;
+    U8* opl = ptr + in.length;
+    U64 size = 0;
+    StrUnicodeDecode consume;
+    for (; ptr < opl; ptr += consume.inc) {
+      consume = str_decode(ptr, opl - ptr);
+      str[size] = consume.codepoint;
+      size += 1;
+    }
+    str[size] = 0;
+    arena_pop(arena, (cap - size) * 4);
+    result = ustr_raw(str, size);
+  }
+  return result;
+}
 
 /* ===================================================== */
 /*                          END                          */

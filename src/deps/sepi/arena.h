@@ -74,12 +74,12 @@ Nothing arena_scratch_end(ArenaScratch arena_scratch);
                      .caller_file_name = __FILE__,                         \
                      .caller_file_line = __LINE__,                         \
                      __VA_ARGS__})
-#define arena_push_array_no_zero_aligned(arena, type, count, alignment) \
+#define arena_push_array_0_init_aligned(arena, type, count, alignment) \
   (type*)arena_push((arena), sizeof(type) * (count), (alignment), (TRUE))
 #define arena_push_array_aligned(arena, type, count, alignment) \
   (type*)arena_push((arena), sizeof(type) * (count), (alignment), (FALSE))
-#define arena_push_array_no_zero(arena, type, count) \
-  arena_push_array_no_zero_aligned(arena, type, count, max(8, alignof(type)))
+#define arena_push_array_0_init(arena, type, count) \
+  arena_push_array_0_init_aligned(arena, type, count, max(8, alignof(type)))
 #define arena_push_array(arena, type, count) \
   arena_push_array_aligned(arena, type, count, max(8, alignof(type)))
 
@@ -90,6 +90,8 @@ Nothing arena_scratch_end(ArenaScratch arena_scratch);
 #ifdef SEPI_ARENA_IMPLEMENTATION
 
 mount_slave_profiling_context();
+
+/* ----------------------------------------------------- */
 
 Arena*
 arena_create_(ArenaParams* ap) {
@@ -139,6 +141,8 @@ arena_create_(ArenaParams* ap) {
   return arena;
 }
 
+/* ----------------------------------------------------- */
+
 Nothing
 arena_destroy(Arena* arena) {
   start_profiling(1);
@@ -151,6 +155,8 @@ arena_destroy(Arena* arena) {
 
   end_profiling();
 }
+
+/* ----------------------------------------------------- */
 
 RawPtr
 arena_push(Arena* arena,
@@ -248,6 +254,8 @@ arena_push(Arena* arena,
   return result;
 }
 
+/* ----------------------------------------------------- */
+
 Nothing
 arena_pop(Arena* a, U64 amount) {
   start_profiling(1);
@@ -262,6 +270,8 @@ arena_pop(Arena* a, U64 amount) {
 
   end_profiling();
 }
+
+/* ----------------------------------------------------- */
 
 Nothing
 arena_pop_to(Arena* a, U64 position) {
@@ -292,6 +302,8 @@ arena_pop_to(Arena* a, U64 position) {
   end_profiling();
 }
 
+/* ----------------------------------------------------- */
+
 Nothing
 arena_clear(Arena* a) {
   start_profiling(1);
@@ -300,6 +312,8 @@ arena_clear(Arena* a) {
 
   end_profiling();
 }
+
+/* ----------------------------------------------------- */
 
 U64
 arena_get_position(Arena* a) {

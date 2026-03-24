@@ -180,10 +180,18 @@ platform_reserve_large_pages(Sz size) {
   }
 
 #elif defined(OS_WINDOWS)
-  DWORD flags = MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES;
+  // TODO:
+  // sepi, this part of the code for windows is completely untested i partially
+  // took this code from rad-debugger, but there they use 'MEM_RESERVE |
+  // MEM_COMMIT' af the same time in this function and inside
+  // 'platform_commit_large_pages' they just return 0 (or maybe 1) as return
+  // value, so it seems on the surface that both reservation and commit happens
+  // at the same time which means the whole memory will be allocated at once
+  // which is unlike what we do (and they do as well) for linux (and macos)
+  DWORD flags = | MEM_LARGE_PAGES;
   RawPtr result = VirtualAlloc(0, size, flags, PAGE_READWRITE);
   if (!result) {
-    flags = MEM_RESERVE | MEM_COMMIT;
+    flags = MEM_RESERVE;
     result = VirtualAlloc(0, size, flags, PAGE_READWRITE);
     if (!result) {
       return 0;
@@ -206,7 +214,7 @@ platform_commit_large_pages(RawPtr ptr, Sz size) {
 #elif defined(OS_MACOS)
   mprotect(ptr, size, PROT_READ | PROT_WRITE);
 #elif defined(OS_WINDOWS)
-  // for windows we don't need to do anything!
+  VirtualAlloc(ptr, size, , PAGE_READWRITE);
 #endif
 
   end_profiling();

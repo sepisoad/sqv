@@ -392,7 +392,7 @@ app_pak_init_icon(AppPakImage* app_icon, const U8* buffer, Sz size) {
   const U8* data = stbi_load_from_memory(buffer, (U32)size, &w, &h, &c, 4);
   if (0 == data) {
     err = APP_PAK_ERR_ICON_INIT;
-    str512_set(&g_state.error_text, "failed to load icon image from memory");
+    str512_set(&g_state.error_text, (U8*)"failed to load icon image from memory");
     goto cleanup;
   }
   start_memory_profiling(data, size);
@@ -570,7 +570,7 @@ app_pak_handle_pak(Str path) {
     char err_text[APP_PAK_MAX_ERROR_LENGTH] = {0};
     snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH, "failed to open '%s'",
              ZS(path));
-    str512_set(&g_state.error_text, err_text);
+    str512_set(&g_state.error_text, (U8*)err_text);
     err = APP_PAK_ERR_FILE_OPEN;
     g_state.mode = APP_PAK_MODE_FAILED;
     goto cleanup;
@@ -581,7 +581,7 @@ app_pak_handle_pak(Str path) {
     char err_text[APP_PAK_MAX_ERROR_LENGTH] = {0};
     snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH, "failed to load '%s' items",
              ZS(path));
-    str512_set(&g_state.error_text, err_text);
+    str512_set(&g_state.error_text, (U8*)err_text);
     err = APP_PAK_ERR_MODULE_PAK;
     g_state.mode = APP_PAK_MODE_FAILED;
     goto cleanup;
@@ -851,7 +851,7 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
             snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH,
                      "failed to extract pak file into '%s'",
                      ZS(g_state.export_path_buffer));
-            str512_set(&g_state.error_text, err_text);
+            str512_set(&g_state.error_text, (U8*)err_text);
             g_state.mode = APP_PAK_MODE_FAILED;
           }
         } else {
@@ -865,7 +865,7 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
             snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH,
                      "failed to extract item '%s' into '%s'",
                      ZS(pak_item->name), ZS(g_state.export_path_buffer));
-            str512_set(&g_state.error_text, err_text);
+            str512_set(&g_state.error_text, (U8*)err_text);
             g_state.mode = APP_PAK_MODE_FAILED;
           }
         }
@@ -1004,7 +1004,7 @@ app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
                      ZS(g_state.input_path));
           }
 
-          str512_set(&g_state.error_text, err_text);
+          str512_set(&g_state.error_text, (U8*)err_text);
           g_state.mode = APP_PAK_MODE_FAILED;
         }
         g_state.is_packaging_requested = FALSE;

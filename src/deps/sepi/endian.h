@@ -32,16 +32,26 @@ static inline F64 nd_f64(F64 num);
 /*                    IMPLEMENTATION                     */
 /* ===================================================== */
 
+// NOTE:
+// since this module implements all the functions as `static inline` we do not
+// need an implementation guard here anyway
+
+/* ----------------------------------------------------- */
+
 static inline Bool
 isle() {
   U16 num = 0x1;
   return (*(U8*)&num == 1);
 }
 
+/* ----------------------------------------------------- */
+
 static inline I16
 nd_i16(I16 num) {
   return isle() ? num : (I16)((num >> 8) | (num << 8));
 }
+
+/* ----------------------------------------------------- */
 
 static inline I32
 nd_i32(I32 num) {
@@ -49,6 +59,8 @@ nd_i32(I32 num) {
                 : (I32)((num >> 24) | ((num >> 8) & 0x0000FF00) |
                         ((num << 8) & 0x00FF0000) | (num << 24));
 }
+
+/* ----------------------------------------------------- */
 
 static inline I64
 nd_i64(I64 num) {
@@ -60,6 +72,8 @@ nd_i64(I64 num) {
                         ((num << 24) & 0x0000FF0000000000LL) |
                         ((num << 40) & 0x00FF000000000000LL) | (num << 56));
 }
+
+/* ----------------------------------------------------- */
 
 static inline F32
 nd_f32(F32 num) {
@@ -76,6 +90,8 @@ nd_f32(F32 num) {
   dst[3] = src[0];
   return result;
 }
+
+/* ----------------------------------------------------- */
 
 static inline F64
 nd_f64(F64 num) {

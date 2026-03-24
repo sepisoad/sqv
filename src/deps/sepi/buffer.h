@@ -48,6 +48,8 @@ static inline Nothing buf_read_f64(Buf buf, F64* num);
 
 mount_slave_profiling_context();
 
+/* ----------------------------------------------------- */
+
 static inline Buf
 buf(const U8* base, Sz size) {
   start_profiling(1);
@@ -61,12 +63,16 @@ buf(const U8* base, Sz size) {
   return result;
 }
 
+/* ----------------------------------------------------- */
+
 static inline Nothing
 buf_reset(Buf buf) {
   buf.base = 0;
   buf.offset = 0;
   buf.size = 0;
 }
+
+/* ----------------------------------------------------- */
 
 static inline Nothing
 buf_set_position(Buf buf, Sz offset) {
@@ -81,6 +87,8 @@ buf_set_position(Buf buf, Sz offset) {
   end_profiling();
 }
 
+/* ----------------------------------------------------- */
+
 static inline Nothing
 buf_move_offset(Buf buf, Sz amount) {
   start_profiling(1);
@@ -94,6 +102,8 @@ buf_move_offset(Buf buf, Sz amount) {
   end_profiling();
 }
 
+/* ----------------------------------------------------- */
+
 static inline const U8*
 buf_get_position(Buf buf) {
   start_profiling(1);
@@ -106,6 +116,8 @@ buf_get_position(Buf buf) {
   end_profiling();
   return position;
 }
+
+/* ----------------------------------------------------- */
 
 static inline Nothing
 buf_read_i16(Buf buf, I16* num) {
@@ -122,6 +134,8 @@ buf_read_i16(Buf buf, I16* num) {
   end_profiling();
 }
 
+/* ----------------------------------------------------- */
+
 static inline Nothing
 buf_read_i32(Buf buf, I32* num) {
   start_profiling(1);
@@ -136,6 +150,8 @@ buf_read_i32(Buf buf, I32* num) {
 
   end_profiling();
 }
+
+/* ----------------------------------------------------- */
 
 static inline Nothing
 buf_read_i64(Buf buf, I64* num) {
@@ -152,6 +168,8 @@ buf_read_i64(Buf buf, I64* num) {
   end_profiling();
 }
 
+/* ----------------------------------------------------- */
+
 static inline Nothing
 buf_read_f32(Buf buf, F32* num) {
   start_profiling(1);
@@ -166,6 +184,8 @@ buf_read_f32(Buf buf, F32* num) {
 
   end_profiling();
 }
+
+/* ----------------------------------------------------- */
 
 static inline Nothing
 buf_read_f64(Buf buf, F64* num) {

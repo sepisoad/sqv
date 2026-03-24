@@ -87,7 +87,7 @@ struct Pak {
 };
 
 typedef struct Str512 Str512;
-static inline Nothing str512_set(Str512* f, const char* str);
+static inline Nothing str512_set(Str512* f, const U8* str);
 
 /* ===================================================== */
 /*                          API                          */
@@ -590,7 +590,7 @@ pak_make_from_ioitem(Arena* arena,
     goto cleanup;
   }
 
-  Str pak_file_id = str("PACK");
+  Str pak_file_id = S("PACK");
   io_write_from_buffer(&pak_io_file, pak_file_id.length,
                        (RawPtr)ZS(pak_file_id));
   io_write_from_i32(&pak_io_file, &files_table_offset);
@@ -604,7 +604,7 @@ pak_make_from_ioitem(Arena* arena,
         ArenaScratch loopmem = arena_scratch_begin(fnmem.arena);
 
         Str56 clean_name_ =
-            str56(ZS(children[index].path) + (base_path.length + 1));
+            str56(children[index].path.zstr + base_path.length + 1);
 
         Sz pak_item_size = 0;
         ioerr = io_get_file_size(children[index].path, &pak_item_size);

@@ -44,6 +44,20 @@ typedef struct Empty Empty;
 struct Empty {};
 
 /* ===================================================== */
+/*                       CONSTANTS                       */
+/* ===================================================== */
+
+#define MAX_U64 0xffffffffffffffffull
+#define MAX_U32 0xffffffff
+#define MAX_U16 0xffff
+#define MAX_U8 0xff
+
+#define MAX_I64 (I64)0x7fffffffffffffffll
+#define MAX_I32 (I32)0x7fffffff
+#define MAX_I16 (I16)0x7fff
+#define MAX_I8 (I8)0x7f
+
+/* ===================================================== */
 /*                         DEBUG                         */
 /* ===================================================== */
 
@@ -170,6 +184,8 @@ struct Empty {};
 #else
 #error "typeof() not supported!"
 #endif
+
+// #define select _Generic
 
 #define defer(initializer, cleaner) \
   for (U32 _i_ = ((initializer), 0); !_i_; _i_ += 1, (cleaner))
