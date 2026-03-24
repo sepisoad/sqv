@@ -142,8 +142,6 @@ UStr ustr_raw(RawPtr rptr, Sz length);
 
 Str str_clone(Arena* arena, Str str);
 Str str_slice(Arena* arena, Str str, Sz from, Sz to);
-Str str_zero(void);
-Sz str_len(const U8* zstr);
 Str str_join(Arena* arena, Str str_a, Str str_b, U8 separator);
 Nothing str_reset(Str* ptr);
 Bool str_is_equal(Str a, Str b);
@@ -368,16 +366,6 @@ str_slice(Arena* arena, Str str, Sz from, Sz to) {
 
   copy_memory(copy, str.zstr + from, new_length);
   Str result = {.zstr = copy, .length = new_length};
-
-  end_profiling();
-  return result;
-}
-
-Str
-str_zero(void) {
-  start_profiling(1);
-
-  Str result = {0};
 
   end_profiling();
   return result;

@@ -350,7 +350,7 @@ app_md1_init_icon(AppMd1Image* app_icon, const U8* buffer, Sz size) {
   const U8* data = stbi_load_from_memory(buffer, (I32)size, &w, &h, &c, 4);
   if (0 == data) {
     err = APP_MD1_ERR_ICON_INIT;
-    str512_set(&g_state.error_text, "failed to load icon image from memory");
+    str512_set(&g_state.error_text, (U8*)"failed to load icon image from memory");
     goto cleanup;
   }
   start_memory_profiling(data, size);
