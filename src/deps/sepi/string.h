@@ -258,6 +258,196 @@ ustr(U32* zstr) {
   return result;
 }
 
+Str
+str_from_wstr(Arena* arena, WStr in) {
+  Str result = {0};
+  if (in.length) {
+    U64 cap = in.length * 3;
+    U8* str = arena_push_array_0_init(arena, U8, cap + 1);
+    U16* ptr = in.zstr;
+    U16* opl = ptr + in.length;
+    U64 size = 0;
+    StrUnicodeDecode consume;
+    for (; ptr < opl; ptr += consume.inc) {
+      consume = wstr_decode(ptr, opl - ptr);
+      size += str_encode(str + size, consume.codepoint);
+    }
+    str[size] = 0;
+    arena_pop(arena, (cap - size));
+    result = str_raw(str, size);
+  }
+  return result;
+}
+
+WStr
+wstr_from_str(Arena* arena, Str in) {
+  WStr result = {0};
+  if (in.length) {
+    U64 cap = in.length * 2;
+    U16* str = arena_push_array_0_init(arena, U16, cap + 1);
+    U8* ptr = in.zstr;
+    U8* opl = ptr + in.length;
+    U64 size = 0;
+    StrUnicodeDecode consume;
+    for (; ptr < opl; ptr += consume.inc) {
+      consume = str_decode(ptr, opl - ptr);
+      size += wstr_encode(str + size, consume.codepoint);
+    }
+    str[size] = 0;
+    arena_pop(arena, (cap - size) * 2);
+    result = wstr_raw(str, size);
+  }
+  return result;
+}
+
+Str
+str_from_ustr(Arena* arena, UStr in) {
+  Str result = {0};
+  if (in.length) {
+    U64 cap = in.length * 4;
+    U8* str = arena_push_array_0_init(arena, U8, cap + 1);
+    U32* ptr = in.zstr;
+    U32* opl = ptr + in.length;
+    U64 size = 0;
+    for (; ptr < opl; ptr += 1) {
+      size += str_encode(str + size, *ptr);
+    }
+    str[size] = 0;
+    arena_pop(arena, (cap - size));
+    result = str_raw(str, size);
+  }
+  return result;
+}
+
+UStr
+ustr_from_str(Arena* arena, Str in) {
+  UStr result = {0};
+  if (in.length) {
+    U64 cap = in.length;
+    U32* str = arena_push_array_0_init(arena, U32, cap + 1);
+    U8* ptr = in.zstr;
+    U8* opl = ptr + in.length;
+    U64 size = 0;
+    StrUnicodeDecode consume;
+    for (; ptr < opl; ptr += consume.inc) {
+      consume = str_decode(ptr, opl - ptr);
+      str[size] = consume.codepoint;
+      size += 1;
+    }
+    str[size] = 0;
+    arena_pop(arena, (cap - size) * 4);
+    result = ustr_raw(str, size);
+  }
+  return result;
+}
+
+U32
+str_encode(U8* str, U32 codepoint) {
+  U32 inc = 0;
+  if (codepoint <= 0x7F) {
+    str[0] = (U8)codepoint;
+    inc = 1;
+  } else if (codepoint <= 0x7FF) {
+    str[0] = (0x00000003 << 6) | ((codepoint >> 6) & 0x0000001f);
+    str[1] = (1 << 7) | (codepoint & 0x0000003f);
+    inc = 2;
+  } else if (codepoint <= 0xFFFF) {
+    str[0] = (0x00000007 << 5) | ((codepoint >> 12) & 0x0000000f);
+    str[1] = (1 << 7) | ((codepoint >> 6) & 0x0000003f);
+    str[2] = (1 << 7) | (codepoint & 0x0000003f);
+    inc = 3;
+  } else if (codepoint <= 0x10FFFF) {
+    str[0] = (0x0000000f << 4) | ((codepoint >> 18) & 0x00000007);
+    str[1] = (1 << 7) | ((codepoint >> 12) & 0x0000003f);
+    str[2] = (1 << 7) | ((codepoint >> 6) & 0x0000003f);
+    str[3] = (1 << 7) | (codepoint & 0x0000003f);
+    inc = 4;
+  } else {
+    str[0] = '?';
+    inc = 1;
+  }
+  return inc;
+}
+
+U32
+wstr_encode(U16* str, U32 codepoint) {
+  U32 inc = 1;
+  if (codepoint == MAX_U32) {
+    str[0] = (U16)'?';
+  } else if (codepoint < 0x10000) {
+    str[0] = (U16)codepoint;
+  } else {
+    U32 v = codepoint - 0x10000;
+    str[0] = safe_cast_u16(0xD800 + (v >> 10));
+    str[1] = safe_cast_u16(0xDC00 + (v & 0x000003ff));
+    inc = 2;
+  }
+  return inc;
+}
+
+StrUnicodeDecode
+str_decode(U8* str, U64 max) {
+  StrUnicodeDecode result = {1, MAX_U32};
+  U8 byte = str[0];
+  U8 byte_class = str_utf8_class[byte >> 3];
+  switch (byte_class) {
+    case 1: {
+      result.codepoint = byte;
+    } break;
+    case 2: {
+      if (1 < max) {
+        U8 cont_byte = str[1];
+        if (str_utf8_class[cont_byte >> 3] == 0) {
+          result.codepoint = (byte & 0x0000001f) << 6;
+          result.codepoint |= (cont_byte & 0x0000003f);
+          result.inc = 2;
+        }
+      }
+    } break;
+    case 3: {
+      if (2 < max) {
+        U8 cont_byte[2] = {str[1], str[2]};
+        if (str_utf8_class[cont_byte[0] >> 3] == 0 &&
+            str_utf8_class[cont_byte[1] >> 3] == 0) {
+          result.codepoint = (byte & 0x0000000f) << 12;
+          result.codepoint |= ((cont_byte[0] & 0x0000003f) << 6);
+          result.codepoint |= (cont_byte[1] & 0x0000003f);
+          result.inc = 3;
+        }
+      }
+    } break;
+    case 4: {
+      if (3 < max) {
+        U8 cont_byte[3] = {str[1], str[2], str[3]};
+        if (str_utf8_class[cont_byte[0] >> 3] == 0 &&
+            str_utf8_class[cont_byte[1] >> 3] == 0 &&
+            str_utf8_class[cont_byte[2] >> 3] == 0) {
+          result.codepoint = (byte & 0x00000007) << 18;
+          result.codepoint |= ((cont_byte[0] & 0x0000003f) << 12);
+          result.codepoint |= ((cont_byte[1] & 0x0000003f) << 6);
+          result.codepoint |= (cont_byte[2] & 0x0000003f);
+          result.inc = 4;
+        }
+      }
+    }
+  }
+  return result;
+}
+
+StrUnicodeDecode
+wstr_decode(U16* str, U64 max) {
+  StrUnicodeDecode result = {1, MAX_U32};
+  result.codepoint = str[0];
+  result.inc = 1;
+  if (max > 1 && 0xD800 <= str[0] && str[0] < 0xDC00 && 0xDC00 <= str[1] &&
+      str[1] < 0xE000) {
+    result.codepoint =
+        ((str[0] - 0xD800) << 10) | ((str[1] - 0xDC00) + 0x10000);
+    result.inc = 2;
+  }
+  return result;
+}
+
 Sz
 str_length(const U8* zstr) {
   start_profiling(1);
@@ -519,196 +709,6 @@ str_equal(Str str_a, Str str_b, StrCmpFlags flags) {
   }
 
   end_profiling();
-  return result;
-}
-
-StrUnicodeDecode
-str_decode(U8* str, U64 max) {
-  StrUnicodeDecode result = {1, MAX_U32};
-  U8 byte = str[0];
-  U8 byte_class = str_utf8_class[byte >> 3];
-  switch (byte_class) {
-    case 1: {
-      result.codepoint = byte;
-    } break;
-    case 2: {
-      if (1 < max) {
-        U8 cont_byte = str[1];
-        if (str_utf8_class[cont_byte >> 3] == 0) {
-          result.codepoint = (byte & 0x0000001f) << 6;
-          result.codepoint |= (cont_byte & 0x0000003f);
-          result.inc = 2;
-        }
-      }
-    } break;
-    case 3: {
-      if (2 < max) {
-        U8 cont_byte[2] = {str[1], str[2]};
-        if (str_utf8_class[cont_byte[0] >> 3] == 0 &&
-            str_utf8_class[cont_byte[1] >> 3] == 0) {
-          result.codepoint = (byte & 0x0000000f) << 12;
-          result.codepoint |= ((cont_byte[0] & 0x0000003f) << 6);
-          result.codepoint |= (cont_byte[1] & 0x0000003f);
-          result.inc = 3;
-        }
-      }
-    } break;
-    case 4: {
-      if (3 < max) {
-        U8 cont_byte[3] = {str[1], str[2], str[3]};
-        if (str_utf8_class[cont_byte[0] >> 3] == 0 &&
-            str_utf8_class[cont_byte[1] >> 3] == 0 &&
-            str_utf8_class[cont_byte[2] >> 3] == 0) {
-          result.codepoint = (byte & 0x00000007) << 18;
-          result.codepoint |= ((cont_byte[0] & 0x0000003f) << 12);
-          result.codepoint |= ((cont_byte[1] & 0x0000003f) << 6);
-          result.codepoint |= (cont_byte[2] & 0x0000003f);
-          result.inc = 4;
-        }
-      }
-    }
-  }
-  return result;
-}
-
-StrUnicodeDecode
-wstr_decode(U16* str, U64 max) {
-  StrUnicodeDecode result = {1, MAX_U32};
-  result.codepoint = str[0];
-  result.inc = 1;
-  if (max > 1 && 0xD800 <= str[0] && str[0] < 0xDC00 && 0xDC00 <= str[1] &&
-      str[1] < 0xE000) {
-    result.codepoint =
-        ((str[0] - 0xD800) << 10) | ((str[1] - 0xDC00) + 0x10000);
-    result.inc = 2;
-  }
-  return result;
-}
-
-U32
-str_encode(U8* str, U32 codepoint) {
-  U32 inc = 0;
-  if (codepoint <= 0x7F) {
-    str[0] = (U8)codepoint;
-    inc = 1;
-  } else if (codepoint <= 0x7FF) {
-    str[0] = (0x00000003 << 6) | ((codepoint >> 6) & 0x0000001f);
-    str[1] = (1 << 7) | (codepoint & 0x0000003f);
-    inc = 2;
-  } else if (codepoint <= 0xFFFF) {
-    str[0] = (0x00000007 << 5) | ((codepoint >> 12) & 0x0000000f);
-    str[1] = (1 << 7) | ((codepoint >> 6) & 0x0000003f);
-    str[2] = (1 << 7) | (codepoint & 0x0000003f);
-    inc = 3;
-  } else if (codepoint <= 0x10FFFF) {
-    str[0] = (0x0000000f << 4) | ((codepoint >> 18) & 0x00000007);
-    str[1] = (1 << 7) | ((codepoint >> 12) & 0x0000003f);
-    str[2] = (1 << 7) | ((codepoint >> 6) & 0x0000003f);
-    str[3] = (1 << 7) | (codepoint & 0x0000003f);
-    inc = 4;
-  } else {
-    str[0] = '?';
-    inc = 1;
-  }
-  return inc;
-}
-
-U32
-wstr_encode(U16* str, U32 codepoint) {
-  U32 inc = 1;
-  if (codepoint == MAX_U32) {
-    str[0] = (U16)'?';
-  } else if (codepoint < 0x10000) {
-    str[0] = (U16)codepoint;
-  } else {
-    U32 v = codepoint - 0x10000;
-    str[0] = safe_cast_u16(0xD800 + (v >> 10));
-    str[1] = safe_cast_u16(0xDC00 + (v & 0x000003ff));
-    inc = 2;
-  }
-  return inc;
-}
-
-Str
-str_from_wstr(Arena* arena, WStr in) {
-  Str result = {0};
-  if (in.length) {
-    U64 cap = in.length * 3;
-    U8* str = arena_push_array_0_init(arena, U8, cap + 1);
-    U16* ptr = in.zstr;
-    U16* opl = ptr + in.length;
-    U64 size = 0;
-    StrUnicodeDecode consume;
-    for (; ptr < opl; ptr += consume.inc) {
-      consume = wstr_decode(ptr, opl - ptr);
-      size += str_encode(str + size, consume.codepoint);
-    }
-    str[size] = 0;
-    arena_pop(arena, (cap - size));
-    result = str_raw(str, size);
-  }
-  return result;
-}
-
-WStr
-wstr_from_str(Arena* arena, Str in) {
-  WStr result = {0};
-  if (in.length) {
-    U64 cap = in.length * 2;
-    U16* str = arena_push_array_0_init(arena, U16, cap + 1);
-    U8* ptr = in.zstr;
-    U8* opl = ptr + in.length;
-    U64 size = 0;
-    StrUnicodeDecode consume;
-    for (; ptr < opl; ptr += consume.inc) {
-      consume = str_decode(ptr, opl - ptr);
-      size += wstr_encode(str + size, consume.codepoint);
-    }
-    str[size] = 0;
-    arena_pop(arena, (cap - size) * 2);
-    result = wstr_raw(str, size);
-  }
-  return result;
-}
-
-Str
-str_from_ustr(Arena* arena, UStr in) {
-  Str result = {0};
-  if (in.length) {
-    U64 cap = in.length * 4;
-    U8* str = arena_push_array_0_init(arena, U8, cap + 1);
-    U32* ptr = in.zstr;
-    U32* opl = ptr + in.length;
-    U64 size = 0;
-    for (; ptr < opl; ptr += 1) {
-      size += str_encode(str + size, *ptr);
-    }
-    str[size] = 0;
-    arena_pop(arena, (cap - size));
-    result = str_raw(str, size);
-  }
-  return result;
-}
-
-UStr
-ustr_from_str(Arena* arena, Str in) {
-  UStr result = {0};
-  if (in.length) {
-    U64 cap = in.length;
-    U32* str = arena_push_array_0_init(arena, U32, cap + 1);
-    U8* ptr = in.zstr;
-    U8* opl = ptr + in.length;
-    U64 size = 0;
-    StrUnicodeDecode consume;
-    for (; ptr < opl; ptr += consume.inc) {
-      consume = str_decode(ptr, opl - ptr);
-      str[size] = consume.codepoint;
-      size += 1;
-    }
-    str[size] = 0;
-    arena_pop(arena, (cap - size) * 4);
-    result = ustr_raw(str, size);
-  }
   return result;
 }
 
