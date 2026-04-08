@@ -29,7 +29,7 @@ embed fn F32 nd_f32(F32 num);
 embed fn F64 nd_f64(F64 num);
 
 /* ===================================================== */
-/*                    IMPLEMENTATION                     */
+/*                   INLINE FUNCTIONS                    */
 /* ===================================================== */
 
 embed fn Bool

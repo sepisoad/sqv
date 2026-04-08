@@ -57,31 +57,48 @@ struct ArenaScratch {
 fn Arena* arena_create_(ArenaParams* arena_params);
 fn Nothing arena_destroy(Arena* arena);
 fn RawPtr arena_push(Arena* arena,
-                  U64 size_to_allocate,
-                  U64 memory_alignment,
-                  Bool with_zero);
+                     U64 size_to_allocate,
+                     U64 memory_alignment,
+                     Bool with_zero);
 fn Nothing arena_pop(Arena* arena, U64 amount);
 fn Nothing arena_pop_to(Arena* arena, U64 position);
 fn Nothing arena_clear(Arena* arena);
 fn U64 arena_get_position(Arena* arena);
 fn ArenaScratch arena_scratch_begin(Arena* arena);
 fn Nothing arena_scratch_end(ArenaScratch arena_scratch);
+embed fn Arena* arena_create();
+embed fn RawPtr* arena_push_array_0_init_aligned(Arena* arena,
+                                                 Sz size,
+                                                 U64 count,
+                                                 U64 alignment);
 
-#define arena_create(...)                                                  \
-  arena_create_(                                                           \
-      &(ArenaParams){.requested_reserve_size = ARENA_DEFAULT_RESERVE_SIZE, \
-                     .requested_commit_size = ARENA_DEFAULT_COMMIT_SIZE,   \
-                     .caller_file_name = __FILE__,                         \
-                     .caller_file_line = __LINE__,                         \
-                     __VA_ARGS__})
-#define arena_push_array_0_init_aligned(arena, type, count, alignment) \
-  (type*)arena_push((arena), sizeof(type) * (count), (alignment), (TRUE))
-#define arena_push_array_aligned(arena, type, count, alignment) \
-  (type*)arena_push((arena), sizeof(type) * (count), (alignment), (FALSE))
-#define arena_push_array_0_init(arena, type, count) \
-  arena_push_array_0_init_aligned(arena, type, count, max(8, alignof(type)))
-#define arena_push_array(arena, type, count) \
-  arena_push_array_aligned(arena, type, count, max(8, alignof(type)))
+/* ===================================================== */
+/*                   INLINE FUNCTIONS                    */
+/* ===================================================== */
+
+embed fn Arena*
+arena_create() {
+  return arena_create_(&(ArenaParams){
+      .requested_reserve_size = ARENA_DEFAULT_RESERVE_SIZE,
+      .requested_commit_size = ARENA_DEFAULT_COMMIT_SIZE,
+      .caller_file_name = __FILE__,
+      .caller_file_line = __LINE__,
+  });
+}
+
+/* ----------------------------------------------------- */
+
+embed fn RawPtr*
+arena_push_array_0_init_aligned(Arena* arena,
+                                Sz size,
+                                U64 count,
+                                U64 alignment) {
+  return arena_push(arena, size * count, alignment, TRUE);
+}
+
+// TODO:
+// define a malloc like api here to make it possible to use my allocation
+// interface in foreign modules such as stb or sokol
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -90,8 +107,6 @@ fn Nothing arena_scratch_end(ArenaScratch arena_scratch);
 #ifdef SEPI_ARENA_IMPLEMENTATION
 
 mount_slave_profiling_context();
-
-/* ----------------------------------------------------- */
 
 fn Arena*
 arena_create_(ArenaParams* ap) {

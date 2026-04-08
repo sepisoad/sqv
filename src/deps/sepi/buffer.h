@@ -43,7 +43,7 @@ embed fn Nothing buf_read_f32(Buf buf, F32* num);
 embed fn Nothing buf_read_f64(Buf buf, F64* num);
 
 /* ===================================================== */
-/*                    IMPLEMENTATION                     */
+/*                   INLINE FUNCTIONS                    */
 /* ===================================================== */
 
 mount_slave_profiling_context();

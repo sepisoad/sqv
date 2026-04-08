@@ -71,7 +71,7 @@ embed fn U32 platform_commit_large_pages(RawPtr ptr, Sz size);
 embed fn Nothing platform_release(RawPtr ptr, Sz size);
 
 /* ===================================================== */
-/*                    IMPLEMENTATION                     */
+/*                   INLINE FUNCTIONS                    */
 /* ===================================================== */
 
 mount_slave_profiling_context();

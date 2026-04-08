@@ -238,7 +238,7 @@ md1_load_skins(Md1* md1, IOFile* io_file) {
   U32 sw = details->skin_width;
   U32 sh = details->skin_height;
   Sz skin_sz = sw * sh;
-  Md1Skin* skins = arena_push_array(a, Md1Skin, details->skins_count);
+  Md1Skin* skins = arena_push(a, sizeof(Md1Skin) * details->skins_count, alignof(Md1Skin), FALSE);
   Md1Error err = MD1_ERR_SUCCESS;
 
   runtime_assert(skins != 0);

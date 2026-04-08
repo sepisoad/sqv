@@ -65,11 +65,11 @@ struct UStr {
     U8 zstr[(length) + 1];                                                  \
   } Str##length;                                                            \
                                                                             \
-  embed fn U32 str##length##_length() {                                \
+  embed fn U32 str##length##_length() {                                     \
     return (length);                                                        \
   }                                                                         \
                                                                             \
-  embed fn Str##length str##length(U8* str) {                          \
+  embed fn Str##length str##length(U8* str) {                               \
     assert(str != NULL);                                                    \
     assert(str_length(str) < (length) + 1);                                 \
     struct {                                                                \
@@ -79,7 +79,7 @@ struct UStr {
     return *(Str##length*)&mutable_tmp;                                     \
   }                                                                         \
                                                                             \
-  embed fn Nothing str##length##_set(Str##length* f, const U8* str) {  \
+  embed fn Nothing str##length##_set(Str##length* f, const U8* str) {       \
     assert(f != NULL);                                                      \
     assert(str != NULL);                                                    \
     assert(str_length(str) < (length) + 1);                                 \
@@ -87,13 +87,12 @@ struct UStr {
     copy_memory(f->zstr, str, str_length(str));                             \
   }                                                                         \
                                                                             \
-  embed fn Nothing str##length##_reset(Str##length* f) {               \
+  embed fn Nothing str##length##_reset(Str##length* f) {                    \
     assert(f != NULL);                                                      \
     zero_memory(f->zstr, (length) + 1);                                     \
   }                                                                         \
                                                                             \
-  embed fn Str##length* str##length##_clone(Arena* arena,              \
-                                                 Str##length f) {           \
+  embed fn Str##length* str##length##_clone(Arena* arena, Str##length f) {  \
     assert(arena != NULL);                                                  \
     Str##length* res =                                                      \
         arena_push(arena, sizeof(Str##length), alignof(Str##length), TRUE); \
@@ -101,16 +100,13 @@ struct UStr {
     return res;                                                             \
   }                                                                         \
                                                                             \
-  embed fn Str str##length##_view(Str##length f) {                     \
+  embed fn Str str##length##_view(Str##length f) {                          \
     return str(f.zstr);                                                     \
   }
 
 #define DefineFStr(length) _DefineFStr_Internal(length)
-
 #define ZS(str) ((char*)(str).zstr)
-
 #define S(zstr) str((U8*)(zstr))
-
 #define SL(str) (str).length
 
 /* ===================================================== */
@@ -265,7 +261,7 @@ str_from_wstr(Arena* arena, WStr in) {
   Str result = {0};
   if (in.length) {
     U64 cap = in.length * 3;
-    U8* str = arena_push_array_0_init(arena, U8, cap + 1);
+    U8* str = arena_push(arena, sizeof(U8) * (cap + 1), alignof(U8), TRUE);
     U16* ptr = in.zstr;
     U16* opl = ptr + in.length;
     U64 size = 0;
@@ -286,7 +282,7 @@ wstr_from_str(Arena* arena, Str in) {
   WStr result = {0};
   if (in.length) {
     U64 cap = in.length * 2;
-    U16* str = arena_push_array_0_init(arena, U16, cap + 1);
+    U16* str = arena_push(arena, sizeof(U16) * (cap + 1), alignof(U16), TRUE);
     U8* ptr = in.zstr;
     U8* opl = ptr + in.length;
     U64 size = 0;
@@ -307,7 +303,7 @@ str_from_ustr(Arena* arena, UStr in) {
   Str result = {0};
   if (in.length) {
     U64 cap = in.length * 4;
-    U8* str = arena_push_array_0_init(arena, U8, cap + 1);
+    U8* str = arena_push(arena, sizeof(U8) * (cap + 1), alignof(U8), TRUE);
     U32* ptr = in.zstr;
     U32* opl = ptr + in.length;
     U64 size = 0;
@@ -326,7 +322,7 @@ ustr_from_str(Arena* arena, Str in) {
   UStr result = {0};
   if (in.length) {
     U64 cap = in.length;
-    U32* str = arena_push_array_0_init(arena, U32, cap + 1);
+    U32* str = arena_push(arena, sizeof(U32) * (cap + 1), alignof(U32), TRUE);
     U8* ptr = in.zstr;
     U8* opl = ptr + in.length;
     U64 size = 0;
