@@ -60,15 +60,15 @@ struct PlatformInfo {
 /*                          API                          */
 /* ===================================================== */
 
-static inline PlatformCPU platform_get_cpu(Nothing);
-static inline PlatformOS platform_get_os(Nothing);
-static inline PlatformInfo platform_get_info();
-static inline U8 platform_get_cpu_cores(Nothing);
-static inline Sz platform_get_page_size(Nothing);
-static inline Sz platform_get_large_page_size(Nothing);
-static inline RawPtr platform_reserve_large_pages(Sz size);
-static inline U32 platform_commit_large_pages(RawPtr ptr, Sz size);
-static inline Nothing platform_release(RawPtr ptr, Sz size);
+embed fn PlatformCPU platform_get_cpu(Nothing);
+embed fn PlatformOS platform_get_os(Nothing);
+embed fn PlatformInfo platform_get_info();
+embed fn U8 platform_get_cpu_cores(Nothing);
+embed fn Sz platform_get_page_size(Nothing);
+embed fn Sz platform_get_large_page_size(Nothing);
+embed fn RawPtr platform_reserve_large_pages(Sz size);
+embed fn U32 platform_commit_large_pages(RawPtr ptr, Sz size);
+embed fn Nothing platform_release(RawPtr ptr, Sz size);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -76,7 +76,7 @@ static inline Nothing platform_release(RawPtr ptr, Sz size);
 
 mount_slave_profiling_context();
 
-static inline PlatformCPU
+embed fn PlatformCPU
 platform_get_cpu(Nothing) {
 #if defined(CPU_INTEL_64)
   return PLATFORM_CPU_INTEL_64;
@@ -89,7 +89,7 @@ platform_get_cpu(Nothing) {
 #endif
 }
 
-static inline PlatformOS
+embed fn PlatformOS
 platform_get_os(Nothing) {
 #if defined(OS_LINUX)
   return PLATFORM_OS_LINUX;
@@ -100,7 +100,7 @@ platform_get_os(Nothing) {
 #endif
 }
 
-static inline PlatformInfo
+embed fn PlatformInfo
 platform_get_info() {
   return (PlatformInfo){
       .os = platform_get_os(),
@@ -111,7 +111,7 @@ platform_get_info() {
   };
 }
 
-static inline U8
+embed fn U8
 platform_get_cpu_cores(Nothing) {
 #if defined(OS_LINUX)
   return (U32)get_nprocs();
@@ -125,7 +125,7 @@ platform_get_cpu_cores(Nothing) {
 #endif
 }
 
-static inline Sz
+embed fn Sz
 platform_get_page_size(Nothing) {
 #if defined(OS_LINUX)
   return (Sz)sysconf(_SC_PAGESIZE);
@@ -138,7 +138,7 @@ platform_get_page_size(Nothing) {
 #endif
 }
 
-static inline Sz
+embed fn Sz
 platform_get_large_page_size(Nothing) {
 #if defined(OS_LINUX)
   return mega_bytes(2);
@@ -149,7 +149,7 @@ platform_get_large_page_size(Nothing) {
 #endif
 }
 
-static inline RawPtr
+embed fn RawPtr
 platform_reserve_large_pages(Sz size) {
   start_profiling(1);
 
@@ -205,7 +205,7 @@ platform_reserve_large_pages(Sz size) {
   return result;
 }
 
-static inline U32
+embed fn U32
 platform_commit_large_pages(RawPtr ptr, Sz size) {
   start_profiling(1);
 
@@ -221,7 +221,7 @@ platform_commit_large_pages(RawPtr ptr, Sz size) {
   return 1;
 }
 
-static inline Nothing
+embed fn Nothing
 platform_release(RawPtr ptr, Sz size) {
   start_profiling(1);
 

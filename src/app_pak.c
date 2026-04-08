@@ -24,6 +24,7 @@
 #include <sokol/sokol_nuklear.h>
 #include <sokol/sokol_time.h>
 #include <sepi/base.h>
+#include <sepi/app.h>
 #include <sepi/io.h>
 
 #if defined(OS_LINUX)
@@ -68,6 +69,12 @@ typedef enum {
   APP_PAK_ERR__COUNT,
 } AppPakError;
 
+typedef enum {
+  APP_CONTEXT_MAIN = 0,
+  APP_CONTEXT_UI,
+  APP_CONTEXT__COUNT
+} AppContext;
+
 typedef struct {
   sg_image image;
   sg_view view;
@@ -110,23 +117,23 @@ static struct {
   Str1024 export_path_buffer;
   Str512 error_text;
 
-  Arena* arena;
+  App app;
 } g_state;
 
 /* ===================================================== */
 /*                      DECLERATIONS                     */
 /* ===================================================== */
 
-static Nothing app_pak_init();
+static Nothing app_pak_init(Nothing);
 static AppPakError app_pak_init_style(struct nk_style* s);
-static AppPakError app_pak_init_icons();
+static AppPakError app_pak_init_icons(Nothing);
 static AppPakError app_pak_init_icon(AppPakImage* app_icon,
                                      const U8* buffer,
                                      Sz size);
 
-static Nothing app_pak_cleanup();
-static Nothing app_pak_cleanup_reload();
-static Nothing app_pak_cleanup_icons();
+static Nothing app_pak_cleanup(Nothing);
+static Nothing app_pak_cleanup_reload(Nothing);
+static Nothing app_pak_cleanup_icons(Nothing);
 static Nothing app_pak_cleanup_icon(AppPakImage* app_icon);
 
 static Nothing app_pak_handle_user_input_events(const sapp_event* event);
@@ -134,7 +141,7 @@ static AppPakError app_pak_handle_drop_event(Str path);
 static AppPakError app_pak_handle_pak(Str path);
 static AppPakError app_pak_handle_dir(Str path);
 
-static Nothing app_pak_frame();
+static Nothing app_pak_frame(Nothing);
 static U32 app_pak_draw(struct nk_context* ctx);
 static Nothing app_pak_draw_mode_empty(struct nk_context* ctx,
                                        nk_flags window_flags,
@@ -215,11 +222,11 @@ sokol_main(I32 argc, char* argv[]) {
 
 /* ===================================================== */
 
-void
-app_pak_init(void) {
+Nothing
+app_pak_init(Nothing) {
   start_profiling(1);
 
-  g_state.arena = arena_create();
+  g_state.app = app_create(0, 0);
 
   sg_setup(&(sg_desc){
       .environment = sglue_environment(),
@@ -261,48 +268,48 @@ app_pak_init_style(struct nk_style* s) {
   window->group_padding.x = STYLE.explorer.padding.x;
   window->group_padding.y = STYLE.explorer.padding.y;
 
-  window->border = STYLE.global.border.size;
-  window->combo_border = STYLE.global.border.size;
-  window->contextual_border = STYLE.global.border.size;
-  window->menu_border = STYLE.global.border.size;
-  window->group_border = STYLE.global.border.size;
-  window->tooltip_border = STYLE.global.border.size;
-  window->popup_border = STYLE.global.border.size;
-  window->min_row_height_padding = STYLE.global.border.size;
+  window->border = STYLE.general.border.size;
+  window->combo_border = STYLE.general.border.size;
+  window->contextual_border = STYLE.general.border.size;
+  window->menu_border = STYLE.general.border.size;
+  window->group_border = STYLE.general.border.size;
+  window->tooltip_border = STYLE.general.border.size;
+  window->popup_border = STYLE.general.border.size;
+  window->min_row_height_padding = STYLE.general.border.size;
 
-  window->border_color.r = STYLE.global.border.color.r;
-  window->border_color.g = STYLE.global.border.color.g;
-  window->border_color.b = STYLE.global.border.color.b;
+  window->border_color.r = STYLE.general.border.color.r;
+  window->border_color.g = STYLE.general.border.color.g;
+  window->border_color.b = STYLE.general.border.color.b;
   window->border_color.a = 255;
 
-  window->popup_border_color.r = STYLE.global.border.color.r;
-  window->popup_border_color.g = STYLE.global.border.color.g;
-  window->popup_border_color.b = STYLE.global.border.color.b;
+  window->popup_border_color.r = STYLE.general.border.color.r;
+  window->popup_border_color.g = STYLE.general.border.color.g;
+  window->popup_border_color.b = STYLE.general.border.color.b;
   window->popup_border_color.a = 255;
 
-  window->combo_border_color.r = STYLE.global.border.color.r;
-  window->combo_border_color.g = STYLE.global.border.color.g;
-  window->combo_border_color.b = STYLE.global.border.color.b;
+  window->combo_border_color.r = STYLE.general.border.color.r;
+  window->combo_border_color.g = STYLE.general.border.color.g;
+  window->combo_border_color.b = STYLE.general.border.color.b;
   window->combo_border_color.a = 255;
 
-  window->contextual_border_color.r = STYLE.global.border.color.r;
-  window->contextual_border_color.g = STYLE.global.border.color.g;
-  window->contextual_border_color.b = STYLE.global.border.color.b;
+  window->contextual_border_color.r = STYLE.general.border.color.r;
+  window->contextual_border_color.g = STYLE.general.border.color.g;
+  window->contextual_border_color.b = STYLE.general.border.color.b;
   window->contextual_border_color.a = 255;
 
-  window->menu_border_color.r = STYLE.global.border.color.r;
-  window->menu_border_color.g = STYLE.global.border.color.g;
-  window->menu_border_color.b = STYLE.global.border.color.b;
+  window->menu_border_color.r = STYLE.general.border.color.r;
+  window->menu_border_color.g = STYLE.general.border.color.g;
+  window->menu_border_color.b = STYLE.general.border.color.b;
   window->menu_border_color.a = 255;
 
-  window->group_border_color.r = STYLE.global.border.color.r;
-  window->group_border_color.g = STYLE.global.border.color.g;
-  window->group_border_color.b = STYLE.global.border.color.b;
+  window->group_border_color.r = STYLE.general.border.color.r;
+  window->group_border_color.g = STYLE.general.border.color.g;
+  window->group_border_color.b = STYLE.general.border.color.b;
   window->group_border_color.a = 255;
 
-  window->tooltip_border_color.r = STYLE.global.border.color.r;
-  window->tooltip_border_color.g = STYLE.global.border.color.g;
-  window->tooltip_border_color.b = STYLE.global.border.color.b;
+  window->tooltip_border_color.r = STYLE.general.border.color.r;
+  window->tooltip_border_color.g = STYLE.general.border.color.g;
+  window->tooltip_border_color.b = STYLE.general.border.color.b;
   window->tooltip_border_color.a = 255;
 
   window->background.r = STYLE.dialog.background.color.r;
@@ -392,7 +399,8 @@ app_pak_init_icon(AppPakImage* app_icon, const U8* buffer, Sz size) {
   const U8* data = stbi_load_from_memory(buffer, (U32)size, &w, &h, &c, 4);
   if (0 == data) {
     err = APP_PAK_ERR_ICON_INIT;
-    str512_set(&g_state.error_text, (U8*)"failed to load icon image from memory");
+    str512_set(&g_state.error_text,
+               (U8*)"failed to load icon image from memory");
     goto cleanup;
   }
   start_memory_profiling(data, size);
@@ -445,7 +453,8 @@ app_pak_cleanup() {
   if (APP_PAK_MODE_PAK_LOADED == g_state.mode) {
     pak_unload(&g_state.pak);
   }
-  arena_destroy(g_state.arena);
+
+  app_destroy(g_state.app);
 
   end_profiling();
 }
@@ -468,7 +477,8 @@ app_pak_cleanup_reload() {
   if (APP_PAK_MODE_PAK_LOADED == old_mode) {
     pak_unload(&g_state.pak);
   }
-  arena_clear(g_state.arena);
+
+  arena_clear(context_arena());
 
   end_profiling();
 }
@@ -565,7 +575,7 @@ app_pak_handle_pak(Str path) {
     app_pak_cleanup_reload();
   }
 
-  IOError ioerr = io_open_file(g_state.arena, path, &g_state.input_io_file);
+  IOError ioerr = io_open_file(context_arena(), path, &g_state.input_io_file);
   if (IO_ERR_SUCCESS != ioerr) {
     char err_text[APP_PAK_MAX_ERROR_LENGTH] = {0};
     snprintf(err_text, APP_PAK_MAX_ERROR_LENGTH, "failed to open '%s'",
@@ -612,7 +622,7 @@ app_pak_handle_dir(Str path) {
   }
 
   IOError ioerr = io_read_directory(
-      g_state.arena, path, &g_state.input_io_item,
+      context_arena(), path, &g_state.input_io_item,
       IO_READ_DIR_RECURSIVE | IO_READ_IGNORE_HIDDEN | IO_SORT_DIRS_FIRST);
   if (ioerr != IO_ERR_SUCCESS) {
     err = APP_PAK_ERR_DIR_OPEN;
@@ -988,7 +998,7 @@ app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
       nk_layout_row_dynamic(ctx, 0, 3);
       if (nk_button_label(ctx, "ok")) {
         PakError pakerr = pak_make_from_ioitem(
-            g_state.arena, &g_state.input_io_item, g_state.input_path,
+            context_arena(), &g_state.input_io_item, g_state.input_path,
             str1024_view(g_state.export_path_buffer), &g_state.error_text);
         if (PAK_ERR_SUCCESS != pakerr) {
           char err_text[APP_PAK_MAX_ERROR_LENGTH] = {0};

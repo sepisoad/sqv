@@ -100,49 +100,75 @@ struct IOItem {
 /*                          API                          */
 /* ===================================================== */
 
-IOError io_create_file(Arena* arena, Str path, IOFile* io_file);
-IOError io_create_file_with_size(Arena* arena,
-                                 Str path,
-                                 Sz size,
-                                 IOFile* io_file);
-IOError io_open_file(Arena* arena, Str path, IOFile* io_file);
-IOError io_close_file(IOFile* io_file);
-IOError io_load_file(Arena* a, Str path, IOFile* io_file);
-IOError io_get_file_size(Str path, Sz* out);
-IOError io_dump_buffer_to_path(Str path, Buf data);
-IOError io_slurp_path_to_buffer(Arena* arena, Str path, Buf* data);
-IOError io_is_path_a_file(Str path, Bool* is_file);
-IOError io_is_path_a_directory(Str path, Bool* is_dir);
-IOError io_make_directory(Str path, IOFlags flags);
-IOError io_read_directory(Arena* arena,
-                          Str path,
-                          IOItem* io_item,
-                          IOFlags flags);
-IOError io_get_directory_children_count(Str path, U32* count, IOFlags flags);
-IOError io_get_path_base_name(Arena* arena, Str path, Str* out);
-IOError io_get_path_directory_name(Arena* arena, Str path, Str* out);
+fn IOError io_create_file(Arena* arena, Str path, IOFile* io_file);
+fn IOError io_create_file_with_size(Arena* arena,
+                                    Str path,
+                                    Sz size,
+                                    IOFile* io_file);
+fn IOError io_open_file(Arena* arena, Str path, IOFile* io_file);
+fn IOError io_close_file(IOFile* io_file);
+fn IOError io_load_file(Arena* a, Str path, IOFile* io_file);
+fn IOError io_get_file_size(Str path, Sz* out);
+fn IOError io_dump_buffer_to_path(Str path, Buf data);
+fn IOError io_slurp_path_to_buffer(Arena* arena, Str path, Buf* data);
+fn IOError io_is_path_a_file(Str path, Bool* is_file);
+fn IOError io_is_path_a_directory(Str path, Bool* is_dir);
+fn IOError io_make_directory(Str path, IOFlags flags);
+fn IOError io_read_directory(Arena* arena,
+                             Str path,
+                             IOItem* io_item,
+                             IOFlags flags);
+fn IOError io_get_directory_children_count(Str path, U32* count, IOFlags flags);
+fn IOError io_get_path_base_name(Arena* arena, Str path, Str* out);
+fn IOError io_get_path_directory_name(Arena* arena, Str path, Str* out);
 
-static inline U64
+embed fn U64 io_get_file_position(IOFile* io_file);
+embed fn Nothing io_set_file_position(IOFile* io_file, U64 offset);
+embed fn Nothing io_move_file_position(IOFile* io_file, U64 offset);
+embed fn Sz io_read_into_buffer(IOFile* io_file, Sz length, RawPtr buffer);
+embed fn Nothing io_read_into_i16(IOFile* io_file, I16* out_value);
+embed fn Nothing io_read_into_i32(IOFile* io_file, I32* out_value);
+embed fn Nothing io_read_into_i64(IOFile* io_file, I64* out_values);
+embed fn Nothing io_read_into_f32(IOFile* io_file, F32* out_values);
+embed fn Nothing io_read_into_f64(IOFile* io_file, F64* out_values);
+embed fn Sz io_write_from_buffer(IOFile* io_file, Sz length, RawPtr buffer);
+embed fn Sz io_write_from_i16(IOFile* io_file, I16* i16);
+embed fn Sz io_write_from_i32(IOFile* io_file, I32* i32);
+embed fn Sz io_write_from_i64(IOFile* io_file, I64* i64);
+
+/* ===================================================== */
+/*                   INLINE FUNCTIONS                    */
+/* ===================================================== */
+
+embed fn U64
 io_get_file_position(IOFile* io_file) {
   return ftell(io_file->file);
 }
 
-static inline Nothing
+/* ----------------------------------------------------- */
+
+embed fn Nothing
 io_set_file_position(IOFile* io_file, U64 offset) {
   fseek(io_file->file, offset, SEEK_SET);
 }
 
-static inline Nothing
+/* ----------------------------------------------------- */
+
+embed fn Nothing
 io_move_file_position(IOFile* io_file, U64 offset) {
   fseek(io_file->file, offset, SEEK_CUR);
 }
 
-static inline Sz
+/* ----------------------------------------------------- */
+
+embed fn Sz
 io_read_into_buffer(IOFile* io_file, Sz length, RawPtr buffer) {
   return fread(buffer, 1, length, io_file->file);
 }
 
-static inline Nothing
+/* ----------------------------------------------------- */
+
+embed fn Nothing
 io_read_into_i16(IOFile* io_file, I16* out_value) {
   I16 temp_value;
   fread((RawPtr)&temp_value, 1, sizeof(I16), io_file->file);
@@ -150,7 +176,9 @@ io_read_into_i16(IOFile* io_file, I16* out_value) {
   *(out_value) = temp_value;
 }
 
-static inline Nothing
+/* ----------------------------------------------------- */
+
+embed fn Nothing
 io_read_into_i32(IOFile* io_file, I32* out_value) {
   I32 temp_value;
   fread((RawPtr)&temp_value, 1, sizeof(I32), io_file->file);
@@ -158,7 +186,9 @@ io_read_into_i32(IOFile* io_file, I32* out_value) {
   *(out_value) = temp_value;
 }
 
-static inline Nothing
+/* ----------------------------------------------------- */
+
+embed fn Nothing
 io_read_into_i64(IOFile* io_file, I64* out_values) {
   I64 temp_value;
   fread((RawPtr)&temp_value, 1, sizeof(I64), io_file->file);
@@ -166,7 +196,9 @@ io_read_into_i64(IOFile* io_file, I64* out_values) {
   *(out_values) = temp_value;
 }
 
-static inline Nothing
+/* ----------------------------------------------------- */
+
+embed fn Nothing
 io_read_into_f32(IOFile* io_file, F32* out_values) {
   F32 temp_value;
   fread((RawPtr)&temp_value, 1, sizeof(F32), io_file->file);
@@ -174,7 +206,9 @@ io_read_into_f32(IOFile* io_file, F32* out_values) {
   *(out_values) = temp_value;
 }
 
-static inline Nothing
+/* ----------------------------------------------------- */
+
+embed fn Nothing
 io_read_into_f64(IOFile* io_file, F64* out_values) {
   F64 temp_value;
   fread((RawPtr)&temp_value, 1, sizeof(F64), io_file->file);
@@ -182,22 +216,30 @@ io_read_into_f64(IOFile* io_file, F64* out_values) {
   *(out_values) = temp_value;
 }
 
-static inline Sz
+/* ----------------------------------------------------- */
+
+embed fn Sz
 io_write_from_buffer(IOFile* io_file, Sz length, RawPtr buffer) {
   return fwrite(buffer, 1, length, io_file->file);
 }
 
-static inline Sz
+/* ----------------------------------------------------- */
+
+embed fn Sz
 io_write_from_i16(IOFile* io_file, I16* i16) {
   return fwrite((RawPtr)(i16), 1, sizeof(I16), io_file->file);
 }
 
-static inline Sz
+/* ----------------------------------------------------- */
+
+embed fn Sz
 io_write_from_i32(IOFile* io_file, I32* i32) {
   return fwrite((RawPtr)(i32), 1, sizeof(I32), io_file->file);
 }
 
-static inline Sz
+/* ----------------------------------------------------- */
+
+embed fn Sz
 io_write_from_i64(IOFile* io_file, I64* i64) {
   return fwrite((RawPtr)(i64), 1, sizeof(I64), io_file->file);
 }
@@ -213,22 +255,22 @@ io_write_from_i64(IOFile* io_file, I64* i64) {
 
 mount_slave_profiling_context();
 
-static IOError _io_read_directory(Arena* arena,
-                                  Str path,
-                                  IOItem* io_item,
-                                  IOFlags flags);
-static IOError _io_read_directory_recursively(Arena* arena,
-                                              Str path,
-                                              IOItem* io_item,
-                                              IOFlags flags);
-static IOError _io_make_directory(Str path);
-static IOError _io_make_directory_recursively(Str path);
+local fn IOError io_read_directory_(Arena* arena,
+                                    Str path,
+                                    IOItem* io_item,
+                                    IOFlags flags);
+local fn IOError io_read_directory_recursively_(Arena* arena,
+                                                Str path,
+                                                IOItem* io_item,
+                                                IOFlags flags);
+local fn IOError io_make_directory_(Str path);
+local fn IOError io_make_directory_recursively_(Str path);
 
-static I32 io_item_sort(const void* a, const void* b);
+local fn I32 io_item_sort_(const void* a, const void* b);
 
 /* ----------------------------------------------------- */
 
-IOError
+fn IOError
 io_create_file(Arena* arena, Str path, IOFile* io_file) {
   start_profiling(1);
 
@@ -258,7 +300,7 @@ cleanup:
 
 /* ----------------------------------------------------- */
 
-IOError
+fn IOError
 io_open_file(Arena* arena, Str path, IOFile* io_file) {
   start_profiling(1);
 
@@ -302,7 +344,7 @@ cleanup:
 
 /* ----------------------------------------------------- */
 
-IOError
+fn IOError
 io_close_file(IOFile* io_file) {
   start_profiling(1);
 
@@ -326,7 +368,7 @@ io_close_file(IOFile* io_file) {
 
 /* ----------------------------------------------------- */
 
-IOError
+fn IOError
 io_load_file(Arena* arena, Str path, IOFile* io_file) {
   start_profiling(1);
 
@@ -391,7 +433,7 @@ cleanup:
 
 /* ----------------------------------------------------- */
 
-IOError
+fn IOError
 io_dump_buffer_to_path(Str path, Buf data) {
   start_profiling(1);
 
@@ -426,7 +468,7 @@ cleanup:
 
 /* ----------------------------------------------------- */
 
-IOError
+fn IOError
 io_slurp_path_to_buffer(Arena* arena, Str path, Buf* data) {
   start_profiling(1);
 
@@ -464,8 +506,8 @@ cleanup:
 
 /* ----------------------------------------------------- */
 
-static I32
-io_item_sort(SafePtr a, SafePtr b) {
+local fn I32
+io_item_sort_(SafePtr a, SafePtr b) {
   const IOItem io_item_a = *(const IOItem*)a;
   const IOItem io_item_b = *(const IOItem*)b;
 
@@ -481,8 +523,8 @@ io_item_sort(SafePtr a, SafePtr b) {
 
 /* ----------------------------------------------------- */
 
-static IOError
-_io_make_directory_recursively(Str path) {
+local fn IOError
+io_make_directory_recursively_(Str path) {
   start_profiling(1);
 
   assert(ZS(path) != 0);
@@ -496,7 +538,7 @@ _io_make_directory_recursively(Str path) {
       SL(path) = index;
       ZStr hack = (ZStr)&ZS(path)[index];
       *hack = 0;
-      err = _io_make_directory(path);
+      err = io_make_directory_(path);
       SL(path) = original_length;
       *hack = IO_PATH_SEPARATOR;
       if (IO_ERR_SUCCESS != err) {
@@ -506,7 +548,7 @@ _io_make_directory_recursively(Str path) {
     }
   }
 
-  err = _io_make_directory(path);
+  err = io_make_directory_(path);
   if (IO_ERR_SUCCESS != err) {
     err = IO_ERR_MKDIR_RECUR;
     goto cleanup;
@@ -519,30 +561,30 @@ cleanup:
 
 /* ----------------------------------------------------- */
 
-IOError
+fn IOError
 io_make_directory(Str path, IOFlags flags) {
   if (flags & IO_MAKE_DIR_RECURSIVE) {
-    return _io_make_directory_recursively(path);
+    return io_make_directory_recursively_(path);
   } else {
-    return _io_make_directory(path);
+    return io_make_directory_(path);
   }
 }
 
 /* ----------------------------------------------------- */
 
-IOError
+fn IOError
 io_read_directory(Arena* arena, Str path, IOItem* io_item, IOFlags flags) {
   if (flags & IO_READ_DIR_RECURSIVE) {
-    return _io_read_directory_recursively(arena, path, io_item, flags);
+    return io_read_directory_recursively_(arena, path, io_item, flags);
   } else {
-    return _io_read_directory(arena, path, io_item, flags);
+    return io_read_directory_(arena, path, io_item, flags);
   }
 }
 
 /* ----------------------------------------------------- */
 
-static IOError
-_io_read_directory_recursively(Arena* arena,
+local fn IOError
+io_read_directory_recursively_(Arena* arena,
                                Str path,
                                IOItem* io_item,
                                IOFlags flags) {
@@ -557,7 +599,7 @@ _io_read_directory_recursively(Arena* arena,
   Sz total_files_size = 0;
   U32 total_files_count = 0;
 
-  err = _io_read_directory(arena, path, io_item, flags);
+  err = io_read_directory_(arena, path, io_item, flags);
   if (IO_ERR_SUCCESS != err) {
     goto cleanup;
   }
@@ -576,7 +618,7 @@ _io_read_directory_recursively(Arena* arena,
       if (child->is_directory) {
         Str new_path =
             str_join(arena, last->path, child->name, IO_PATH_SEPARATOR);
-        err = _io_read_directory(arena, new_path, child, flags);
+        err = io_read_directory_(arena, new_path, child, flags);
         if (IO_ERR_SUCCESS != err) {
           goto cleanup;
         }
@@ -596,7 +638,7 @@ cleanup:
 
 /* ----------------------------------------------------- */
 
-IOError
+fn IOError
 io_get_path_base_name(Arena* arena, Str path, Str* out) {
   start_profiling(1);
 
@@ -628,7 +670,7 @@ io_get_path_base_name(Arena* arena, Str path, Str* out) {
 
 /* ----------------------------------------------------- */
 
-IOError
+fn IOError
 io_get_path_directory_name(Arena* arena, Str path, Str* out) {
   start_profiling(1);
 
@@ -655,7 +697,7 @@ io_get_path_directory_name(Arena* arena, Str path, Str* out) {
 
 /* ----------------------------------------------------- */
 
-IOError
+fn IOError
 io_is_path_a_file(Str path, Bool* is_file) {
   start_profiling(1);
 
@@ -666,7 +708,6 @@ io_is_path_a_file(Str path, Bool* is_file) {
   IOError err = IO_ERR_SUCCESS;
 
 #if defined(OS_LINUX) || defined(OS_MACOS)
-
   struct stat info = {0};
   if (-1 == stat(ZS(path), &info)) {
     err = IO_ERR_STAT;
@@ -678,20 +719,13 @@ io_is_path_a_file(Str path, Bool* is_file) {
   } else {
     *is_file = FALSE;
   }
-
 #elif defined(OS_WINDOWS)
-
   DWORD attr = GetFileAttributesW((WCHAR*)ZS(path));
   if (attr == INVALID_FILE_ATTRIBUTES) {
     return IO_ERR_STAT;
   }
 
   *is_file = (attr & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_DEVICE)) != 0;
-
-#else
-
-  not_implemented();
-
 #endif
 
 cleanup:
@@ -701,7 +735,7 @@ cleanup:
 
 /* ----------------------------------------------------- */
 
-IOError
+fn IOError
 io_is_path_a_directory(Str path, Bool* is_dir) {
   start_profiling(1);
 
@@ -712,7 +746,6 @@ io_is_path_a_directory(Str path, Bool* is_dir) {
   IOError err = IO_ERR_SUCCESS;
 
 #if defined(OS_LINUX) || defined(OS_MACOS)
-
   struct stat info = {0};
   if (-1 == stat(ZS(path), &info)) {
     err = IO_ERR_STAT;
@@ -724,20 +757,13 @@ io_is_path_a_directory(Str path, Bool* is_dir) {
   } else {
     *is_dir = FALSE;
   }
-
 #elif defined(OS_WINDOWS)
-
   DWORD attr = GetFileAttributesW((WCHAR*)ZS(path));
   if (attr == INVALID_FILE_ATTRIBUTES) {
     return IO_ERR_STAT;
   }
 
   *is_dir = (attr & FILE_ATTRIBUTE_DIRECTORY) != 0;
-
-#else
-
-  not_implemented();
-
 #endif
 
 cleanup:
@@ -747,8 +773,8 @@ cleanup:
 
 /* ----------------------------------------------------- */
 
-static IOError
-_io_read_directory(Arena* arena, Str path, IOItem* io_item, IOFlags flags) {
+local fn IOError
+io_read_directory_(Arena* arena, Str path, IOItem* io_item, IOFlags flags) {
   start_profiling(1);
 
   assert(arena != 0);
@@ -782,8 +808,6 @@ _io_read_directory(Arena* arena, Str path, IOItem* io_item, IOFlags flags) {
 
   WIN32_FIND_DATAW dir;
   HANDLE dir_item_found = FindFirstFileW(wide_find_path, &dir);
-#else
-  not_implemented();
 #endif
 
   io_is_path_a_directory(path, &is_dir);
@@ -845,7 +869,7 @@ _io_read_directory(Arena* arena, Str path, IOItem* io_item, IOFlags flags) {
     goto cleanup;
   }
 
-  qsort(children, children_count, sizeof(IOItem), io_item_sort);
+  qsort(children, children_count, sizeof(IOItem), io_item_sort_);
 
   io_item->children = children;
   io_item->children_count = children_count;
@@ -868,15 +892,13 @@ cleanup:
   return err;
 }
 
-/* ----------------------------------------------------- */
-
 /* ===================================================== */
 /*                         LINUX                         */
 /* ===================================================== */
 
 #if defined(OS_LINUX)
 
-IOError
+fn IOError
 io_get_directory_children_count(Str path, U32* count, IOFlags flags) {
   start_profiling(1);
 
@@ -895,8 +917,8 @@ cleanup:
 
 /* ----------------------------------------------------- */
 
-static IOError
-_io_make_directory(Str path) {
+local fn IOError
+io_make_directory_(Str path) {
   start_profiling(1);
 
   assert(ZS(path) != 0);
@@ -922,7 +944,7 @@ cleanup:
 
 #elif defined(OS_MACOS)
 
-IOError
+fn IOError
 io_create_file_with_size(Arena* arena, Str path, Sz size, IOFile* io_file) {
   start_profiling(1);
 
@@ -959,7 +981,7 @@ cleanup:
 
 /* ----------------------------------------------------- */
 
-IOError
+fn IOError
 io_get_file_size(Str path, Sz* out) {
   start_profiling(1);
 
@@ -988,7 +1010,7 @@ cleanup:
 
 /* ----------------------------------------------------- */
 
-IOError
+fn IOError
 io_get_directory_children_count(Str path, U32* count, IOFlags flags) {
   start_profiling(1);
 
@@ -1034,8 +1056,8 @@ cleanup:
 
 /* ----------------------------------------------------- */
 
-static IOError
-_io_make_directory(Str path) {
+local fn IOError
+io_make_directory_(Str path) {
   start_profiling(1);
 
   assert(ZS(path) != 0);
@@ -1074,8 +1096,8 @@ cleanup:
 
 #elif defined(OS_WINDOWS)
 
-static IOError
-_io_make_directory(Str path) {
+local fn IOError
+io_make_directory_(Str path) {
   start_profiling(1);
 
   assert(ZS(path) != 0);
@@ -1100,8 +1122,8 @@ cleanup:
 
 /* ----------------------------------------------------- */
 
-static IOError
-_io_read_directory(Arena* arena, Str path, IOItem* parent, IOFlags flags) {
+local fn IOError
+io_read_directory_(Arena* arena, Str path, IOItem* parent, IOFlags flags) {
   start_profiling(1);
 
   assert(ZS(path) != 0);
@@ -1118,7 +1140,7 @@ cleanup:
 
 /* ----------------------------------------------------- */
 
-IOError
+fn IOError
 io_get_directory_children_count(Str path, U32* count, IOFlags flags) {
   start_profiling(1);
 

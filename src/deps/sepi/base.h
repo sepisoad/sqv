@@ -44,6 +44,17 @@ typedef struct Empty Empty;
 struct Empty {};
 
 /* ===================================================== */
+/*                        SYNTAX                         */
+/* ===================================================== */
+
+#define fn
+#define embed static inline
+#define global static
+#define local static
+#define master extern
+#define slave
+
+/* ===================================================== */
 /*                       CONSTANTS                       */
 /* ===================================================== */
 

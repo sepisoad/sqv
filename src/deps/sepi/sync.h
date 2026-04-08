@@ -5,9 +5,18 @@
 /*                     DEPENDENCIES                      */
 /* ===================================================== */
 
+#if defined(OS_LINUX)
+#include <pthread.h>
+#elif defined(OS_MACOS)
+#include <pthread.h>
+#elif defined(OS_WINDOWS)
+#include <windows.h>
+#endif
+
 #include <tracy/tracy.h>
 
 #include <sepi/base.h>
+#include <sepi/context.h>
 
 /* ===================================================== */
 /*                  FORWARD DECLERATION                  */
@@ -22,17 +31,24 @@
 /* ===================================================== */
 
 // NOTE:
+// user has to define a custom enum in the target app defining the thread tags,
+// however we use this type in the api
+
+// NOTE:
 // why use an array of [1] item?
 // 1) id field can be used a pointer if the bracket is not used
 // 2) you can increase the capacity of id by just adding items to it
 // credits go to rad-debugger source code where i got this idea from!
 
-typedef Nothing SyncThreadFn(RawPtr* ptr);
+typedef RawPtr SyncThreadFn(RawPtr ptr);
 typedef SyncThreadFn* SyncThreadFnPtr;
 
 typedef struct SyncThread SyncThread;
 struct SyncThread {
   U64 id[1];
+  SyncThreadFnPtr fnptr;
+  RawPtr argptr;
+  ContextID context_id;
 };
 
 // mutex
@@ -69,44 +85,43 @@ struct SyncCheckpoint {
 /*                          API                          */
 /* ===================================================== */
 
-static SyncThread sync_thread_start(SyncThreadFnPtr fnptr, RawPtr optdata);
-static Bool sync_thread_await(SyncThread thread);
+fn SyncThread* sync_thread_start(SyncThreadFn fnptr,
+                              RawPtr argptr,
+                              ContextID tag);
+fn Nothing sync_thread_await(SyncThread* thread);
 
-static SyncLock sync_lock_create(Nothing);
-static SyncLock sync_lock_destroy(SyncLock lockt);
-static SyncLock sync_lock_acquire(SyncLock lockt);
-static SyncLock sync_lock_release(SyncLock lockt);
+fn SyncLock sync_lock_create(Nothing);
+fn SyncLock sync_lock_destroy(SyncLock lockt);
+fn SyncLock sync_lock_acquire(SyncLock lockt);
+fn SyncLock sync_lock_release(SyncLock lockt);
 
-static SyncRWLock sync_rw_lock_create(Nothing);
-static SyncRWLock sync_rw_lock_destroy(SyncRWLock rw_lock);
-static SyncRWLock sync_rw_lock_acquire_for_reading(SyncRWLock rw_lock);
-static SyncRWLock sync_rw_lock_acquire_for_writing(SyncRWLock rw_lock);
-static SyncRWLock sync_rw_lock_release(SyncRWLock rw_lock);
+fn SyncRWLock sync_rw_lock_create(Nothing);
+fn SyncRWLock sync_rw_lock_destroy(SyncRWLock rw_lock);
+fn SyncRWLock sync_rw_lock_acquire_for_reading(SyncRWLock rw_lock);
+fn SyncRWLock sync_rw_lock_acquire_for_writing(SyncRWLock rw_lock);
+fn SyncRWLock sync_rw_lock_release(SyncRWLock rw_lock);
 
-static SyncTokens sync_tokens_create(U32 initial_count, U32 max_count);
-static SyncTokens sync_tokens_destroy(SyncTokens tokens);
-static SyncTokens sync_tokens_acquire(SyncTokens tokens);
-static SyncTokens sync_tokens_release(SyncTokens tokens);
+fn SyncTokens sync_tokens_create(U32 initial_count, U32 max_count);
+fn SyncTokens sync_tokens_destroy(SyncTokens tokens);
+fn SyncTokens sync_tokens_acquire(SyncTokens tokens);
+fn SyncTokens sync_tokens_release(SyncTokens tokens);
 
-static SyncSignal sync_signal_create(Nothing);
-static SyncSignal sync_signal_destroy(SyncSignal signal);
-static SyncSignal sync_signal_listen(SyncSignal signal,
-                                          SyncLock lock);
-static SyncSignal sync_signal_listen_for(SyncSignal signal,
-                                              SyncLock lock,
-                                              Duration duration);
-static SyncSignal sync_signal_rw_lock_listen(SyncSignal signal,
-                                                     SyncRWLock rw_lock);
-static SyncSignal sync_signal_rw_lock_listen_for(
-    SyncSignal signal,
-    SyncRWLock rw_lock,
-    Duration duration);
-static SyncSignal sync_signal_notify_one(SyncSignal signal);
-static SyncSignal sync_signal_notify_all(SyncSignal signal);
+fn SyncSignal sync_signal_create(Nothing);
+fn SyncSignal sync_signal_destroy(SyncSignal signal);
+fn SyncSignal sync_signal_listen(SyncSignal signal, SyncLock lock);
+fn SyncSignal sync_signal_listen_for(SyncSignal signal,
+                                  SyncLock lock,
+                                  Duration duration);
+fn SyncSignal sync_signal_rw_lock_listen(SyncSignal signal, SyncRWLock rw_lock);
+fn SyncSignal sync_signal_rw_lock_listen_for(SyncSignal signal,
+                                          SyncRWLock rw_lock,
+                                          Duration duration);
+fn SyncSignal sync_signal_notify_one(SyncSignal signal);
+fn SyncSignal sync_signal_notify_all(SyncSignal signal);
 
-static SyncCheckpoint sync_checkpoint_create(Nothing);
-static SyncCheckpoint sync_checkpoint_destroy(SyncCheckpoint checkpointt);
-static SyncCheckpoint sync_checkpoint_await(SyncCheckpoint checkpointt);
+fn SyncCheckpoint sync_checkpoint_create(Nothing);
+fn SyncCheckpoint sync_checkpoint_destroy(SyncCheckpoint checkpointt);
+fn SyncCheckpoint sync_checkpoint_await(SyncCheckpoint checkpointt);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -115,6 +130,64 @@ static SyncCheckpoint sync_checkpoint_await(SyncCheckpoint checkpointt);
 #ifdef SEPI_SYNC_IMPLEMENTATION
 
 mount_slave_profiling_context();
+
+local fn RawPtr sync_thread_start_wrapper(RawPtr arg) {
+  start_profiling(1);
+
+  assert(arg != 0);
+
+  SyncThread* thread = (SyncThread*)arg;
+  assert(thread->fnptr != 0);
+
+  context_init(thread->context_id);
+  RawPtr result = thread->fnptr(thread->argptr);
+  context_deinit();
+
+  end_profiling();
+
+  return result;
+}
+
+fn SyncThread*
+sync_thread_start(SyncThreadFn fnptr, RawPtr argptr, ContextID context_id) {
+  start_profiling(1);
+
+  assert(fnptr != 0);
+
+  SyncThread* thread = arena_push(context_arena(), sizeof(SyncThread),
+                                  alignof(SyncThread), TRUE);
+  thread->fnptr = fnptr;
+  thread->argptr = argptr;
+  thread->context_id = context_id;
+
+#if defined(OS_LINUX) || defined(OS_MACOS)
+  pthread_t* _thread =
+      arena_push(context_arena(), sizeof(pthread_t), alignof(pthread_t), TRUE);
+  runtime_assert(0 == pthread_create(_thread, 0, sync_thread_start_wrapper, thread));
+  thread->id[0] = (U64)_thread;
+#elif defined(OS_WINDOWS)
+  runtime_assert(0 != CreateThread(0, 0, sync_thread_start_wrapper, thread, 0, thread->id);
+#endif
+
+  end_profiling();
+  return thread;
+}
+
+fn Nothing
+sync_thread_await(SyncThread* thread) {
+  start_profiling(1);
+
+  assert(thread != 0);
+
+#if defined(OS_LINUX) || defined(OS_MACOS)
+  pthread_join(*(pthread_t*)thread->id[0], 0);
+#elif defined(OS_WINDOWS)
+  WaitForSingleObject(thread.id, INFINITE);
+  CloseHandle(thread.id);
+#endif
+
+  end_profiling();
+}
 
 /* ===================================================== */
 /*                          END                          */

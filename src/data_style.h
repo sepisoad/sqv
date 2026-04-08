@@ -11,7 +11,7 @@ const static struct {
         U8 b;
       } color;
     } border;
-  } global;
+  } general;
   struct {
     struct {
       U32 x;
@@ -126,7 +126,7 @@ const static struct {
   } font;
 
 } STYLE = {
-    .global =
+    .general =
         {
             .border =
                 {

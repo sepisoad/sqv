@@ -21,24 +21,18 @@
 /*                          API                          */
 /* ===================================================== */
 
-static inline Bool isle();
-static inline I16 nd_i16(I16 num);
-static inline I32 nd_i32(I32 num);
-static inline I64 nd_i64(I64 num);
-static inline F32 nd_f32(F32 num);
-static inline F64 nd_f64(F64 num);
+embed fn Bool isle();
+embed fn I16 nd_i16(I16 num);
+embed fn I32 nd_i32(I32 num);
+embed fn I64 nd_i64(I64 num);
+embed fn F32 nd_f32(F32 num);
+embed fn F64 nd_f64(F64 num);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
 /* ===================================================== */
 
-// NOTE:
-// since this module implements all the functions as `static inline` we do not
-// need an implementation guard here anyway
-
-/* ----------------------------------------------------- */
-
-static inline Bool
+embed fn Bool
 isle() {
   U16 num = 0x1;
   return (*(U8*)&num == 1);
@@ -46,14 +40,14 @@ isle() {
 
 /* ----------------------------------------------------- */
 
-static inline I16
+embed fn I16
 nd_i16(I16 num) {
   return isle() ? num : (I16)((num >> 8) | (num << 8));
 }
 
 /* ----------------------------------------------------- */
 
-static inline I32
+embed fn I32
 nd_i32(I32 num) {
   return isle() ? num
                 : (I32)((num >> 24) | ((num >> 8) & 0x0000FF00) |
@@ -62,7 +56,7 @@ nd_i32(I32 num) {
 
 /* ----------------------------------------------------- */
 
-static inline I64
+embed fn I64
 nd_i64(I64 num) {
   return isle() ? num
                 : (I64)((num >> 56) | ((num >> 40) & 0x000000000000FF00LL) |
@@ -75,7 +69,7 @@ nd_i64(I64 num) {
 
 /* ----------------------------------------------------- */
 
-static inline F32
+embed fn F32
 nd_f32(F32 num) {
   if (isle()) {
     return num;
@@ -93,7 +87,7 @@ nd_f32(F32 num) {
 
 /* ----------------------------------------------------- */
 
-static inline F64
+embed fn F64
 nd_f64(F64 num) {
   if (isle()) {
     return num;

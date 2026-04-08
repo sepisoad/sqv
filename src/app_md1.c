@@ -23,6 +23,7 @@
 #include <deps/sokol/sokol_nuklear.h>
 #include <deps/sokol/sokol_time.h>
 #include <deps/sepi/base.h>
+#include <sepi/app.h>
 #include <deps/sepi/io.h>
 
 #if defined(OS_LINUX)
@@ -87,7 +88,7 @@ mount_master_profiling_context();
 DefineFStr(APP_MD1_MAX_ERROR_LENGTH);
 
 static struct {
-  Arena* arena;
+  App app;
   AppMd1Mode mode;
   Bool is_app_styled;
   Md1 md1;
@@ -200,7 +201,7 @@ static Nothing
 app_md1_init(Nothing) {
   start_profiling(1);
 
-  g_state.arena = arena_create();
+  g_state.app = app_create(0, 0);
 
   sg_setup(&(sg_desc){
       .environment = sglue_environment(),
@@ -244,48 +245,48 @@ app_md1_init_style(struct nk_style* s) {
   window->group_padding.x = STYLE.explorer.padding.x;
   window->group_padding.y = STYLE.explorer.padding.y;
 
-  window->border = STYLE.global.border.size;
-  window->combo_border = STYLE.global.border.size;
-  window->contextual_border = STYLE.global.border.size;
-  window->menu_border = STYLE.global.border.size;
-  window->group_border = STYLE.global.border.size;
-  window->tooltip_border = STYLE.global.border.size;
-  window->popup_border = STYLE.global.border.size;
-  window->min_row_height_padding = STYLE.global.border.size;
+  window->border = STYLE.general.border.size;
+  window->combo_border = STYLE.general.border.size;
+  window->contextual_border = STYLE.general.border.size;
+  window->menu_border = STYLE.general.border.size;
+  window->group_border = STYLE.general.border.size;
+  window->tooltip_border = STYLE.general.border.size;
+  window->popup_border = STYLE.general.border.size;
+  window->min_row_height_padding = STYLE.general.border.size;
 
-  window->border_color.r = STYLE.global.border.color.r;
-  window->border_color.g = STYLE.global.border.color.g;
-  window->border_color.b = STYLE.global.border.color.b;
+  window->border_color.r = STYLE.general.border.color.r;
+  window->border_color.g = STYLE.general.border.color.g;
+  window->border_color.b = STYLE.general.border.color.b;
   window->border_color.a = 255;
 
-  window->popup_border_color.r = STYLE.global.border.color.r;
-  window->popup_border_color.g = STYLE.global.border.color.g;
-  window->popup_border_color.b = STYLE.global.border.color.b;
+  window->popup_border_color.r = STYLE.general.border.color.r;
+  window->popup_border_color.g = STYLE.general.border.color.g;
+  window->popup_border_color.b = STYLE.general.border.color.b;
   window->popup_border_color.a = 255;
 
-  window->combo_border_color.r = STYLE.global.border.color.r;
-  window->combo_border_color.g = STYLE.global.border.color.g;
-  window->combo_border_color.b = STYLE.global.border.color.b;
+  window->combo_border_color.r = STYLE.general.border.color.r;
+  window->combo_border_color.g = STYLE.general.border.color.g;
+  window->combo_border_color.b = STYLE.general.border.color.b;
   window->combo_border_color.a = 255;
 
-  window->contextual_border_color.r = STYLE.global.border.color.r;
-  window->contextual_border_color.g = STYLE.global.border.color.g;
-  window->contextual_border_color.b = STYLE.global.border.color.b;
+  window->contextual_border_color.r = STYLE.general.border.color.r;
+  window->contextual_border_color.g = STYLE.general.border.color.g;
+  window->contextual_border_color.b = STYLE.general.border.color.b;
   window->contextual_border_color.a = 255;
 
-  window->menu_border_color.r = STYLE.global.border.color.r;
-  window->menu_border_color.g = STYLE.global.border.color.g;
-  window->menu_border_color.b = STYLE.global.border.color.b;
+  window->menu_border_color.r = STYLE.general.border.color.r;
+  window->menu_border_color.g = STYLE.general.border.color.g;
+  window->menu_border_color.b = STYLE.general.border.color.b;
   window->menu_border_color.a = 255;
 
-  window->group_border_color.r = STYLE.global.border.color.r;
-  window->group_border_color.g = STYLE.global.border.color.g;
-  window->group_border_color.b = STYLE.global.border.color.b;
+  window->group_border_color.r = STYLE.general.border.color.r;
+  window->group_border_color.g = STYLE.general.border.color.g;
+  window->group_border_color.b = STYLE.general.border.color.b;
   window->group_border_color.a = 255;
 
-  window->tooltip_border_color.r = STYLE.global.border.color.r;
-  window->tooltip_border_color.g = STYLE.global.border.color.g;
-  window->tooltip_border_color.b = STYLE.global.border.color.b;
+  window->tooltip_border_color.r = STYLE.general.border.color.r;
+  window->tooltip_border_color.g = STYLE.general.border.color.g;
+  window->tooltip_border_color.b = STYLE.general.border.color.b;
   window->tooltip_border_color.a = 255;
 
   window->background.r = STYLE.dialog.background.color.r;
@@ -350,7 +351,8 @@ app_md1_init_icon(AppMd1Image* app_icon, const U8* buffer, Sz size) {
   const U8* data = stbi_load_from_memory(buffer, (I32)size, &w, &h, &c, 4);
   if (0 == data) {
     err = APP_MD1_ERR_ICON_INIT;
-    str512_set(&g_state.error_text, (U8*)"failed to load icon image from memory");
+    str512_set(&g_state.error_text,
+               (U8*)"failed to load icon image from memory");
     goto cleanup;
   }
   start_memory_profiling(data, size);
@@ -475,7 +477,7 @@ app_md1_cleanup(Nothing) {
     // handle this shit!
     // pak_unload(&g_state.pak);
   }
-  arena_destroy(g_state.arena);
+  app_destroy(g_state.app);
 
   end_profiling();
 }
@@ -500,7 +502,7 @@ app_md1_cleanup_reload(Nothing) {
   if (APP_MD1_MODE_LOADED == old_mode) {
     md1_unload(&g_state.md1);
   }
-  arena_clear(g_state.arena);
+  arena_clear(context_arena());
 
   end_profiling();
 }
@@ -635,7 +637,7 @@ app_md1_handle_drop_event(Str path) {
 
   // NDBuffer ndb = {0};
   IOFile io_file = {0};
-  IOError ioerr = io_load_file(g_state.arena, path, &io_file);
+  IOError ioerr = io_load_file(context_arena(), path, &io_file);
   if (ioerr != IO_ERR_SUCCESS) {
     err = APP_MD1_ERR_FILE_OPEN;
     goto cleanup;

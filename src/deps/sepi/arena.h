@@ -54,18 +54,18 @@ struct ArenaScratch {
 /*                          API                          */
 /* ===================================================== */
 
-Arena* arena_create_(ArenaParams* arena_params);
-Nothing arena_destroy(Arena* arena);
-RawPtr arena_push(Arena* arena,
+fn Arena* arena_create_(ArenaParams* arena_params);
+fn Nothing arena_destroy(Arena* arena);
+fn RawPtr arena_push(Arena* arena,
                   U64 size_to_allocate,
                   U64 memory_alignment,
                   Bool with_zero);
-Nothing arena_pop(Arena* arena, U64 amount);
-Nothing arena_pop_to(Arena* arena, U64 position);
-Nothing arena_clear(Arena* arena);
-U64 arena_get_position(Arena* arena);
-ArenaScratch arena_scratch_begin(Arena* arena);
-Nothing arena_scratch_end(ArenaScratch arena_scratch);
+fn Nothing arena_pop(Arena* arena, U64 amount);
+fn Nothing arena_pop_to(Arena* arena, U64 position);
+fn Nothing arena_clear(Arena* arena);
+fn U64 arena_get_position(Arena* arena);
+fn ArenaScratch arena_scratch_begin(Arena* arena);
+fn Nothing arena_scratch_end(ArenaScratch arena_scratch);
 
 #define arena_create(...)                                                  \
   arena_create_(                                                           \
@@ -93,7 +93,7 @@ mount_slave_profiling_context();
 
 /* ----------------------------------------------------- */
 
-Arena*
+fn Arena*
 arena_create_(ArenaParams* ap) {
   start_profiling(1);
 
@@ -143,7 +143,7 @@ arena_create_(ArenaParams* ap) {
 
 /* ----------------------------------------------------- */
 
-Nothing
+fn Nothing
 arena_destroy(Arena* arena) {
   start_profiling(1);
 
@@ -158,7 +158,7 @@ arena_destroy(Arena* arena) {
 
 /* ----------------------------------------------------- */
 
-RawPtr
+fn RawPtr
 arena_push(Arena* arena,
            U64 size_to_allocate,
            U64 memory_alignment,
@@ -256,7 +256,7 @@ arena_push(Arena* arena,
 
 /* ----------------------------------------------------- */
 
-Nothing
+fn Nothing
 arena_pop(Arena* a, U64 amount) {
   start_profiling(1);
 
@@ -273,7 +273,7 @@ arena_pop(Arena* a, U64 amount) {
 
 /* ----------------------------------------------------- */
 
-Nothing
+fn Nothing
 arena_pop_to(Arena* a, U64 position) {
   start_profiling(1);
 
@@ -304,7 +304,7 @@ arena_pop_to(Arena* a, U64 position) {
 
 /* ----------------------------------------------------- */
 
-Nothing
+fn Nothing
 arena_clear(Arena* a) {
   start_profiling(1);
 
@@ -315,7 +315,7 @@ arena_clear(Arena* a) {
 
 /* ----------------------------------------------------- */
 
-U64
+fn U64
 arena_get_position(Arena* a) {
   start_profiling(1);
 
@@ -326,7 +326,9 @@ arena_get_position(Arena* a) {
   return position;
 }
 
-ArenaScratch
+/* ----------------------------------------------------- */
+
+fn ArenaScratch
 arena_scratch_begin(Arena* a) {
   start_profiling(1);
 
@@ -336,7 +338,9 @@ arena_scratch_begin(Arena* a) {
   return (ArenaScratch){a, position};
 }
 
-Nothing
+/* ----------------------------------------------------- */
+
+fn Nothing
 arena_scratch_end(ArenaScratch s) {
   start_profiling(1);
 
