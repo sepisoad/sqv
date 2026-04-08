@@ -41,10 +41,10 @@ struct Stack_Class_ {
 /*                          API                          */
 /* ===================================================== */
 
-Stack_Class_* stack__class__create(Arena* arena);
-Nothing stack__class__push(Stack_Class_* stack, _Type_* _class_);
-_Type_* stack__class__pop(Stack_Class_* stack);
-Nothing stack__class__clean(Stack_Class_* stack);
+fn Stack_Class_* stack__class__create(Arena* arena);
+fn Nothing stack__class__push(Stack_Class_* stack, _Type_* _class_);
+fn _Type_* stack__class__pop(Stack_Class_* stack);
+fn Nothing stack__class__clean(Stack_Class_* stack);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -54,7 +54,7 @@ Nothing stack__class__clean(Stack_Class_* stack);
 
 mount_slave_profiling_context();
 
-Stack_Class_*
+fn Stack_Class_*
 stack__class__create(Arena* arena) {
   start_profiling(1);
 
@@ -66,7 +66,7 @@ stack__class__create(Arena* arena) {
   return stack;
 }
 
-Nothing
+fn Nothing
 stack__class__push(Stack_Class_* stack, _Type_* _class_) {
   start_profiling(1);
 
@@ -80,7 +80,7 @@ stack__class__push(Stack_Class_* stack, _Type_* _class_) {
   end_profiling();
 }
 
-_Type_*
+fn _Type_*
 stack__class__pop(Stack_Class_* stack) {
   start_profiling(1);
 
@@ -99,7 +99,7 @@ cleanup:
   return _class_;
 }
 
-Nothing
+fn Nothing
 stack__class__clean(Stack_Class_* stack) {
   start_profiling(1);
 
@@ -113,7 +113,7 @@ stack__class__clean(Stack_Class_* stack) {
   end_profiling();
 }
 
-U64
+fn U64
 // cppcheck-suppress unusedFunction
 stack__class__length(const Stack_Class_* stack) {
   return stack->length;

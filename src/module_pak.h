@@ -93,14 +93,14 @@ static inline Nothing str512_set(Str512* f, const U8* str);
 /*                          API                          */
 /* ===================================================== */
 
-PakError pak_load_from_io_file(Pak* pak, IOFile* io_file);
-Nothing pak_unload(Pak* pak);
-PakError pak_extract(Pak* pak, IOFile* io_file, Str out_dir);
-PakError pak_extract_item(Pak* pak,
+fn PakError pak_load_from_io_file(Pak* pak, IOFile* io_file);
+fn Nothing pak_unload(Pak* pak);
+fn PakError pak_extract(Pak* pak, IOFile* io_file, Str out_dir);
+fn PakError pak_extract_item(Pak* pak,
                           PakItem* pak_item_for_path,
                           IOFile* io_file,
                           Str out_dir);
-PakError pak_make_from_ioitem(Arena* arena,
+fn PakError pak_make_from_ioitem(Arena* arena,
                               IOItem* io_item,
                               Str base_path,
                               Str out_path,
@@ -116,7 +116,7 @@ mount_slave_profiling_context();
 
 // TODO:
 // use Str
-static U32
+local fn U32
 pak_get_path_depth(CZStr path, U32 length) {
   start_profiling(1);
 
@@ -143,7 +143,7 @@ pak_get_path_depth(CZStr path, U32 length) {
 
 // TODO:
 // use Str
-static Nothing
+local fn Nothing
 pak_get_path_at_depth(CZStr path,
                       U32 length,
                       U32 depth,
@@ -172,7 +172,7 @@ pak_get_path_at_depth(CZStr path,
 
 // TODO:
 // use Str
-static Nothing
+local fn Nothing
 pak_get_name_at_depth(CZStr path,
                       U32 length,
                       U32 depth,
@@ -204,7 +204,7 @@ pak_get_name_at_depth(CZStr path,
 
 /* ===================================================== */
 
-static I32
+local fn I32
 pak_item_sort(SafePtr a, SafePtr b) {
   const PakItem* pak_item_a = *(const PakItem**)a;
   const PakItem* pak_item_b = *(const PakItem**)b;
@@ -221,7 +221,7 @@ pak_item_sort(SafePtr a, SafePtr b) {
 
 /* ===================================================== */
 
-static PakError
+local fn PakError
 pak_read_entries_from_io_file(Pak* pak, IOFile* io_file) {
   start_profiling(1);
 
@@ -364,7 +364,7 @@ pak_read_entries_from_io_file(Pak* pak, IOFile* io_file) {
 
 /* ===================================================== */
 
-PakError
+fn PakError
 pak_load_from_io_file(Pak* pak, IOFile* io_file) {
   start_profiling(1);
 
@@ -404,7 +404,7 @@ cleanup:
 
 /* ===================================================== */
 
-Nothing
+fn Nothing
 pak_unload(Pak* pak) {
   start_profiling(1);
 
@@ -417,7 +417,7 @@ pak_unload(Pak* pak) {
 
 /* ===================================================== */
 
-PakError
+fn PakError
 pak_extract(Pak* pak, IOFile* io_file, Str out_dir) {
   start_profiling(1);
 
@@ -464,7 +464,7 @@ cleanup:
 
 /* ===================================================== */
 
-PakError
+fn PakError
 pak_extract_item(Pak* pak,
                  PakItem* pak_item_for_path,
                  IOFile* io_file,
@@ -553,7 +553,7 @@ cleanup:
 
 /* ===================================================== */
 
-PakError
+fn PakError
 pak_make_from_ioitem(Arena* arena,
                      IOItem* io_item,
                      Str base_path,

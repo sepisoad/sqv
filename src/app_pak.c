@@ -93,7 +93,7 @@ mount_master_profiling_context();
 DefineFStr(APP_PAK_MAX_EXPORT_PATH_LENGTH);
 DefineFStr(APP_PAK_MAX_ERROR_LENGTH);
 
-static struct {
+local struct {
   AppPakImage home;
   AppPakImage back;
   AppPakImage package;
@@ -102,7 +102,7 @@ static struct {
   AppPakImage file;
 } g_icons;
 
-static struct {
+local struct {
   Bool is_app_styled;
   Bool is_extracting_requested;
   Bool is_packaging_requested;
@@ -124,67 +124,67 @@ static struct {
 /*                      DECLERATIONS                     */
 /* ===================================================== */
 
-static Nothing app_pak_init(Nothing);
-static AppPakError app_pak_init_style(struct nk_style* s);
-static AppPakError app_pak_init_icons(Nothing);
-static AppPakError app_pak_init_icon(AppPakImage* app_icon,
-                                     const U8* buffer,
-                                     Sz size);
+local fn Nothing app_pak_init(Nothing);
+local fn AppPakError app_pak_init_style(struct nk_style* s);
+local fn AppPakError app_pak_init_icons(Nothing);
+local fn AppPakError app_pak_init_icon(AppPakImage* app_icon,
+                                       const U8* buffer,
+                                       Sz size);
 
-static Nothing app_pak_cleanup(Nothing);
-static Nothing app_pak_cleanup_reload(Nothing);
-static Nothing app_pak_cleanup_icons(Nothing);
-static Nothing app_pak_cleanup_icon(AppPakImage* app_icon);
+local fn Nothing app_pak_cleanup(Nothing);
+local fn Nothing app_pak_cleanup_reload(Nothing);
+local fn Nothing app_pak_cleanup_icons(Nothing);
+local fn Nothing app_pak_cleanup_icon(AppPakImage* app_icon);
 
-static Nothing app_pak_handle_user_input_events(const sapp_event* event);
-static AppPakError app_pak_handle_drop_event(Str path);
-static AppPakError app_pak_handle_pak(Str path);
-static AppPakError app_pak_handle_dir(Str path);
+local fn Nothing app_pak_handle_user_input_events(const sapp_event* event);
+local fn AppPakError app_pak_handle_drop_event(Str path);
+local fn AppPakError app_pak_handle_pak(Str path);
+local fn AppPakError app_pak_handle_dir(Str path);
 
-static Nothing app_pak_frame(Nothing);
-static U32 app_pak_draw(struct nk_context* ctx);
-static Nothing app_pak_draw_mode_empty(struct nk_context* ctx,
-                                       nk_flags window_flags,
-                                       U32 window_width,
-                                       U32 window_height);
-static Nothing app_pak_draw_mode_failed(struct nk_context* ctx,
-                                        nk_flags window_flags,
-                                        U32 window_width,
-                                        U32 window_height);
-static Nothing app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
-                                            nk_flags window_flags,
-                                            U32 window_width,
-                                            U32 window_height);
-static Nothing app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
-                                            nk_flags window_flags,
-                                            U32 window_width,
-                                            U32 window_height);
-static Nothing app_pak_draw_widget_pak_explorer_area(struct nk_context* ctx,
-                                                     U32 window_width,
-                                                     U32 window_height);
-static Nothing app_pak_draw_widget_dir_explorer_area(struct nk_context* ctx,
-                                                     U32 window_width,
-                                                     U32 window_height);
-static Nothing app_pak_draw_widget_explorer_pak_item(struct nk_context* ctx,
-                                                     PakItem* node);
-static Nothing app_pak_draw_widget_explorer_dir_item(struct nk_context* ctx,
-                                                     IOItem* node);
-static Nothing app_pak_draw_widget_explorer_pak_icon(struct nk_context* ctx,
-                                                     PakItem* node,
-                                                     Bool is_directory,
-                                                     struct nk_image* image,
-                                                     Str text);
-static Nothing app_pak_draw_widget_explorer_dir_icon(struct nk_context* ctx,
-                                                     IOItem* node,
-                                                     Bool is_directory,
-                                                     struct nk_image* image,
-                                                     Str text);
+local fn Nothing app_pak_frame(Nothing);
+local fn U32 app_pak_draw(struct nk_context* ctx);
+local fn Nothing app_pak_draw_mode_empty(struct nk_context* ctx,
+                                         nk_flags window_flags,
+                                         U32 window_width,
+                                         U32 window_height);
+local fn Nothing app_pak_draw_mode_failed(struct nk_context* ctx,
+                                          nk_flags window_flags,
+                                          U32 window_width,
+                                          U32 window_height);
+local fn Nothing app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
+                                              nk_flags window_flags,
+                                              U32 window_width,
+                                              U32 window_height);
+local fn Nothing app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
+                                              nk_flags window_flags,
+                                              U32 window_width,
+                                              U32 window_height);
+local fn Nothing app_pak_draw_widget_pak_explorer_area(struct nk_context* ctx,
+                                                       U32 window_width,
+                                                       U32 window_height);
+local fn Nothing app_pak_draw_widget_dir_explorer_area(struct nk_context* ctx,
+                                                       U32 window_width,
+                                                       U32 window_height);
+local fn Nothing app_pak_draw_widget_explorer_pak_item(struct nk_context* ctx,
+                                                       PakItem* node);
+local fn Nothing app_pak_draw_widget_explorer_dir_item(struct nk_context* ctx,
+                                                       IOItem* node);
+local fn Nothing app_pak_draw_widget_explorer_pak_icon(struct nk_context* ctx,
+                                                       PakItem* node,
+                                                       Bool is_directory,
+                                                       struct nk_image* image,
+                                                       Str text);
+local fn Nothing app_pak_draw_widget_explorer_dir_icon(struct nk_context* ctx,
+                                                       IOItem* node,
+                                                       Bool is_directory,
+                                                       struct nk_image* image,
+                                                       Str text);
 
 /* ===================================================== */
 /*                       FUNCTIONS                       */
 /* ===================================================== */
 
-sapp_desc
+fn sapp_desc
 sokol_main(I32 argc, char* argv[]) {
   start_profiling(1);
 
@@ -222,7 +222,7 @@ sokol_main(I32 argc, char* argv[]) {
 
 /* ===================================================== */
 
-Nothing
+fn Nothing
 app_pak_init(Nothing) {
   start_profiling(1);
 
@@ -253,7 +253,7 @@ app_pak_init(Nothing) {
 
 /* ===================================================== */
 
-static AppPakError
+local fn  AppPakError
 app_pak_init_style(struct nk_style* s) {
   start_profiling(1);
 
@@ -343,7 +343,7 @@ app_pak_init_style(struct nk_style* s) {
 
 /* ===================================================== */
 
-static AppPakError
+local fn  AppPakError
 app_pak_init_icons() {
   start_profiling(1);
 
@@ -389,7 +389,7 @@ cleanup:
 
 /* ===================================================== */
 
-static AppPakError
+local fn  AppPakError
 app_pak_init_icon(AppPakImage* app_icon, const U8* buffer, Sz size) {
   start_profiling(1);
 
@@ -442,7 +442,7 @@ cleanup:
 
 /* ===================================================== */
 
-static Nothing
+local fn  Nothing
 app_pak_cleanup() {
   start_profiling(1);
 
@@ -461,7 +461,7 @@ app_pak_cleanup() {
 
 /* ===================================================== */
 
-static Nothing
+local fn  Nothing
 app_pak_cleanup_reload() {
   start_profiling(1);
 
@@ -485,7 +485,7 @@ app_pak_cleanup_reload() {
 
 /* ===================================================== */
 
-static Nothing
+local fn  Nothing
 app_pak_cleanup_icons() {
   start_profiling(1);
 
@@ -501,7 +501,7 @@ app_pak_cleanup_icons() {
 
 /* ===================================================== */
 
-static Nothing
+local fn  Nothing
 app_pak_cleanup_icon(AppPakImage* app_icon) {
   start_profiling(1);
 
@@ -515,7 +515,7 @@ app_pak_cleanup_icon(AppPakImage* app_icon) {
 
 /* ===================================================== */
 
-static Nothing
+local fn  Nothing
 app_pak_handle_user_input_events(const sapp_event* event) {
   start_profiling(1);
 
@@ -535,7 +535,7 @@ app_pak_handle_user_input_events(const sapp_event* event) {
 
 /* ===================================================== */
 
-static AppPakError
+local fn  AppPakError
 app_pak_handle_drop_event(Str path) {
   start_profiling(1);
 
@@ -562,7 +562,7 @@ cleanup:
 
 /* ===================================================== */
 
-static AppPakError
+local fn  AppPakError
 app_pak_handle_pak(Str path) {
   start_profiling(1);
 
@@ -608,7 +608,7 @@ cleanup:
 
 /* ===================================================== */
 
-static AppPakError
+local fn  AppPakError
 app_pak_handle_dir(Str path) {
   start_profiling(1);
 
@@ -640,7 +640,7 @@ cleanup:
 
 /* ===================================================== */
 
-static Nothing
+local fn  Nothing
 app_pak_frame() {
   // TODO:
   // do i need both profiling functions at the same time?
@@ -672,12 +672,12 @@ app_pak_frame() {
 
 /* ===================================================== */
 
-static U32
+local fn  U32
 app_pak_draw(struct nk_context* ctx) {
   start_profiling(1);
 
-  static char window_title[] = "SQV::Pak Explorer";
-  static nk_flags window_flags = NK_WINDOW_BORDER;
+  local char window_title[] = "SQV::Pak Explorer";
+  local nk_flags window_flags = NK_WINDOW_BORDER;
 
   U32 window_width = sapp_width();
   U32 window_height = sapp_height();
@@ -703,7 +703,7 @@ app_pak_draw(struct nk_context* ctx) {
 
 /* ===================================================== */
 
-static Nothing
+local fn  Nothing
 app_pak_draw_mode_empty(struct nk_context* ctx,
                         nk_flags window_flags,
                         U32 window_width,
@@ -712,8 +712,8 @@ app_pak_draw_mode_empty(struct nk_context* ctx,
 
   if (nk_begin(ctx, "", nk_rect(0, 0, window_width, window_height),
                window_flags)) {
-    static char label_line_1[] = "drop a .PAK file for extraction";
-    static char label_line_2[] = "or drop a folder for packaging as .PAK file";
+    local char label_line_1[] = "drop a .PAK file for extraction";
+    local char label_line_2[] = "or drop a folder for packaging as .PAK file";
     struct nk_rect content_region = nk_window_get_content_region(ctx);
     const struct nk_user_font* font = ctx->style.font;
 
@@ -750,7 +750,7 @@ app_pak_draw_mode_empty(struct nk_context* ctx,
 
 /* ===================================================== */
 
-static Nothing
+local fn  Nothing
 app_pak_draw_mode_failed(struct nk_context* ctx,
                          nk_flags window_flags,
                          U32 window_width,
@@ -770,7 +770,7 @@ app_pak_draw_mode_failed(struct nk_context* ctx,
 
 /* ===================================================== */
 
-static Nothing
+local fn  Nothing
 app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
                              nk_flags window_flags,
                              U32 window_width,
@@ -915,7 +915,7 @@ app_pak_draw_mode_pak_loaded(struct nk_context* ctx,
 
 /* ===================================================== */
 
-static Nothing
+local fn  Nothing
 app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
                              nk_flags window_flags,
                              U32 window_width,
@@ -1049,7 +1049,7 @@ app_pak_draw_mode_dir_loaded(struct nk_context* ctx,
 
 /* ===================================================== */
 
-static Nothing
+local fn  Nothing
 app_pak_draw_widget_pak_explorer_area(struct nk_context* ctx,
                                       U32 window_width,
                                       U32 window_height) {
@@ -1105,7 +1105,7 @@ app_pak_draw_widget_pak_explorer_area(struct nk_context* ctx,
 
 /* ===================================================== */
 
-static Nothing
+local fn  Nothing
 app_pak_draw_widget_dir_explorer_area(struct nk_context* ctx,
                                       U32 window_width,
                                       U32 window_height) {
@@ -1162,7 +1162,7 @@ app_pak_draw_widget_dir_explorer_area(struct nk_context* ctx,
 
 /* ===================================================== */
 
-static Nothing
+local fn  Nothing
 app_pak_draw_widget_explorer_pak_item(struct nk_context* ctx, PakItem* node) {
   start_profiling(1);
 
@@ -1185,7 +1185,7 @@ app_pak_draw_widget_explorer_pak_item(struct nk_context* ctx, PakItem* node) {
 
 /* ===================================================== */
 
-static Nothing
+local fn  Nothing
 app_pak_draw_widget_explorer_dir_item(struct nk_context* ctx, IOItem* node) {
   start_profiling(1);
 
@@ -1207,7 +1207,7 @@ app_pak_draw_widget_explorer_dir_item(struct nk_context* ctx, IOItem* node) {
 
 /* ===================================================== */
 
-static Nothing
+local fn  Nothing
 app_pak_draw_widget_explorer_pak_icon(struct nk_context* ctx,
                                       PakItem* node,
                                       Bool is_directory,
@@ -1254,7 +1254,7 @@ app_pak_draw_widget_explorer_pak_icon(struct nk_context* ctx,
 
 /* ===================================================== */
 
-static Nothing
+local fn  Nothing
 app_pak_draw_widget_explorer_dir_icon(struct nk_context* ctx,
                                       IOItem* node,
                                       Bool is_directory,

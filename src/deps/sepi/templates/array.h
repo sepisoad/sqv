@@ -52,10 +52,10 @@ struct Array_Class_ {
 /*                          API                          */
 /* ===================================================== */
 
-Array_Class_* array__class__create(Arena* arena);
-_Type_* array__class__get(Array_Class_* array, U64 index);
-_Type_* array__class__push(Array_Class_* array, _Type_* ptr);
-U32 array__class__length(Array_Class_* array);
+fn Array_Class_* array__class__create(Arena* arena);
+fn _Type_* array__class__get(Array_Class_* array, U64 index);
+fn _Type_* array__class__push(Array_Class_* array, _Type_* ptr);
+fn U32 array__class__length(Array_Class_* array);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -65,7 +65,7 @@ U32 array__class__length(Array_Class_* array);
 
 mount_slave_profiling_context();
 
-Array_Class_*
+fn Array_Class_*
 array__class__create(Arena* arena) {
   start_profiling(1);
 
@@ -87,7 +87,7 @@ array__class__create(Arena* arena) {
   return array;
 }
 
-_Type_*
+fn _Type_*
 array__class__get(Array_Class_* array, U64 index) {
   start_profiling(1);
 
@@ -104,7 +104,7 @@ array__class__get(Array_Class_* array, U64 index) {
   return res;
 }
 
-_Type_*
+fn _Type_*
 array__class__push(Array_Class_* array, _Type_* ptr) {
   start_profiling(1);
 
@@ -132,7 +132,7 @@ array__class__push(Array_Class_* array, _Type_* ptr) {
   return res;
 }
 
-U32
+fn U32
 array__class__length(Array_Class_* array) {
   /* NOTE: no place for profiling! */
   return array->offset;

@@ -1,7 +1,7 @@
 #ifndef SQV_STYLE_HEADER_
 #define SQV_STYLE_HEADER_
 
-const static struct {
+local const struct {
   struct {
     struct {
       U32 size;

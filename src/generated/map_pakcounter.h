@@ -44,12 +44,12 @@ struct MapPakCounter {
 /*                          API                          */
 /* ===================================================== */
 
-MapPakCounter map_pakcounter_make(Arena* arena, U64 max_keys_list_length);
-Nothing map_pakcounter_push(MapPakCounter* map, Str key, PakCounter* value);
-PakCounter* map_pakcounter_get(MapPakCounter* map, Str key);
-PakCounter* map_pakcounter_delete(MapPakCounter* map, Str key);
-Nothing map_pakcounter_clean(MapPakCounter* map);
-Nothing map_pakcounter_keys(MapPakCounter* map, Str** keys, U64* length);
+fn MapPakCounter map_pakcounter_make(Arena* arena, U64 max_keys_list_length);
+fn Nothing map_pakcounter_push(MapPakCounter* map, Str key, PakCounter* value);
+fn PakCounter* map_pakcounter_get(MapPakCounter* map, Str key);
+fn PakCounter* map_pakcounter_delete(MapPakCounter* map, Str key);
+fn Nothing map_pakcounter_clean(MapPakCounter* map);
+fn Nothing map_pakcounter_keys(MapPakCounter* map, Str** keys, U64* length);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -62,7 +62,7 @@ mount_slave_profiling_context();
 #define map_pakcounter_hasher(str) \
   rapidhash_withSeed(ZS((str)), SL((str)), 1987)
 
-MapPakCounter
+fn MapPakCounter
 map_pakcounter_make(Arena* arena, U64 max_keys_list_length) {
   start_profiling(1);
 
@@ -82,7 +82,7 @@ map_pakcounter_make(Arena* arena, U64 max_keys_list_length) {
   return map;
 }
 
-Nothing
+fn Nothing
 map_pakcounter_push(MapPakCounter* map, Str key, PakCounter* value) {
   start_profiling(1);
 
@@ -119,7 +119,7 @@ cleanup:
   end_profiling();
 }
 
-PakCounter*
+fn PakCounter*
 map_pakcounter_get(MapPakCounter* map, Str key) {
   start_profiling(1);
 
@@ -145,7 +145,7 @@ cleanup:
   return found;
 }
 
-PakCounter*
+fn PakCounter*
 // cppcheck-suppress unusedFunction
 map_pakcounter_delete(MapPakCounter* map, Str key) {
   start_profiling(1);
@@ -180,7 +180,7 @@ cleanup:
   return found;
 }
 
-Nothing
+fn Nothing
 // cppcheck-suppress unusedFunction
 map_pakcounter_clean(MapPakCounter* map) {
   start_profiling(1);
@@ -194,7 +194,7 @@ map_pakcounter_clean(MapPakCounter* map) {
   end_profiling();
 }
 
-Nothing
+fn Nothing
 // cppcheck-suppress unusedFunction
 map_pakcounter_keys(MapPakCounter* map, Str** keys, U64* length) {
   start_profiling(1);

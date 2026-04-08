@@ -42,13 +42,13 @@ struct List_Class_ {
 /*                          API                          */
 /* ===================================================== */
 
-List_Class_ list__class__make(Arena* arena);
-List_Class_Node* list__class__push_start(List_Class_* list, _Type_ data);
-List_Class_Node* list__class__push_end(List_Class_* list, _Type_ data);
-List_Class_Node* list__class__pop_end(List_Class_* list);
-List_Class_Node* list__class__pop_head(List_Class_* list);
-_Type_ list__class__get(List_Class_* list, U64 index);
-Nothing list__class__clean(List_Class_* list);
+fn List_Class_ list__class__make(Arena* arena);
+fn List_Class_Node* list__class__push_start(List_Class_* list, _Type_ data);
+fn List_Class_Node* list__class__push_end(List_Class_* list, _Type_ data);
+fn List_Class_Node* list__class__pop_end(List_Class_* list);
+fn List_Class_Node* list__class__pop_head(List_Class_* list);
+fn _Type_ list__class__get(List_Class_* list, U64 index);
+fn Nothing list__class__clean(List_Class_* list);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -58,7 +58,7 @@ Nothing list__class__clean(List_Class_* list);
 
 mount_slave_profiling_context();
 
-List_Class_
+fn List_Class_
 list__class__make(Arena* arena) {
   start_profiling(1);
 
@@ -75,7 +75,7 @@ list__class__make(Arena* arena) {
   return list;
 }
 
-List_Class_Node*
+fn List_Class_Node*
 list__class__push_start(List_Class_* list, _Type_ data) {
   start_profiling(1);
 
@@ -100,7 +100,7 @@ list__class__push_start(List_Class_* list, _Type_ data) {
   return node;
 }
 
-List_Class_Node*
+fn List_Class_Node*
 list__class__push_end(List_Class_* list, _Type_ data) {
   start_profiling(1);
 
@@ -124,7 +124,7 @@ list__class__push_end(List_Class_* list, _Type_ data) {
   return node;
 }
 
-List_Class_Node*
+fn List_Class_Node*
 list__class__pop_end(List_Class_* list) {
   start_profiling(1);
 
@@ -153,7 +153,7 @@ cleanup:
   return res;
 }
 
-List_Class_Node*
+fn List_Class_Node*
 list__class__pop_head(List_Class_* list) {
   start_profiling(1);
 
@@ -182,7 +182,7 @@ cleanup:
   return res;
 }
 
-_Type_
+fn _Type_
 list__class__get(List_Class_* list, U64 index) {
   start_profiling(1);
 
@@ -210,7 +210,7 @@ cleanup:
   return res->data;
 }
 
-Nothing
+fn Nothing
 list__class__clean(List_Class_* list) {
   start_profiling(1);
 

@@ -44,12 +44,12 @@ struct Map_Class_ {
 /*                          API                          */
 /* ===================================================== */
 
-Map_Class_ map__class__make(Arena* arena, U64 max_keys_list_length);
-Nothing map__class__push(Map_Class_* map, Str key, _Class_* value);
-_Class_* map__class__get(Map_Class_* map, Str key);
-_Class_* map__class__delete(Map_Class_* map, Str key);
-Nothing map__class__clean(Map_Class_* map);
-Nothing map__class__keys(Map_Class_* map, Str** keys, U64* length);
+fn Map_Class_ map__class__make(Arena* arena, U64 max_keys_list_length);
+fn Nothing map__class__push(Map_Class_* map, Str key, _Class_* value);
+fn _Class_* map__class__get(Map_Class_* map, Str key);
+fn _Class_* map__class__delete(Map_Class_* map, Str key);
+fn Nothing map__class__clean(Map_Class_* map);
+fn Nothing map__class__keys(Map_Class_* map, Str** keys, U64* length);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -61,7 +61,7 @@ mount_slave_profiling_context();
 
 #define map__class__hasher(str) rapidhash_withSeed(ZS((str)), SL((str)), 1987)
 
-Map_Class_
+fn Map_Class_
 map__class__make(Arena* arena, U64 max_keys_list_length) {
   start_profiling(1);
 
@@ -81,7 +81,7 @@ map__class__make(Arena* arena, U64 max_keys_list_length) {
   return map;
 }
 
-Nothing
+fn Nothing
 map__class__push(Map_Class_* map, Str key, _Class_* value) {
   start_profiling(1);
 
@@ -118,7 +118,7 @@ cleanup:
   end_profiling();
 }
 
-_Class_*
+fn _Class_*
 map__class__get(Map_Class_* map, Str key) {
   start_profiling(1);
 
@@ -144,7 +144,7 @@ cleanup:
   return found;
 }
 
-_Class_*
+fn _Class_*
 // cppcheck-suppress unusedFunction
 map__class__delete(Map_Class_* map, Str key) {
   start_profiling(1);
@@ -179,7 +179,7 @@ cleanup:
   return found;
 }
 
-Nothing
+fn Nothing
 // cppcheck-suppress unusedFunction
 map__class__clean(Map_Class_* map) {
   start_profiling(1);
@@ -193,7 +193,7 @@ map__class__clean(Map_Class_* map) {
   end_profiling();
 }
 
-Nothing
+fn Nothing
 // cppcheck-suppress unusedFunction
 map__class__keys(Map_Class_* map, Str** keys, U64* length) {
   start_profiling(1);

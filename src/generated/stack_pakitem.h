@@ -39,10 +39,10 @@ struct StackPakItem {
 /*                          API                          */
 /* ===================================================== */
 
-StackPakItem* stack_pakitem_create(Arena* arena);
-Nothing stack_pakitem_push(StackPakItem* stack, PakItem* pakitem);
-PakItem* stack_pakitem_pop(StackPakItem* stack);
-Nothing stack_pakitem_clean(StackPakItem* stack);
+fn StackPakItem* stack_pakitem_create(Arena* arena);
+fn Nothing stack_pakitem_push(StackPakItem* stack, PakItem* pakitem);
+fn PakItem* stack_pakitem_pop(StackPakItem* stack);
+fn Nothing stack_pakitem_clean(StackPakItem* stack);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -52,7 +52,7 @@ Nothing stack_pakitem_clean(StackPakItem* stack);
 
 mount_slave_profiling_context();
 
-StackPakItem*
+fn StackPakItem*
 stack_pakitem_create(Arena* arena) {
   start_profiling(1);
 
@@ -64,7 +64,7 @@ stack_pakitem_create(Arena* arena) {
   return stack;
 }
 
-Nothing
+fn Nothing
 stack_pakitem_push(StackPakItem* stack, PakItem* pakitem) {
   start_profiling(1);
 
@@ -78,7 +78,7 @@ stack_pakitem_push(StackPakItem* stack, PakItem* pakitem) {
   end_profiling();
 }
 
-PakItem*
+fn PakItem*
 stack_pakitem_pop(StackPakItem* stack) {
   start_profiling(1);
 
@@ -97,7 +97,7 @@ cleanup:
   return pakitem;
 }
 
-Nothing
+fn Nothing
 stack_pakitem_clean(StackPakItem* stack) {
   start_profiling(1);
 
@@ -111,7 +111,7 @@ stack_pakitem_clean(StackPakItem* stack) {
   end_profiling();
 }
 
-U64
+fn U64
 // cppcheck-suppress unusedFunction
 stack_pakitem_length(const StackPakItem* stack) {
   return stack->length;

@@ -44,12 +44,12 @@ struct MapPakItem {
 /*                          API                          */
 /* ===================================================== */
 
-MapPakItem map_pakitem_make(Arena* arena, U64 max_keys_list_length);
-Nothing map_pakitem_push(MapPakItem* map, Str key, PakItem* value);
-PakItem* map_pakitem_get(MapPakItem* map, Str key);
-PakItem* map_pakitem_delete(MapPakItem* map, Str key);
-Nothing map_pakitem_clean(MapPakItem* map);
-Nothing map_pakitem_keys(MapPakItem* map, Str** keys, U64* length);
+fn MapPakItem map_pakitem_make(Arena* arena, U64 max_keys_list_length);
+fn Nothing map_pakitem_push(MapPakItem* map, Str key, PakItem* value);
+fn PakItem* map_pakitem_get(MapPakItem* map, Str key);
+fn PakItem* map_pakitem_delete(MapPakItem* map, Str key);
+fn Nothing map_pakitem_clean(MapPakItem* map);
+fn Nothing map_pakitem_keys(MapPakItem* map, Str** keys, U64* length);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -61,7 +61,7 @@ mount_slave_profiling_context();
 
 #define map_pakitem_hasher(str) rapidhash_withSeed(ZS((str)), SL((str)), 1987)
 
-MapPakItem
+fn MapPakItem
 map_pakitem_make(Arena* arena, U64 max_keys_list_length) {
   start_profiling(1);
 
@@ -81,7 +81,7 @@ map_pakitem_make(Arena* arena, U64 max_keys_list_length) {
   return map;
 }
 
-Nothing
+fn Nothing
 map_pakitem_push(MapPakItem* map, Str key, PakItem* value) {
   start_profiling(1);
 
@@ -118,7 +118,7 @@ cleanup:
   end_profiling();
 }
 
-PakItem*
+fn PakItem*
 map_pakitem_get(MapPakItem* map, Str key) {
   start_profiling(1);
 
@@ -144,7 +144,7 @@ cleanup:
   return found;
 }
 
-PakItem*
+fn PakItem*
 // cppcheck-suppress unusedFunction
 map_pakitem_delete(MapPakItem* map, Str key) {
   start_profiling(1);
@@ -179,7 +179,7 @@ cleanup:
   return found;
 }
 
-Nothing
+fn Nothing
 // cppcheck-suppress unusedFunction
 map_pakitem_clean(MapPakItem* map) {
   start_profiling(1);
@@ -193,7 +193,7 @@ map_pakitem_clean(MapPakItem* map) {
   end_profiling();
 }
 
-Nothing
+fn Nothing
 // cppcheck-suppress unusedFunction
 map_pakitem_keys(MapPakItem* map, Str** keys, U64* length) {
   start_profiling(1);

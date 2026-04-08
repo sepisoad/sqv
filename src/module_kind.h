@@ -87,9 +87,9 @@ typedef enum {
 /*                          API                          */
 /* ===================================================== */
 
-KindError kind_guess_entry(Str, Kind*);
-KindError kind_guess_file(CZStr, Kind*);
-KindError kind_guess_buffer(CZStr, Kind*);
+fn KindError kind_guess_entry(Str, Kind*);
+fn KindError kind_guess_file(CZStr, Kind*);
+fn KindError kind_guess_buffer(CZStr, Kind*);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -99,7 +99,7 @@ KindError kind_guess_buffer(CZStr, Kind*);
 
 mount_slave_profiling_context();
 
-static KindError
+local fn KindError
 guess_file_type(CZStr buf, Kind* kind) {
   start_profiling(1);
 
@@ -123,7 +123,7 @@ cleanup:
   return err;
 }
 
-KindError
+fn KindError
 // cppcheck-suppress unusedFunction
 kind_guess_entry(Str path, Kind* kind) {
   start_profiling(1);
@@ -339,7 +339,7 @@ cleanup:
   return err;
 }
 
-KindError
+fn KindError
 // cppcheck-suppress unusedFunction
 kind_guess_file(CZStr path, Kind* kind) {
   start_profiling(1);
@@ -369,7 +369,7 @@ kind_guess_file(CZStr path, Kind* kind) {
   return err;
 }
 
-KindError
+fn KindError
 // cppcheck-suppress unusedFunction
 kind_guess_buffer(CZStr data, Kind* kind) {
   start_profiling(1);

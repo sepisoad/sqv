@@ -198,20 +198,20 @@ typedef struct {
 /*                          API                          */
 /* ===================================================== */
 
-Md1Error md1_load(Md1* md1, IOFile* io_file);
-Md1Error md1_get_vertices(const Md1* md1,
+fn Md1Error md1_load(Md1* md1, IOFile* io_file);
+fn Md1Error md1_get_vertices(const Md1* md1,
                           U32 pose_idx,
                           U32 frame_idx,
                           F32** frame_vbuf,
                           Sz* frame_vertex_buffer_size);
-Md1Error md1_get_vertices_v2(Md1* md1,
+fn Md1Error md1_get_vertices_v2(Md1* md1,
                              U32 pose_idx,
                              U32 frame_idx,
                              F32** vbuf,
                              Sz* vbuf_size,
                              U32** ibuf,
                              Sz* ibuf_size);
-Md1Error md1_unload(Md1* md1);
+fn Md1Error md1_unload(Md1* md1);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -223,7 +223,7 @@ Md1Error md1_unload(Md1* md1);
 
 mount_slave_profiling_context();
 
-static Md1Error
+local fn Md1Error
 md1_load_skins(Md1* md1, IOFile* io_file) {
   start_profiling(1);
 
@@ -299,7 +299,7 @@ md1_load_skins(Md1* md1, IOFile* io_file) {
   return err;
 }
 
-static Md1Error
+local fn Md1Error
 md1_load_uvs(const Md1* md1, IOFile* io_file, Md1UV** uvs) {
   start_profiling(1);
 
@@ -326,7 +326,7 @@ md1_load_uvs(const Md1* md1, IOFile* io_file, Md1UV** uvs) {
   return err;
 }
 
-static Md1Error
+local fn Md1Error
 md1_load_triangles(Md1* md1, IOFile* io_file, Md1FacedTriangle** fts) {
   start_profiling(1);
 
@@ -362,7 +362,7 @@ md1_load_triangles(Md1* md1, IOFile* io_file, Md1FacedTriangle** fts) {
   return err;
 }
 
-static Bool
+local fn Bool
 md1_has_pose_name_changed(ZStr new, CZStr old) {
   start_profiling(1);
 
@@ -386,7 +386,7 @@ md1_has_pose_name_changed(ZStr new, CZStr old) {
   return FALSE;
 }
 
-static Md1Error
+local fn Md1Error
 md1_load_single_frame(Md1* md1,
                       IOFile* io_file,
                       U32 frame_idx,
@@ -544,7 +544,7 @@ md1_load_single_frame(Md1* md1,
   return err;
 }
 
-static Md1Error
+local fn Md1Error
 md1_load_frames(Md1* md1, IOFile* io_file) {
   start_profiling(1);
 
@@ -591,7 +591,7 @@ md1_load_frames(Md1* md1, IOFile* io_file) {
   return err;
 }
 
-static Md1Error
+local fn Md1Error
 md1_make_display_list(Md1* md1, Md1UV* uvs, Md1FacedTriangle* faced_triangles) {
   start_profiling(1);
 

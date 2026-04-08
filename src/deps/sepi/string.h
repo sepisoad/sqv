@@ -20,7 +20,7 @@
 /*                       CONSTANTS                       */
 /* ===================================================== */
 
-static U8 str_utf8_class[32] = {
+local U8 str_utf8_class[32] = {
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 3, 3, 4, 5,
 };
@@ -151,21 +151,21 @@ fn Bool str_equal(Str str_a, Str str_b, StrCmpFlags flags);
 
 Nothing str_clean(Str str);
 
-static U16
+local fn U16
 safe_cast_u16(U32 x) {
   runtime_assert(x <= MAX_U16);
   U16 result = (U16)x;
   return result;
 }
 
-// static U32
+// local fn U32
 // safe_cast_u32(U64 x) {
 //   runtime_assert(x <= MAX_U32);
 //   U32 result = (U32)x;
 //   return result;
 // }
 
-// static I32
+// local fn I32
 // safe_cast_s32(I64 x) {
 //   runtime_assert(x <= MAX_I32);
 //   I32 result = (I32)x;
