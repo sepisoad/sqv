@@ -47,9 +47,7 @@ struct Empty {};
 /*                        SYNTAX                         */
 /* ===================================================== */
 
-#define fn
 #define embed static inline
-#define global static
 #define local static
 #define master extern
 #define slave
@@ -342,7 +340,7 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 #include <tracy/tracy.h>
 #define mount_master_profiling_context() TracyCZoneCtx tracyctx;
 #define mount_slave_profiling_context() extern TracyCZoneCtx tracyctx;
-#define start_profiling(NUM) TracyCZoneN(tracyctx, __func__, (NUM));
+#define start_profiling() TracyCZoneN(tracyctx, __func__, 1);
 #define end_profiling() TracyCZoneEnd(tracyctx);
 #define start_memory_profiling(PTR, SIZE) TracyCAlloc((PTR), (SIZE));
 #define end_memory_profiling(PTR) TracyCFree((PTR));

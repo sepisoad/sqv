@@ -122,35 +122,35 @@ local struct {
 /*                      DECLERATIONS                     */
 /* ===================================================== */
 
-local fn Nothing app_md1_init(Nothing);
-local fn AppMd1Error app_md1_init_style(struct nk_style* s);
-local fn AppMd1Error app_md1_init_icons(Nothing);
-local fn AppMd1Error app_md1_init_icon(AppMd1Image* app_icon,
+local Nothing app_md1_init(Nothing);
+local AppMd1Error app_md1_init_style(struct nk_style* s);
+local AppMd1Error app_md1_init_icons(Nothing);
+local AppMd1Error app_md1_init_icon(AppMd1Image* app_icon,
                                      const U8* buffer,
                                      Sz size);
-local fn AppMd1Error app_md1_init_display_pipeline();
-local fn AppMd1Error app_md1_init_offscreen_pipeline();
+local AppMd1Error app_md1_init_display_pipeline();
+local AppMd1Error app_md1_init_offscreen_pipeline();
 
-local fn Nothing app_md1_cleanup(Nothing);
-local fn Nothing app_md1_cleanup_reload(Nothing);
-local fn AppMd1Error app_md1_cleanup_icons(Nothing);
-local fn AppMd1Error app_md1_cleanup_icon(AppMd1Image* app_icon);
-local fn AppMd1Error app_md1_cleanup_3d(Nothing);
+local Nothing app_md1_cleanup(Nothing);
+local Nothing app_md1_cleanup_reload(Nothing);
+local AppMd1Error app_md1_cleanup_icons(Nothing);
+local AppMd1Error app_md1_cleanup_icon(AppMd1Image* app_icon);
+local AppMd1Error app_md1_cleanup_3d(Nothing);
 
-local fn Nothing app_md1_handle_user_input_events(const sapp_event* e);
-local fn AppMd1Error app_md1_handle_drop_event(Str path);
+local Nothing app_md1_handle_user_input_events(const sapp_event* e);
+local AppMd1Error app_md1_handle_drop_event(Str path);
 
-local fn Nothing app_md1_frame(Nothing);
-local fn U32 app_md1_draw_ui(struct nk_context* ctx);
-local fn Nothing app_md1_draw_mode_empty(struct nk_context* ctx,
+local Nothing app_md1_frame(Nothing);
+local U32 app_md1_draw_ui(struct nk_context* ctx);
+local Nothing app_md1_draw_mode_empty(struct nk_context* ctx,
                                        nk_flags window_flags,
                                        U32 window_width,
                                        U32 window_height);
-local fn Nothing app_md1_draw_mode_failed(struct nk_context* ctx,
+local Nothing app_md1_draw_mode_failed(struct nk_context* ctx,
                                         nk_flags window_flags,
                                         U32 window_width,
                                         U32 window_height);
-local fn Nothing app_md1_draw_mode_md1_loaded(struct nk_context* ctx,
+local Nothing app_md1_draw_mode_md1_loaded(struct nk_context* ctx,
                                             nk_flags window_flags,
                                             U32 window_width,
                                             U32 window_height);
@@ -158,10 +158,10 @@ local fn Nothing app_md1_draw_mode_md1_loaded(struct nk_context* ctx,
 /*                       FUNCTIONS                       */
 /* ===================================================== */
 
-fn sapp_desc
+sapp_desc
 // cppcheck-suppress unusedFunction
 sokol_main(I32 argc, char* argv[]) {
-  start_profiling(1);
+  start_profiling();
 
   sargs_setup(&(sargs_desc){
       .argc = argc,
@@ -197,9 +197,9 @@ sokol_main(I32 argc, char* argv[]) {
 
 /* ===================================================== */
 
-local fn Nothing
+local Nothing
 app_md1_init(Nothing) {
-  start_profiling(1);
+  start_profiling();
 
   g_state.app = app_create(0, 0);
 
@@ -230,9 +230,9 @@ app_md1_init(Nothing) {
 
 /* ===================================================== */
 
-local fn AppMd1Error
+local AppMd1Error
 app_md1_init_style(struct nk_style* s) {
-  start_profiling(1);
+  start_profiling();
 
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
 
@@ -320,9 +320,9 @@ app_md1_init_style(struct nk_style* s) {
 
 /* ===================================================== */
 
-local fn AppMd1Error
+local AppMd1Error
 app_md1_init_icons(Nothing) {
-  start_profiling(1);
+  start_profiling();
 
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
 
@@ -340,10 +340,10 @@ app_md1_init_icons(Nothing) {
 
 /* ===================================================== */
 
-local fn AppMd1Error
+local AppMd1Error
 // cppcheck-suppress unusedFunction
 app_md1_init_icon(AppMd1Image* app_icon, const U8* buffer, Sz size) {
-  start_profiling(1);
+  start_profiling();
 
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
 
@@ -394,9 +394,9 @@ cleanup:
 
 /* ===================================================== */
 
-local fn AppMd1Error
+local AppMd1Error
 app_md1_init_display_pipeline() {
-  start_profiling(1);
+  start_profiling();
 
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
 
@@ -410,9 +410,9 @@ app_md1_init_display_pipeline() {
 
 /* ===================================================== */
 
-local fn AppMd1Error
+local AppMd1Error
 app_md1_init_offscreen_pipeline() {
-  start_profiling(1);
+  start_profiling();
 
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
 
@@ -465,9 +465,9 @@ app_md1_init_offscreen_pipeline() {
 
 /* ===================================================== */
 
-local fn Nothing
+local Nothing
 app_md1_cleanup(Nothing) {
-  start_profiling(1);
+  start_profiling();
 
   md1_unload(&g_state.md1);
   snk_shutdown();
@@ -484,9 +484,9 @@ app_md1_cleanup(Nothing) {
 
 /* ===================================================== */
 
-local fn Nothing
+local Nothing
 app_md1_cleanup_reload(Nothing) {
-  start_profiling(1);
+  start_profiling();
 
   AppMd1Mode old_mode = g_state.mode;
   g_state.mode = APP_MD1_MODE_EMPTY;
@@ -509,10 +509,10 @@ app_md1_cleanup_reload(Nothing) {
 
 /* ===================================================== */
 
-local fn AppMd1Error
+local AppMd1Error
 // cppcheck-suppress unusedFunction
 app_md1_cleanup_icons(Nothing) {
-  start_profiling(1);
+  start_profiling();
 
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
 
@@ -547,10 +547,10 @@ app_md1_cleanup_icons(Nothing) {
 
 /* ===================================================== */
 
-local fn AppMd1Error
+local AppMd1Error
 // cppcheck-suppress unusedFunction
 app_md1_cleanup_icon(AppMd1Image* app_icon) {
-  start_profiling(1);
+  start_profiling();
 
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
 
@@ -567,9 +567,9 @@ app_md1_cleanup_icon(AppMd1Image* app_icon) {
 
 // TODO:
 // complete this
-local fn AppMd1Error
+local AppMd1Error
 app_md1_cleanup_3d(Nothing) {
-  start_profiling(1);
+  start_profiling();
 
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
 
@@ -586,9 +586,9 @@ app_md1_cleanup_3d(Nothing) {
 
 /* ===================================================== */
 
-local fn Nothing
+local Nothing
 app_md1_handle_user_input_events(const sapp_event* event) {
-  start_profiling(1);
+  start_profiling();
 
   // switch (e->type) {
   //   case SAPP_EVENTTYPE_KEY_UP:
@@ -625,9 +625,9 @@ app_md1_handle_user_input_events(const sapp_event* event) {
 
 /* ===================================================== */
 
-local fn AppMd1Error
+local AppMd1Error
 app_md1_handle_drop_event(Str path) {
-  start_profiling(1);
+  start_profiling();
 
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
 
@@ -666,9 +666,9 @@ cleanup:
 
 /* ===================================================== */
 
-local fn Nothing
+local Nothing
 app_md1_frame(Nothing) {
-  start_profiling(1);
+  start_profiling();
   start_frame_profiling();
 
   struct nk_context* ctx = snk_new_frame();
@@ -693,9 +693,9 @@ app_md1_frame(Nothing) {
 
 /* ===================================================== */
 
-local fn U32
+local U32
 app_md1_draw_ui(struct nk_context* ctx) {
-  start_profiling(1);
+  start_profiling();
 
   local char window_title[] = "SQV::Md1 Viewer";
   local nk_flags window_flags = NK_WINDOW_BORDER;
@@ -722,12 +722,12 @@ app_md1_draw_ui(struct nk_context* ctx) {
 
 /* ===================================================== */
 
-local fn Nothing
+local Nothing
 app_md1_draw_mode_empty(struct nk_context* ctx,
                         nk_flags window_flags,
                         U32 window_width,
                         U32 window_height) {
-  start_profiling(1);
+  start_profiling();
 
   if (nk_begin(ctx, "", nk_rect(0, 0, window_width, window_height),
                window_flags)) {
@@ -769,12 +769,12 @@ app_md1_draw_mode_empty(struct nk_context* ctx,
 
 /* ===================================================== */
 
-local fn Nothing
+local Nothing
 app_md1_draw_mode_failed(struct nk_context* ctx,
                          nk_flags window_flags,
                          U32 window_width,
                          U32 window_height) {
-  start_profiling(1);
+  start_profiling();
 
   if (nk_begin(ctx, "", nk_rect(0, 0, window_width, window_height),
                window_flags)) {
@@ -789,12 +789,12 @@ app_md1_draw_mode_failed(struct nk_context* ctx,
 
 /* ===================================================== */
 
-local fn Nothing
+local Nothing
 app_md1_draw_mode_md1_loaded(struct nk_context* ctx,
                              nk_flags window_flags,
                              U32 window_width,
                              U32 window_height) {
-  start_profiling(1);
+  start_profiling();
 
   ignore(ctx);
   ignore(window_flags);

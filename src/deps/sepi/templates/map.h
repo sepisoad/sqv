@@ -44,12 +44,12 @@ struct Map_Class_ {
 /*                          API                          */
 /* ===================================================== */
 
-fn Map_Class_ map__class__make(Arena* arena, U64 max_keys_list_length);
-fn Nothing map__class__push(Map_Class_* map, Str key, _Class_* value);
-fn _Class_* map__class__get(Map_Class_* map, Str key);
-fn _Class_* map__class__delete(Map_Class_* map, Str key);
-fn Nothing map__class__clean(Map_Class_* map);
-fn Nothing map__class__keys(Map_Class_* map, Str** keys, U64* length);
+Map_Class_ map__class__make(Arena* arena, U64 max_keys_list_length);
+Nothing map__class__push(Map_Class_* map, Str key, _Class_* value);
+_Class_* map__class__get(Map_Class_* map, Str key);
+_Class_* map__class__delete(Map_Class_* map, Str key);
+Nothing map__class__clean(Map_Class_* map);
+Nothing map__class__keys(Map_Class_* map, Str** keys, U64* length);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -61,9 +61,9 @@ mount_slave_profiling_context();
 
 #define map__class__hasher(str) rapidhash_withSeed(ZS((str)), SL((str)), 1987)
 
-fn Map_Class_
+Map_Class_
 map__class__make(Arena* arena, U64 max_keys_list_length) {
-  start_profiling(1);
+  start_profiling();
 
   assert(arena != 0);
   assert(max_keys_list_length > 0);
@@ -81,9 +81,9 @@ map__class__make(Arena* arena, U64 max_keys_list_length) {
   return map;
 }
 
-fn Nothing
+Nothing
 map__class__push(Map_Class_* map, Str key, _Class_* value) {
-  start_profiling(1);
+  start_profiling();
 
   assert(map != 0);
   assert(ZS(key) != 0);
@@ -118,9 +118,9 @@ cleanup:
   end_profiling();
 }
 
-fn _Class_*
+_Class_*
 map__class__get(Map_Class_* map, Str key) {
-  start_profiling(1);
+  start_profiling();
 
   assert(map != 0);
   assert(ZS(key) != 0);
@@ -144,10 +144,10 @@ cleanup:
   return found;
 }
 
-fn _Class_*
+_Class_*
 // cppcheck-suppress unusedFunction
 map__class__delete(Map_Class_* map, Str key) {
-  start_profiling(1);
+  start_profiling();
 
   assert(map != 0);
   assert(ZS(key) != 0);
@@ -179,10 +179,10 @@ cleanup:
   return found;
 }
 
-fn Nothing
+Nothing
 // cppcheck-suppress unusedFunction
 map__class__clean(Map_Class_* map) {
-  start_profiling(1);
+  start_profiling();
 
   assert(map != 0);
 
@@ -193,10 +193,10 @@ map__class__clean(Map_Class_* map) {
   end_profiling();
 }
 
-fn Nothing
+Nothing
 // cppcheck-suppress unusedFunction
 map__class__keys(Map_Class_* map, Str** keys, U64* length) {
-  start_profiling(1);
+  start_profiling();
 
   assert(map != 0);
   assert(keys != 0);

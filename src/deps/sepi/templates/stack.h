@@ -41,10 +41,10 @@ struct Stack_Class_ {
 /*                          API                          */
 /* ===================================================== */
 
-fn Stack_Class_* stack__class__create(Arena* arena);
-fn Nothing stack__class__push(Stack_Class_* stack, _Type_* _class_);
-fn _Type_* stack__class__pop(Stack_Class_* stack);
-fn Nothing stack__class__clean(Stack_Class_* stack);
+Stack_Class_* stack__class__create(Arena* arena);
+Nothing stack__class__push(Stack_Class_* stack, _Type_* _class_);
+_Type_* stack__class__pop(Stack_Class_* stack);
+Nothing stack__class__clean(Stack_Class_* stack);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -54,9 +54,9 @@ fn Nothing stack__class__clean(Stack_Class_* stack);
 
 mount_slave_profiling_context();
 
-fn Stack_Class_*
+Stack_Class_*
 stack__class__create(Arena* arena) {
-  start_profiling(1);
+  start_profiling();
 
   Stack_Class_* stack =
       arena_push(arena, sizeof(Stack_Class_), alignof(Stack_Class_), TRUE);
@@ -66,9 +66,9 @@ stack__class__create(Arena* arena) {
   return stack;
 }
 
-fn Nothing
+Nothing
 stack__class__push(Stack_Class_* stack, _Type_* _class_) {
-  start_profiling(1);
+  start_profiling();
 
   Stack_Class_Node* node = arena_push(stack->arena, sizeof(Stack_Class_Node),
                                       alignof(Stack_Class_Node), FALSE);
@@ -80,9 +80,9 @@ stack__class__push(Stack_Class_* stack, _Type_* _class_) {
   end_profiling();
 }
 
-fn _Type_*
+_Type_*
 stack__class__pop(Stack_Class_* stack) {
-  start_profiling(1);
+  start_profiling();
 
   _Type_* _class_ = 0;
   if (!stack->length) {
@@ -99,9 +99,9 @@ cleanup:
   return _class_;
 }
 
-fn Nothing
+Nothing
 stack__class__clean(Stack_Class_* stack) {
-  start_profiling(1);
+  start_profiling();
 
   for (; stack->length > 0;) {
     stack__class__pop(stack);
@@ -113,7 +113,7 @@ stack__class__clean(Stack_Class_* stack) {
   end_profiling();
 }
 
-fn U64
+U64
 // cppcheck-suppress unusedFunction
 stack__class__length(const Stack_Class_* stack) {
   return stack->length;

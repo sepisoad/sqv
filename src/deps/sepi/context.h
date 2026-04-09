@@ -38,12 +38,12 @@ struct Context {
 /*                          API                          */
 /* ===================================================== */
 
-fn Nothing context_init(ContextID context_id);
-fn Nothing context_deinit(Nothing);
-fn Context* context(Nothing);
-fn Arena* context_arena(Nothing);
-fn ArenaScratch context_scratch_begin(Nothing);
-fn Nothing context_scratch_end(ArenaScratch scratch);
+Nothing context_init(ContextID context_id);
+Nothing context_deinit(Nothing);
+Context* context(Nothing);
+Arena* context_arena(Nothing);
+ArenaScratch context_scratch_begin(Nothing);
+Nothing context_scratch_end(ArenaScratch scratch);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -57,9 +57,9 @@ thread_local Context* context_thread_local = 0;
 
 /* ----------------------------------------------------- */
 
-fn Nothing
+Nothing
 context_init(ContextID context_id) {
-  start_profiling(1);
+  start_profiling();
 
   assert(context_thread_local == 0);
 
@@ -74,9 +74,9 @@ context_init(ContextID context_id) {
 
 /* ----------------------------------------------------- */
 
-fn Nothing
+Nothing
 context_deinit(Nothing) {
-  start_profiling(1);
+  start_profiling();
 
   assert(context_thread_local != 0);
   assert(context_thread_local->arena != 0);
@@ -89,9 +89,9 @@ context_deinit(Nothing) {
 
 /* ----------------------------------------------------- */
 
-fn Context*
+Context*
 context(Nothing) {
-  start_profiling(1);
+  start_profiling();
 
   assert(context_thread_local != 0);
   assert(context_thread_local->arena != 0);
@@ -102,9 +102,9 @@ context(Nothing) {
 
 /* ----------------------------------------------------- */
 
-fn Arena*
+Arena*
 context_arena(Nothing) {
-  start_profiling(1);
+  start_profiling();
 
   assert(context_thread_local != 0);
   assert(context_thread_local->arena != 0);
@@ -115,9 +115,9 @@ context_arena(Nothing) {
 
 /* ----------------------------------------------------- */
 
-fn ArenaScratch
+ArenaScratch
 context_scratch_begin(Nothing) {
-  start_profiling(1);
+  start_profiling();
 
   assert(context_thread_local != 0);
   assert(context_thread_local->arena != 0);
@@ -128,9 +128,9 @@ context_scratch_begin(Nothing) {
 
 /* ----------------------------------------------------- */
 
-fn Nothing
+Nothing
 context_scratch_end(ArenaScratch scratch) {
-  start_profiling(1);
+  start_profiling();
 
   arena_scratch_end(scratch);
 

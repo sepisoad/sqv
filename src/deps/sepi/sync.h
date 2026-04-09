@@ -85,43 +85,41 @@ struct SyncCheckpoint {
 /*                          API                          */
 /* ===================================================== */
 
-fn SyncThread* sync_thread_start(SyncThreadFn fnptr,
-                              RawPtr argptr,
-                              ContextID tag);
-fn Nothing sync_thread_await(SyncThread* thread);
+SyncThread* sync_thread_start(SyncThreadFn fnptr, RawPtr argptr, ContextID tag);
+Nothing sync_thread_await(SyncThread* thread);
 
-fn SyncLock sync_lock_create(Nothing);
-fn SyncLock sync_lock_destroy(SyncLock lockt);
-fn SyncLock sync_lock_acquire(SyncLock lockt);
-fn SyncLock sync_lock_release(SyncLock lockt);
+SyncLock sync_lock_create(Nothing);
+Nothing sync_lock_destroy(SyncLock lock);
+Nothing sync_lock_acquire(SyncLock lock);
+Nothing sync_lock_release(SyncLock lock);
 
-fn SyncRWLock sync_rw_lock_create(Nothing);
-fn SyncRWLock sync_rw_lock_destroy(SyncRWLock rw_lock);
-fn SyncRWLock sync_rw_lock_acquire_for_reading(SyncRWLock rw_lock);
-fn SyncRWLock sync_rw_lock_acquire_for_writing(SyncRWLock rw_lock);
-fn SyncRWLock sync_rw_lock_release(SyncRWLock rw_lock);
+SyncRWLock sync_rw_lock_create(Nothing);
+SyncRWLock sync_rw_lock_destroy(SyncRWLock rw_lock);
+SyncRWLock sync_rw_lock_acquire_for_reading(SyncRWLock rw_lock);
+SyncRWLock sync_rw_lock_acquire_for_writing(SyncRWLock rw_lock);
+SyncRWLock sync_rw_lock_release(SyncRWLock rw_lock);
 
-fn SyncTokens sync_tokens_create(U32 initial_count, U32 max_count);
-fn SyncTokens sync_tokens_destroy(SyncTokens tokens);
-fn SyncTokens sync_tokens_acquire(SyncTokens tokens);
-fn SyncTokens sync_tokens_release(SyncTokens tokens);
+SyncTokens sync_tokens_create(U32 initial_count, U32 max_count);
+SyncTokens sync_tokens_destroy(SyncTokens tokens);
+SyncTokens sync_tokens_acquire(SyncTokens tokens);
+SyncTokens sync_tokens_release(SyncTokens tokens);
 
-fn SyncSignal sync_signal_create(Nothing);
-fn SyncSignal sync_signal_destroy(SyncSignal signal);
-fn SyncSignal sync_signal_listen(SyncSignal signal, SyncLock lock);
-fn SyncSignal sync_signal_listen_for(SyncSignal signal,
+SyncSignal sync_signal_create(Nothing);
+SyncSignal sync_signal_destroy(SyncSignal signal);
+SyncSignal sync_signal_listen(SyncSignal signal, SyncLock lock);
+SyncSignal sync_signal_listen_for(SyncSignal signal,
                                   SyncLock lock,
                                   Duration duration);
-fn SyncSignal sync_signal_rw_lock_listen(SyncSignal signal, SyncRWLock rw_lock);
-fn SyncSignal sync_signal_rw_lock_listen_for(SyncSignal signal,
+SyncSignal sync_signal_rw_lock_listen(SyncSignal signal, SyncRWLock rw_lock);
+SyncSignal sync_signal_rw_lock_listen_for(SyncSignal signal,
                                           SyncRWLock rw_lock,
                                           Duration duration);
-fn SyncSignal sync_signal_notify_one(SyncSignal signal);
-fn SyncSignal sync_signal_notify_all(SyncSignal signal);
+SyncSignal sync_signal_notify_one(SyncSignal signal);
+SyncSignal sync_signal_notify_all(SyncSignal signal);
 
-fn SyncCheckpoint sync_checkpoint_create(Nothing);
-fn SyncCheckpoint sync_checkpoint_destroy(SyncCheckpoint checkpointt);
-fn SyncCheckpoint sync_checkpoint_await(SyncCheckpoint checkpointt);
+SyncCheckpoint sync_checkpoint_create(Nothing);
+SyncCheckpoint sync_checkpoint_destroy(SyncCheckpoint checkpointt);
+SyncCheckpoint sync_checkpoint_await(SyncCheckpoint checkpointt);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -131,8 +129,11 @@ fn SyncCheckpoint sync_checkpoint_await(SyncCheckpoint checkpointt);
 
 mount_slave_profiling_context();
 
-local fn RawPtr sync_thread_start_wrapper(RawPtr arg) {
-  start_profiling(1);
+/* ----------------------------------------------------- */
+
+local RawPtr
+sync_thread_start_wrapper(RawPtr arg) {
+  start_profiling();
 
   assert(arg != 0);
 
@@ -148,14 +149,17 @@ local fn RawPtr sync_thread_start_wrapper(RawPtr arg) {
   return result;
 }
 
-fn SyncThread*
+/* ----------------------------------------------------- */
+
+SyncThread*
 sync_thread_start(SyncThreadFn fnptr, RawPtr argptr, ContextID context_id) {
-  start_profiling(1);
+  start_profiling();
 
   assert(fnptr != 0);
 
   SyncThread* thread = arena_push(context_arena(), sizeof(SyncThread),
                                   alignof(SyncThread), TRUE);
+
   thread->fnptr = fnptr;
   thread->argptr = argptr;
   thread->context_id = context_id;
@@ -163,7 +167,8 @@ sync_thread_start(SyncThreadFn fnptr, RawPtr argptr, ContextID context_id) {
 #if defined(OS_LINUX) || defined(OS_MACOS)
   pthread_t* _thread =
       arena_push(context_arena(), sizeof(pthread_t), alignof(pthread_t), TRUE);
-  runtime_assert(0 == pthread_create(_thread, 0, sync_thread_start_wrapper, thread));
+  runtime_assert(0 ==
+                 pthread_create(_thread, 0, sync_thread_start_wrapper, thread));
   thread->id[0] = (U64)_thread;
 #elif defined(OS_WINDOWS)
   runtime_assert(0 != CreateThread(0, 0, sync_thread_start_wrapper, thread, 0, thread->id);
@@ -173,21 +178,94 @@ sync_thread_start(SyncThreadFn fnptr, RawPtr argptr, ContextID context_id) {
   return thread;
 }
 
-fn Nothing
+/* ----------------------------------------------------- */
+
+Nothing
 sync_thread_await(SyncThread* thread) {
-  start_profiling(1);
+  start_profiling();
 
   assert(thread != 0);
 
 #if defined(OS_LINUX) || defined(OS_MACOS)
   pthread_join(*(pthread_t*)thread->id[0], 0);
 #elif defined(OS_WINDOWS)
-  WaitForSingleObject(thread.id, INFINITE);
-  CloseHandle(thread.id);
+  WaitForSingleObject(thread->id, INFINITE);
+  CloseHandle(thread->id);
 #endif
 
   end_profiling();
 }
+
+/* ----------------------------------------------------- */
+
+SyncLock
+sync_lock_create(Nothing) {
+  start_profiling();
+
+  SyncLock lock;
+
+#if defined(OS_LINUX) || defined(OS_MACOS)
+  pthread_mutex_t* _mutex = arena_push(context_arena(), sizeof(pthread_mutex_t),
+                                       alignof(pthread_mutex_t), TRUE);
+  runtime_assert(0 == pthread_mutex_init(_mutex, 0));
+  lock.id[0] = (U64)_mutex;
+#elif defined(OS_WINDOWS)
+  not_implemented();
+#endif
+
+  end_profiling();
+  return lock;
+}
+
+/* ----------------------------------------------------- */
+
+Nothing
+sync_lock_destroy(SyncLock lock) {
+  start_profiling();
+
+  assert(0 != lock.id[0]);
+
+#if defined(OS_LINUX) || defined(OS_MACOS)
+  runtime_assert(0 == pthread_mutex_destroy((pthread_mutex_t*)lock.id[0]));
+#elif defined(OS_WINDOWS)
+  not_implemented();
+#endif
+
+  lock.id[0] = 0;
+  end_profiling();
+}
+
+/* ----------------------------------------------------- */
+
+Nothing
+sync_lock_acquire(SyncLock lock) {
+  start_profiling();
+
+#if defined(OS_LINUX) || defined(OS_MACOS)
+  runtime_assert(0 == pthread_mutex_lock((pthread_mutex_t*)lock.id[0]));
+#elif defined(OS_WINDOWS)
+  not_implemented();
+#endif
+
+  end_profiling();
+}
+
+/* ----------------------------------------------------- */
+
+Nothing
+sync_lock_release(SyncLock lock) {
+  start_profiling();
+
+#if defined(OS_LINUX) || defined(OS_MACOS)
+  runtime_assert(0 == pthread_mutex_unlock((pthread_mutex_t*)lock.id[0]));
+#elif defined(OS_WINDOWS)
+  not_implemented();
+#endif
+
+  end_profiling();
+}
+
+/* ----------------------------------------------------- */
 
 /* ===================================================== */
 /*                          END                          */

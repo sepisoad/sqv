@@ -71,8 +71,8 @@ struct App {
 /*                          API                          */
 /* ===================================================== */
 
-fn App app_create(ContextID context_id, AppCrashHandlerFnPtr crash_handler);
-fn Nothing app_destroy(App app);
+App app_create(ContextID context_id, AppCrashHandlerFnPtr crash_handler);
+Nothing app_destroy(App app);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -86,9 +86,9 @@ local AppCrashHandlerFnPtr app_crash_handler_ = 0;
 
 /* ----------------------------------------------------- */
 
-local fn Nothing
+local Nothing
 app_default_crash_handler(AppCrashCause cause, Str details) {
-  start_profiling(1);
+  start_profiling();
 
   ignore(cause);
   ignore(details);
@@ -98,17 +98,11 @@ app_default_crash_handler(AppCrashCause cause, Str details) {
   end_profiling();
 }
 
-local fn Str
-app_default_context_id_to_name_mapper(ContextID context_id) {
-  ignore(context_id);
-  return S("_NOT_DEFINED_BY_APP_");
-}
-
 /* ----------------------------------------------------- */
 
-fn App
+App
 app_create(ContextID context_id, AppCrashHandlerFnPtr crash_handler) {
-  start_profiling(1);
+  start_profiling();
 
   context_init(context_id);
   App app = {.context = context()};
@@ -125,9 +119,9 @@ app_create(ContextID context_id, AppCrashHandlerFnPtr crash_handler) {
 
 /* ----------------------------------------------------- */
 
-fn Nothing
+Nothing
 app_destroy(App app) {
-  start_profiling(1);
+  start_profiling();
 
   assert(app.context != 0);
 

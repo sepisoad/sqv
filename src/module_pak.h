@@ -93,14 +93,14 @@ static inline Nothing str512_set(Str512* f, const U8* str);
 /*                          API                          */
 /* ===================================================== */
 
-fn PakError pak_load_from_io_file(Pak* pak, IOFile* io_file);
-fn Nothing pak_unload(Pak* pak);
-fn PakError pak_extract(Pak* pak, IOFile* io_file, Str out_dir);
-fn PakError pak_extract_item(Pak* pak,
+PakError pak_load_from_io_file(Pak* pak, IOFile* io_file);
+Nothing pak_unload(Pak* pak);
+PakError pak_extract(Pak* pak, IOFile* io_file, Str out_dir);
+PakError pak_extract_item(Pak* pak,
                           PakItem* pak_item_for_path,
                           IOFile* io_file,
                           Str out_dir);
-fn PakError pak_make_from_ioitem(Arena* arena,
+PakError pak_make_from_ioitem(Arena* arena,
                               IOItem* io_item,
                               Str base_path,
                               Str out_path,
@@ -116,9 +116,9 @@ mount_slave_profiling_context();
 
 // TODO:
 // use Str
-local fn U32
+local U32
 pak_get_path_depth(CZStr path, U32 length) {
-  start_profiling(1);
+  start_profiling();
 
   assert(path != 0);
   assert(length > 0);
@@ -143,12 +143,12 @@ pak_get_path_depth(CZStr path, U32 length) {
 
 // TODO:
 // use Str
-local fn Nothing
+local Nothing
 pak_get_path_at_depth(CZStr path,
                       U32 length,
                       U32 depth,
                       char out[PAK_ENTRY_NAME_LEN]) {
-  start_profiling(1);
+  start_profiling();
 
   assert(path != 0);
   assert(out != 0);
@@ -172,12 +172,12 @@ pak_get_path_at_depth(CZStr path,
 
 // TODO:
 // use Str
-local fn Nothing
+local Nothing
 pak_get_name_at_depth(CZStr path,
                       U32 length,
                       U32 depth,
                       char out[PAK_ENTRY_NAME_LEN]) {
-  start_profiling(1);
+  start_profiling();
 
   assert(path != 0);
   assert(out != 0);
@@ -204,7 +204,7 @@ pak_get_name_at_depth(CZStr path,
 
 /* ===================================================== */
 
-local fn I32
+local I32
 pak_item_sort(SafePtr a, SafePtr b) {
   const PakItem* pak_item_a = *(const PakItem**)a;
   const PakItem* pak_item_b = *(const PakItem**)b;
@@ -221,9 +221,9 @@ pak_item_sort(SafePtr a, SafePtr b) {
 
 /* ===================================================== */
 
-local fn PakError
+local PakError
 pak_read_entries_from_io_file(Pak* pak, IOFile* io_file) {
-  start_profiling(1);
+  start_profiling();
 
   assert(pak != 0);
   assert(io_file != 0);
@@ -364,9 +364,9 @@ pak_read_entries_from_io_file(Pak* pak, IOFile* io_file) {
 
 /* ===================================================== */
 
-fn PakError
+PakError
 pak_load_from_io_file(Pak* pak, IOFile* io_file) {
-  start_profiling(1);
+  start_profiling();
 
   assert(pak != 0);
   assert(io_file != 0);
@@ -404,9 +404,9 @@ cleanup:
 
 /* ===================================================== */
 
-fn Nothing
+Nothing
 pak_unload(Pak* pak) {
-  start_profiling(1);
+  start_profiling();
 
   if (pak->arena) {
     arena_destroy(pak->arena);
@@ -417,9 +417,9 @@ pak_unload(Pak* pak) {
 
 /* ===================================================== */
 
-fn PakError
+PakError
 pak_extract(Pak* pak, IOFile* io_file, Str out_dir) {
-  start_profiling(1);
+  start_profiling();
 
   PakError err = PAK_ERR_SUCCESS;
   ArenaScratch scratch = arena_scratch_begin(pak->arena);
@@ -464,12 +464,12 @@ cleanup:
 
 /* ===================================================== */
 
-fn PakError
+PakError
 pak_extract_item(Pak* pak,
                  PakItem* pak_item_for_path,
                  IOFile* io_file,
                  Str out_dir) {
-  start_profiling(1);
+  start_profiling();
 
   PakError err = PAK_ERR_SUCCESS;
   ArenaScratch scratch = arena_scratch_begin(pak->arena);
@@ -553,13 +553,13 @@ cleanup:
 
 /* ===================================================== */
 
-fn PakError
+PakError
 pak_make_from_ioitem(Arena* arena,
                      IOItem* io_item,
                      Str base_path,
                      Str out_path,
                      Str512* out_err) {
-  start_profiling(1);
+  start_profiling();
 
   assert(arena != 0);
   assert(io_item != 0);

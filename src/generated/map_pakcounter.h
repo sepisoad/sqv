@@ -44,12 +44,12 @@ struct MapPakCounter {
 /*                          API                          */
 /* ===================================================== */
 
-fn MapPakCounter map_pakcounter_make(Arena* arena, U64 max_keys_list_length);
-fn Nothing map_pakcounter_push(MapPakCounter* map, Str key, PakCounter* value);
-fn PakCounter* map_pakcounter_get(MapPakCounter* map, Str key);
-fn PakCounter* map_pakcounter_delete(MapPakCounter* map, Str key);
-fn Nothing map_pakcounter_clean(MapPakCounter* map);
-fn Nothing map_pakcounter_keys(MapPakCounter* map, Str** keys, U64* length);
+MapPakCounter map_pakcounter_make(Arena* arena, U64 max_keys_list_length);
+Nothing map_pakcounter_push(MapPakCounter* map, Str key, PakCounter* value);
+PakCounter* map_pakcounter_get(MapPakCounter* map, Str key);
+PakCounter* map_pakcounter_delete(MapPakCounter* map, Str key);
+Nothing map_pakcounter_clean(MapPakCounter* map);
+Nothing map_pakcounter_keys(MapPakCounter* map, Str** keys, U64* length);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -62,9 +62,9 @@ mount_slave_profiling_context();
 #define map_pakcounter_hasher(str) \
   rapidhash_withSeed(ZS((str)), SL((str)), 1987)
 
-fn MapPakCounter
+MapPakCounter
 map_pakcounter_make(Arena* arena, U64 max_keys_list_length) {
-  start_profiling(1);
+  start_profiling();
 
   assert(arena != 0);
   assert(max_keys_list_length > 0);
@@ -82,9 +82,9 @@ map_pakcounter_make(Arena* arena, U64 max_keys_list_length) {
   return map;
 }
 
-fn Nothing
+Nothing
 map_pakcounter_push(MapPakCounter* map, Str key, PakCounter* value) {
-  start_profiling(1);
+  start_profiling();
 
   assert(map != 0);
   assert(ZS(key) != 0);
@@ -119,9 +119,9 @@ cleanup:
   end_profiling();
 }
 
-fn PakCounter*
+PakCounter*
 map_pakcounter_get(MapPakCounter* map, Str key) {
-  start_profiling(1);
+  start_profiling();
 
   assert(map != 0);
   assert(ZS(key) != 0);
@@ -145,10 +145,10 @@ cleanup:
   return found;
 }
 
-fn PakCounter*
+PakCounter*
 // cppcheck-suppress unusedFunction
 map_pakcounter_delete(MapPakCounter* map, Str key) {
-  start_profiling(1);
+  start_profiling();
 
   assert(map != 0);
   assert(ZS(key) != 0);
@@ -180,10 +180,10 @@ cleanup:
   return found;
 }
 
-fn Nothing
+Nothing
 // cppcheck-suppress unusedFunction
 map_pakcounter_clean(MapPakCounter* map) {
-  start_profiling(1);
+  start_profiling();
 
   assert(map != 0);
 
@@ -194,10 +194,10 @@ map_pakcounter_clean(MapPakCounter* map) {
   end_profiling();
 }
 
-fn Nothing
+Nothing
 // cppcheck-suppress unusedFunction
 map_pakcounter_keys(MapPakCounter* map, Str** keys, U64* length) {
-  start_profiling(1);
+  start_profiling();
 
   assert(map != 0);
   assert(keys != 0);

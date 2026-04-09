@@ -60,15 +60,15 @@ struct PlatformInfo {
 /*                          API                          */
 /* ===================================================== */
 
-embed fn PlatformCPU platform_get_cpu(Nothing);
-embed fn PlatformOS platform_get_os(Nothing);
-embed fn PlatformInfo platform_get_info();
-embed fn U8 platform_get_cpu_cores(Nothing);
-embed fn Sz platform_get_page_size(Nothing);
-embed fn Sz platform_get_large_page_size(Nothing);
-embed fn RawPtr platform_reserve_large_pages(Sz size);
-embed fn U32 platform_commit_large_pages(RawPtr ptr, Sz size);
-embed fn Nothing platform_release(RawPtr ptr, Sz size);
+embed PlatformCPU platform_get_cpu(Nothing);
+embed PlatformOS platform_get_os(Nothing);
+embed PlatformInfo platform_get_info();
+embed U8 platform_get_cpu_cores(Nothing);
+embed Sz platform_get_page_size(Nothing);
+embed Sz platform_get_large_page_size(Nothing);
+embed RawPtr platform_reserve_large_pages(Sz size);
+embed U32 platform_commit_large_pages(RawPtr ptr, Sz size);
+embed Nothing platform_release(RawPtr ptr, Sz size);
 
 /* ===================================================== */
 /*                   INLINE FUNCTIONS                    */
@@ -76,7 +76,7 @@ embed fn Nothing platform_release(RawPtr ptr, Sz size);
 
 mount_slave_profiling_context();
 
-embed fn PlatformCPU
+embed PlatformCPU
 platform_get_cpu(Nothing) {
 #if defined(CPU_INTEL_64)
   return PLATFORM_CPU_INTEL_64;
@@ -89,7 +89,7 @@ platform_get_cpu(Nothing) {
 #endif
 }
 
-embed fn PlatformOS
+embed PlatformOS
 platform_get_os(Nothing) {
 #if defined(OS_LINUX)
   return PLATFORM_OS_LINUX;
@@ -100,7 +100,7 @@ platform_get_os(Nothing) {
 #endif
 }
 
-embed fn PlatformInfo
+embed PlatformInfo
 platform_get_info() {
   return (PlatformInfo){
       .os = platform_get_os(),
@@ -111,7 +111,7 @@ platform_get_info() {
   };
 }
 
-embed fn U8
+embed U8
 platform_get_cpu_cores(Nothing) {
 #if defined(OS_LINUX)
   return (U32)get_nprocs();
@@ -125,7 +125,7 @@ platform_get_cpu_cores(Nothing) {
 #endif
 }
 
-embed fn Sz
+embed Sz
 platform_get_page_size(Nothing) {
 #if defined(OS_LINUX)
   return (Sz)sysconf(_SC_PAGESIZE);
@@ -138,7 +138,7 @@ platform_get_page_size(Nothing) {
 #endif
 }
 
-embed fn Sz
+embed Sz
 platform_get_large_page_size(Nothing) {
 #if defined(OS_LINUX)
   return mega_bytes(2);
@@ -149,9 +149,9 @@ platform_get_large_page_size(Nothing) {
 #endif
 }
 
-embed fn RawPtr
+embed RawPtr
 platform_reserve_large_pages(Sz size) {
-  start_profiling(1);
+  start_profiling();
 
 #if defined(OS_LINUX)
   U32 flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB;
@@ -205,9 +205,9 @@ platform_reserve_large_pages(Sz size) {
   return result;
 }
 
-embed fn U32
+embed U32
 platform_commit_large_pages(RawPtr ptr, Sz size) {
-  start_profiling(1);
+  start_profiling();
 
 #if defined(OS_LINUX)
   mprotect(ptr, size, PROT_READ | PROT_WRITE);
@@ -221,9 +221,9 @@ platform_commit_large_pages(RawPtr ptr, Sz size) {
   return 1;
 }
 
-embed fn Nothing
+embed Nothing
 platform_release(RawPtr ptr, Sz size) {
-  start_profiling(1);
+  start_profiling();
 
 #if defined(OS_LINUX)
   munmap(ptr, size);

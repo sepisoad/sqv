@@ -65,11 +65,11 @@ struct UStr {
     U8 zstr[(length) + 1];                                                  \
   } Str##length;                                                            \
                                                                             \
-  embed fn U32 str##length##_length() {                                     \
+  embed U32 str##length##_length() {                                     \
     return (length);                                                        \
   }                                                                         \
                                                                             \
-  embed fn Str##length str##length(U8* str) {                               \
+  embed Str##length str##length(U8* str) {                               \
     assert(str != NULL);                                                    \
     assert(str_length(str) < (length) + 1);                                 \
     struct {                                                                \
@@ -79,7 +79,7 @@ struct UStr {
     return *(Str##length*)&mutable_tmp;                                     \
   }                                                                         \
                                                                             \
-  embed fn Nothing str##length##_set(Str##length* f, const U8* str) {       \
+  embed Nothing str##length##_set(Str##length* f, const U8* str) {       \
     assert(f != NULL);                                                      \
     assert(str != NULL);                                                    \
     assert(str_length(str) < (length) + 1);                                 \
@@ -87,12 +87,12 @@ struct UStr {
     copy_memory(f->zstr, str, str_length(str));                             \
   }                                                                         \
                                                                             \
-  embed fn Nothing str##length##_reset(Str##length* f) {                    \
+  embed Nothing str##length##_reset(Str##length* f) {                    \
     assert(f != NULL);                                                      \
     zero_memory(f->zstr, (length) + 1);                                     \
   }                                                                         \
                                                                             \
-  embed fn Str##length* str##length##_clone(Arena* arena, Str##length f) {  \
+  embed Str##length* str##length##_clone(Arena* arena, Str##length f) {  \
     assert(arena != NULL);                                                  \
     Str##length* res =                                                      \
         arena_push(arena, sizeof(Str##length), alignof(Str##length), TRUE); \
@@ -100,7 +100,7 @@ struct UStr {
     return res;                                                             \
   }                                                                         \
                                                                             \
-  embed fn Str str##length##_view(Str##length f) {                          \
+  embed Str str##length##_view(Str##length f) {                          \
     return str(f.zstr);                                                     \
   }
 
@@ -113,98 +113,98 @@ struct UStr {
 /*                          API                          */
 /* ===================================================== */
 
-fn Str str(U8* zstr);
-fn WStr wstr(U16* zstr);
-fn UStr ustr(U32* zstr);
+Str str(U8* zstr);
+WStr wstr(U16* zstr);
+UStr ustr(U32* zstr);
 
-fn Str str_from_wstr(Arena* arena, WStr in);
-fn Str str_from_ustr(Arena* arena, UStr in);
-fn WStr wstr_from_str(Arena* arena, Str in);
-fn UStr ustr_from_str(Arena* arena, Str in);
+Str str_from_wstr(Arena* arena, WStr in);
+Str str_from_ustr(Arena* arena, UStr in);
+WStr wstr_from_str(Arena* arena, Str in);
+UStr ustr_from_str(Arena* arena, Str in);
 
-fn U32 str_encode(U8* str, U32 codepoint);
-fn U32 wstr_encode(U16* str, U32 codepoint);
+U32 str_encode(U8* str, U32 codepoint);
+U32 wstr_encode(U16* str, U32 codepoint);
 
-fn StrUnicodeDecode str_decode(U8* str, U64 max);
-fn StrUnicodeDecode wstr_decode(U16* str, U64 max);
+StrUnicodeDecode str_decode(U8* str, U64 max);
+StrUnicodeDecode wstr_decode(U16* str, U64 max);
 
-fn Sz str_length(const U8* zstr);
-fn Sz wstr_length(const U16* zstr);
-fn Sz ustr_length(const U32* zstr);
+Sz str_length(const U8* zstr);
+Sz wstr_length(const U16* zstr);
+Sz ustr_length(const U32* zstr);
 
-fn Str str_raw(RawPtr rptr, Sz length);
-fn WStr wstr_raw(RawPtr rptr, Sz length);
-fn UStr ustr_raw(RawPtr rptr, Sz length);
+Str str_raw(RawPtr rptr, Sz length);
+WStr wstr_raw(RawPtr rptr, Sz length);
+UStr ustr_raw(RawPtr rptr, Sz length);
 
-fn Str str_clone(Arena* arena, Str str);
-fn Str str_slice(Arena* arena, Str str, Sz from, Sz to);
-fn Str str_join(Arena* arena, Str str_a, Str str_b, U8 separator);
-fn Nothing str_reset(Str* ptr);
-fn Bool str_is_equal(Str a, Str b);
-fn I64 str_find_first(Str str, I8 chr);
-fn I64 str_find_last(Str str, I8 chr);
-fn Bool str_equal(Str str_a, Str str_b, StrCmpFlags flags);
+Str str_clone(Arena* arena, Str str);
+Str str_slice(Arena* arena, Str str, Sz from, Sz to);
+Str str_join(Arena* arena, Str str_a, Str str_b, U8 separator);
+Nothing str_reset(Str* ptr);
+Bool str_is_equal(Str a, Str b);
+I64 str_find_first(Str str, I8 chr);
+I64 str_find_last(Str str, I8 chr);
+Bool str_equal(Str str_a, Str str_b, StrCmpFlags flags);
 
 Nothing str_clean(Str str);
 
-local fn U16
+local U16
 safe_cast_u16(U32 x) {
   runtime_assert(x <= MAX_U16);
   U16 result = (U16)x;
   return result;
 }
 
-// local fn U32
+// local U32
 // safe_cast_u32(U64 x) {
 //   runtime_assert(x <= MAX_U32);
 //   U32 result = (U32)x;
 //   return result;
 // }
 
-// local fn I32
+// local I32
 // safe_cast_s32(I64 x) {
 //   runtime_assert(x <= MAX_I32);
 //   I32 result = (I32)x;
 //   return result;
 // }
 
-embed fn Bool
+embed Bool
 is_white_space_char(U8 c) {
   return (c == ' ' || c == '\n' || c == '\t' || c == '\r' || c == '\f' ||
           c == '\v');
 }
 
-embed fn Bool
+embed Bool
 is_upper_case_char(U8 c) {
   return ('A' <= c && c <= 'Z');
 }
 
-embed fn Bool
+embed Bool
 is_lower_case_char(U8 c) {
   return ('a' <= c && c <= 'z');
 }
 
-embed fn Bool
+embed Bool
 is_alpha_char(U8 c) {
   return is_upper_case_char(c) || is_lower_case_char(c);
 }
 
-embed fn Bool
+embed Bool
 is_slash_char(U8 c) {
   return (c == '/' || c == '\\');
 }
 
-embed fn Bool
+embed Bool
 is_digit_char(U8 c) {
   return ('0' <= (c) && (c) <= '9');
 }
 
-embed fn U8
+embed U8
 to_lower_char(U8 c) {
   return is_upper_case_char(c) ? c + 32 : c;
 }
 
-embed fn U8
+embed U8
 to_upper_char(U8 c) {
   return is_lower_case_char(c) ? c - 32 : c;
 }
@@ -217,9 +217,9 @@ to_upper_char(U8 c) {
 
 mount_slave_profiling_context();
 
-fn Str
+Str
 str(U8* zstr) {
-  start_profiling(1);
+  start_profiling();
 
   assert(zstr != 0);
   // assert(strlen(zstr) > 0);
@@ -230,9 +230,9 @@ str(U8* zstr) {
   return result;
 }
 
-fn WStr
+WStr
 wstr(U16* zstr) {
-  start_profiling(1);
+  start_profiling();
 
   assert(zstr != 0);
   // assert(strlen(zstr) > 0);
@@ -243,9 +243,9 @@ wstr(U16* zstr) {
   return result;
 }
 
-fn UStr
+UStr
 ustr(U32* zstr) {
-  start_profiling(1);
+  start_profiling();
 
   assert(zstr != 0);
   // assert(strlen(zstr) > 0);
@@ -256,7 +256,7 @@ ustr(U32* zstr) {
   return result;
 }
 
-fn Str
+Str
 str_from_wstr(Arena* arena, WStr in) {
   Str result = {0};
   if (in.length) {
@@ -277,7 +277,7 @@ str_from_wstr(Arena* arena, WStr in) {
   return result;
 }
 
-fn WStr
+WStr
 wstr_from_str(Arena* arena, Str in) {
   WStr result = {0};
   if (in.length) {
@@ -298,7 +298,7 @@ wstr_from_str(Arena* arena, Str in) {
   return result;
 }
 
-fn Str
+Str
 str_from_ustr(Arena* arena, UStr in) {
   Str result = {0};
   if (in.length) {
@@ -317,7 +317,7 @@ str_from_ustr(Arena* arena, UStr in) {
   return result;
 }
 
-fn UStr
+UStr
 ustr_from_str(Arena* arena, Str in) {
   UStr result = {0};
   if (in.length) {
@@ -339,7 +339,7 @@ ustr_from_str(Arena* arena, Str in) {
   return result;
 }
 
-fn U32
+U32
 str_encode(U8* str, U32 codepoint) {
   U32 inc = 0;
   if (codepoint <= 0x7F) {
@@ -367,7 +367,7 @@ str_encode(U8* str, U32 codepoint) {
   return inc;
 }
 
-fn U32
+U32
 wstr_encode(U16* str, U32 codepoint) {
   U32 inc = 1;
   if (codepoint == MAX_U32) {
@@ -383,7 +383,7 @@ wstr_encode(U16* str, U32 codepoint) {
   return inc;
 }
 
-fn StrUnicodeDecode
+StrUnicodeDecode
 str_decode(U8* str, U64 max) {
   StrUnicodeDecode result = {1, MAX_U32};
   U8 byte = str[0];
@@ -432,7 +432,7 @@ str_decode(U8* str, U64 max) {
   return result;
 }
 
-fn StrUnicodeDecode
+StrUnicodeDecode
 wstr_decode(U16* str, U64 max) {
   StrUnicodeDecode result = {1, MAX_U32};
   result.codepoint = str[0];
@@ -446,9 +446,9 @@ wstr_decode(U16* str, U64 max) {
   return result;
 }
 
-fn Sz
+Sz
 str_length(const U8* zstr) {
-  start_profiling(1);
+  start_profiling();
 
   const U8* start = zstr;
   for (; *zstr; zstr++)
@@ -459,9 +459,9 @@ str_length(const U8* zstr) {
   return length;
 }
 
-fn Sz
+Sz
 wstr_length(const U16* zstr) {
-  start_profiling(1);
+  start_profiling();
 
   const U16* start = zstr;
   for (; *zstr; zstr++)
@@ -472,9 +472,9 @@ wstr_length(const U16* zstr) {
   return length;
 }
 
-fn Sz
+Sz
 ustr_length(const U32* zstr) {
-  start_profiling(1);
+  start_profiling();
 
   const U32* start = zstr;
   for (; *zstr; zstr++)
@@ -485,9 +485,9 @@ ustr_length(const U32* zstr) {
   return length;
 }
 
-fn Str
+Str
 str_raw(RawPtr rptr, Sz length) {
-  start_profiling(1);
+  start_profiling();
 
   assert(rptr != 0);
 
@@ -497,9 +497,9 @@ str_raw(RawPtr rptr, Sz length) {
   return result;
 }
 
-fn WStr
+WStr
 wstr_raw(RawPtr rptr, Sz length) {
-  start_profiling(1);
+  start_profiling();
 
   assert(rptr != 0);
 
@@ -509,9 +509,9 @@ wstr_raw(RawPtr rptr, Sz length) {
   return result;
 }
 
-fn UStr
+UStr
 ustr_raw(RawPtr rptr, Sz length) {
-  start_profiling(1);
+  start_profiling();
 
   assert(rptr != 0);
 
@@ -521,9 +521,9 @@ ustr_raw(RawPtr rptr, Sz length) {
   return result;
 }
 
-fn Str
+Str
 str_clone(Arena* arena, Str str) {
-  start_profiling(1);
+  start_profiling();
 
   assert(arena != 0);
   assert(str.zstr != 0);
@@ -537,9 +537,9 @@ str_clone(Arena* arena, Str str) {
   return result;
 }
 
-fn Str
+Str
 str_slice(Arena* arena, Str str, Sz from, Sz to) {
-  start_profiling(1);
+  start_profiling();
 
   assert(arena != 0);
   assert(str.zstr != 0);
@@ -559,9 +559,9 @@ str_slice(Arena* arena, Str str, Sz from, Sz to) {
   return result;
 }
 
-fn Str
+Str
 str_join(Arena* arena, Str s1, Str s2, U8 separator) {
-  start_profiling(1);
+  start_profiling();
 
   assert(arena != 0);
   assert(s1.zstr != 0);
@@ -582,9 +582,9 @@ str_join(Arena* arena, Str s1, Str s2, U8 separator) {
   return (Str){.zstr = str, .length = length};
 }
 
-fn Nothing
+Nothing
 str_reset(Str* ptr) {
-  start_profiling(1);
+  start_profiling();
 
   zero_memory((RawPtr)ptr->zstr, ptr->length);
   ptr->length = 0;
@@ -592,9 +592,9 @@ str_reset(Str* ptr) {
   end_profiling();
 }
 
-fn Bool
+Bool
 str_is_equal(Str str_a, Str str_b) {
-  start_profiling(1);
+  start_profiling();
 
   assert(str_a.zstr != 0);
   assert(str_a.length > 0);
@@ -620,9 +620,9 @@ cleanup:
   return result;
 }
 
-fn I64
+I64
 str_find_first(Str str, I8 chr) {
-  start_profiling(1);
+  start_profiling();
 
   assert(str.zstr != 0);
   assert(str.length > 0);
@@ -644,9 +644,9 @@ str_find_first(Str str, I8 chr) {
   return -1;
 }
 
-fn I64
+I64
 str_find_last(Str str, I8 chr) {
-  start_profiling(1);
+  start_profiling();
 
   assert(str.zstr != 0);
   assert(str.length > 0);
@@ -668,9 +668,9 @@ str_find_last(Str str, I8 chr) {
   return -1;
 }
 
-fn Bool
+Bool
 str_equal(Str str_a, Str str_b, StrCmpFlags flags) {
-  start_profiling(1);
+  start_profiling();
 
   assert(str_a.zstr != 0);
   assert(str_a.length > 0);
@@ -710,7 +710,7 @@ str_equal(Str str_a, Str str_b, StrCmpFlags flags) {
   return result;
 }
 
-fn Nothing
+Nothing
 str_clean(Str str) {
   str.zstr = 0;
   str.length = 0;

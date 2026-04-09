@@ -31,16 +31,16 @@ struct Buf {
 /*                          API                          */
 /* ===================================================== */
 
-embed fn Buf buf(const U8* base, Sz size);
-embed fn Nothing buf_reset(Buf buf);
-embed fn Nothing buf_set_position(Buf buf, Sz offset);
-embed fn Nothing buf_move_offset(Buf buf, Sz amount);
-embed fn const U8* buf_get_position(Buf buf);
-embed fn Nothing buf_read_i16(Buf buf, I16* num);
-embed fn Nothing buf_read_i32(Buf buf, I32* num);
-embed fn Nothing buf_read_i64(Buf buf, I64* num);
-embed fn Nothing buf_read_f32(Buf buf, F32* num);
-embed fn Nothing buf_read_f64(Buf buf, F64* num);
+embed Buf buf(const U8* base, Sz size);
+embed Nothing buf_reset(Buf buf);
+embed Nothing buf_set_position(Buf buf, Sz offset);
+embed Nothing buf_move_offset(Buf buf, Sz amount);
+embed const U8* buf_get_position(Buf buf);
+embed Nothing buf_read_i16(Buf buf, I16* num);
+embed Nothing buf_read_i32(Buf buf, I32* num);
+embed Nothing buf_read_i64(Buf buf, I64* num);
+embed Nothing buf_read_f32(Buf buf, F32* num);
+embed Nothing buf_read_f64(Buf buf, F64* num);
 
 /* ===================================================== */
 /*                   INLINE FUNCTIONS                    */
@@ -50,9 +50,9 @@ mount_slave_profiling_context();
 
 /* ----------------------------------------------------- */
 
-embed fn Buf
+embed Buf
 buf(const U8* base, Sz size) {
-  start_profiling(1);
+  start_profiling();
 
   assert(base != 0);
   assert(size > 0);
@@ -65,7 +65,7 @@ buf(const U8* base, Sz size) {
 
 /* ----------------------------------------------------- */
 
-embed fn Nothing
+embed Nothing
 buf_reset(Buf buf) {
   buf.base = 0;
   buf.offset = 0;
@@ -74,9 +74,9 @@ buf_reset(Buf buf) {
 
 /* ----------------------------------------------------- */
 
-embed fn Nothing
+embed Nothing
 buf_set_position(Buf buf, Sz offset) {
-  start_profiling(1);
+  start_profiling();
 
   assert(buf.base != 0);
   assert(buf.size > 0);
@@ -89,9 +89,9 @@ buf_set_position(Buf buf, Sz offset) {
 
 /* ----------------------------------------------------- */
 
-embed fn Nothing
+embed Nothing
 buf_move_offset(Buf buf, Sz amount) {
-  start_profiling(1);
+  start_profiling();
 
   assert(buf.base != 0);
   assert(buf.size > 0);
@@ -104,9 +104,9 @@ buf_move_offset(Buf buf, Sz amount) {
 
 /* ----------------------------------------------------- */
 
-embed fn const U8*
+embed const U8*
 buf_get_position(Buf buf) {
-  start_profiling(1);
+  start_profiling();
 
   assert(buf.base != 0);
   assert(buf.size > 0);
@@ -119,9 +119,9 @@ buf_get_position(Buf buf) {
 
 /* ----------------------------------------------------- */
 
-embed fn Nothing
+embed Nothing
 buf_read_i16(Buf buf, I16* num) {
-  start_profiling(1);
+  start_profiling();
 
   assert(buf.base != 0);
   assert(buf.size > 0);
@@ -136,9 +136,9 @@ buf_read_i16(Buf buf, I16* num) {
 
 /* ----------------------------------------------------- */
 
-embed fn Nothing
+embed Nothing
 buf_read_i32(Buf buf, I32* num) {
-  start_profiling(1);
+  start_profiling();
 
   assert(buf.base != 0);
   assert(buf.size > 0);
@@ -153,9 +153,9 @@ buf_read_i32(Buf buf, I32* num) {
 
 /* ----------------------------------------------------- */
 
-embed fn Nothing
+embed Nothing
 buf_read_i64(Buf buf, I64* num) {
-  start_profiling(1);
+  start_profiling();
 
   assert(buf.base != 0);
   assert(buf.size > 0);
@@ -170,9 +170,9 @@ buf_read_i64(Buf buf, I64* num) {
 
 /* ----------------------------------------------------- */
 
-embed fn Nothing
+embed Nothing
 buf_read_f32(Buf buf, F32* num) {
-  start_profiling(1);
+  start_profiling();
 
   assert(buf.base != 0);
   assert(buf.size > 0);
@@ -187,9 +187,9 @@ buf_read_f32(Buf buf, F32* num) {
 
 /* ----------------------------------------------------- */
 
-embed fn Nothing
+embed Nothing
 buf_read_f64(Buf buf, F64* num) {
-  start_profiling(1);
+  start_profiling();
 
   assert(buf.base != 0);
   assert(buf.size > 0);

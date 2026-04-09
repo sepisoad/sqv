@@ -52,10 +52,10 @@ struct Array_Class_ {
 /*                          API                          */
 /* ===================================================== */
 
-fn Array_Class_* array__class__create(Arena* arena);
-fn _Type_* array__class__get(Array_Class_* array, U64 index);
-fn _Type_* array__class__push(Array_Class_* array, _Type_* ptr);
-fn U32 array__class__length(Array_Class_* array);
+Array_Class_* array__class__create(Arena* arena);
+_Type_* array__class__get(Array_Class_* array, U64 index);
+_Type_* array__class__push(Array_Class_* array, _Type_* ptr);
+U32 array__class__length(Array_Class_* array);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -65,9 +65,9 @@ fn U32 array__class__length(Array_Class_* array);
 
 mount_slave_profiling_context();
 
-fn Array_Class_*
+Array_Class_*
 array__class__create(Arena* arena) {
-  start_profiling(1);
+  start_profiling();
 
   assert(arena != 0);
 
@@ -87,9 +87,9 @@ array__class__create(Arena* arena) {
   return array;
 }
 
-fn _Type_*
+_Type_*
 array__class__get(Array_Class_* array, U64 index) {
-  start_profiling(1);
+  start_profiling();
 
   assert(array != 0);
   assert(index < array->capacity);
@@ -104,9 +104,9 @@ array__class__get(Array_Class_* array, U64 index) {
   return res;
 }
 
-fn _Type_*
+_Type_*
 array__class__push(Array_Class_* array, _Type_* ptr) {
-  start_profiling(1);
+  start_profiling();
 
   assert(array != 0);
   assert(ptr != 0);
@@ -132,7 +132,7 @@ array__class__push(Array_Class_* array, _Type_* ptr) {
   return res;
 }
 
-fn U32
+U32
 array__class__length(Array_Class_* array) {
   /* NOTE: no place for profiling! */
   return array->offset;

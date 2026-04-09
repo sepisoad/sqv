@@ -66,19 +66,19 @@ struct Tree_Class_ {
 /*                          API                          */
 /* ===================================================== */
 
-fn Tree_Class_ tree__class__make(Arena* arena);
-fn TreeNode_Class_* tree__class__push(Tree_Class_* tree,
+Tree_Class_ tree__class__make(Arena* arena);
+TreeNode_Class_* tree__class__push(Tree_Class_* tree,
                                    TreeNode_Class_* node,
                                    _Type_ data);
-fn U64 tree__class__node_length(TreeNode_Class_* node);
-fn TreeNode_Class_* tree__class__node_get_child(TreeNode_Class_* node, U64 index);
-fn _Type_ tree__class__node_get_data(TreeNode_Class_* node, U64 index);
+U64 tree__class__node_length(TreeNode_Class_* node);
+TreeNode_Class_* tree__class__node_get_child(TreeNode_Class_* node, U64 index);
+_Type_ tree__class__node_get_data(TreeNode_Class_* node, U64 index);
 
-fn _ArrayTreeNode_Class_ _array_tree_node__class__make(Arena* arena);
-fn Nothing _array_tree_node__class__init(Arena* arena, _ArrayTreeNode_Class_* array);
-fn TreeNode_Class_* _array_tree_node__class__get(_ArrayTreeNode_Class_* array, U64 index);
-fn TreeNode_Class_* _array_tree_node__class__push(_ArrayTreeNode_Class_* array, TreeNode_Class_* ptr);
-fn U32 _array_tree_node__class__length(_ArrayTreeNode_Class_* array);
+_ArrayTreeNode_Class_ _array_tree_node__class__make(Arena* arena);
+Nothing _array_tree_node__class__init(Arena* arena, _ArrayTreeNode_Class_* array);
+TreeNode_Class_* _array_tree_node__class__get(_ArrayTreeNode_Class_* array, U64 index);
+TreeNode_Class_* _array_tree_node__class__push(_ArrayTreeNode_Class_* array, TreeNode_Class_* ptr);
+U32 _array_tree_node__class__length(_ArrayTreeNode_Class_* array);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -86,9 +86,9 @@ fn U32 _array_tree_node__class__length(_ArrayTreeNode_Class_* array);
 
 #ifdef SEPI_TREE__CLASS__IMPLEMENTATION
 
-fn Tree_Class_
+Tree_Class_
 tree__class__make(Arena* arena) {
-  start_profiling(1);
+  start_profiling();
 
   assert(arena != 0);
 
@@ -106,9 +106,9 @@ tree__class__make(Arena* arena) {
   return tree;
 }
 
-fn TreeNode_Class_*
+TreeNode_Class_*
 tree__class__push(Tree_Class_* tree, TreeNode_Class_* node, _Type_ data) {
-  start_profiling(1);
+  start_profiling();
 
   assert(tree != 0);
   assert(node != 0);
@@ -132,24 +132,24 @@ tree__class__push(Tree_Class_* tree, TreeNode_Class_* node, _Type_ data) {
   return stored_node;
 }
 
-fn U64
+U64
 tree__class__node_length(TreeNode_Class_* node) {
   return _array_tree_node__class__length(node->children);
 }
 
-fn TreeNode_Class_*
+TreeNode_Class_*
 tree__class__node_get_child(TreeNode_Class_* node, U64 index) {
   return _array_tree_node__class__get(node->children, index);
 }
 
-fn _Type_
+_Type_
 tree__class__node_get_data(TreeNode_Class_* node, U64 index) {
   return _array_tree_node__class__get(node->children, index)->data;
 }
 
-fn _ArrayTreeNode_Class_
+_ArrayTreeNode_Class_
 _array_tree_node__class__make(Arena* arena) {
-  start_profiling(1);
+  start_profiling();
 
   assert(arena != 0);
 
@@ -167,9 +167,9 @@ _array_tree_node__class__make(Arena* arena) {
   return array;
 }
 
-fn Nothing
+Nothing
 _array_tree_node__class__init(Arena* arena, _ArrayTreeNode_Class_* array) {
-  start_profiling(1);
+  start_profiling();
 
   assert(arena != 0);
   assert(array != 0);
@@ -190,9 +190,9 @@ _array_tree_node__class__init(Arena* arena, _ArrayTreeNode_Class_* array) {
   end_profiling();
 }
 
-fn TreeNode_Class_*
+TreeNode_Class_*
 _array_tree_node__class__get(_ArrayTreeNode_Class_* array, U64 index) {
-  start_profiling(1);
+  start_profiling();
 
   assert(array != 0);
   assert(index < array->capacity);
@@ -207,9 +207,9 @@ _array_tree_node__class__get(_ArrayTreeNode_Class_* array, U64 index) {
   return res;
 }
 
-fn TreeNode_Class_*
+TreeNode_Class_*
 _array_tree_node__class__push(_ArrayTreeNode_Class_* array, TreeNode_Class_* ptr) {
-  start_profiling(1);
+  start_profiling();
 
   assert(array != 0);
   assert(ptr != 0);
@@ -235,7 +235,7 @@ _array_tree_node__class__push(_ArrayTreeNode_Class_* array, TreeNode_Class_* ptr
   return res;
 }
 
-fn U32
+U32
 _array_tree_node__class__length(_ArrayTreeNode_Class_* array) {
   /* NOTE: no place for profiling! */
   return array->offset;

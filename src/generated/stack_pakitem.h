@@ -39,10 +39,10 @@ struct StackPakItem {
 /*                          API                          */
 /* ===================================================== */
 
-fn StackPakItem* stack_pakitem_create(Arena* arena);
-fn Nothing stack_pakitem_push(StackPakItem* stack, PakItem* pakitem);
-fn PakItem* stack_pakitem_pop(StackPakItem* stack);
-fn Nothing stack_pakitem_clean(StackPakItem* stack);
+StackPakItem* stack_pakitem_create(Arena* arena);
+Nothing stack_pakitem_push(StackPakItem* stack, PakItem* pakitem);
+PakItem* stack_pakitem_pop(StackPakItem* stack);
+Nothing stack_pakitem_clean(StackPakItem* stack);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -52,9 +52,9 @@ fn Nothing stack_pakitem_clean(StackPakItem* stack);
 
 mount_slave_profiling_context();
 
-fn StackPakItem*
+StackPakItem*
 stack_pakitem_create(Arena* arena) {
-  start_profiling(1);
+  start_profiling();
 
   StackPakItem* stack =
       arena_push(arena, sizeof(StackPakItem), alignof(StackPakItem), TRUE);
@@ -64,9 +64,9 @@ stack_pakitem_create(Arena* arena) {
   return stack;
 }
 
-fn Nothing
+Nothing
 stack_pakitem_push(StackPakItem* stack, PakItem* pakitem) {
-  start_profiling(1);
+  start_profiling();
 
   StackPakItemNode* node = arena_push(stack->arena, sizeof(StackPakItemNode),
                                       alignof(StackPakItemNode), FALSE);
@@ -78,9 +78,9 @@ stack_pakitem_push(StackPakItem* stack, PakItem* pakitem) {
   end_profiling();
 }
 
-fn PakItem*
+PakItem*
 stack_pakitem_pop(StackPakItem* stack) {
-  start_profiling(1);
+  start_profiling();
 
   PakItem* pakitem = 0;
   if (!stack->length) {
@@ -97,9 +97,9 @@ cleanup:
   return pakitem;
 }
 
-fn Nothing
+Nothing
 stack_pakitem_clean(StackPakItem* stack) {
-  start_profiling(1);
+  start_profiling();
 
   for (; stack->length > 0;) {
     stack_pakitem_pop(stack);
@@ -111,7 +111,7 @@ stack_pakitem_clean(StackPakItem* stack) {
   end_profiling();
 }
 
-fn U64
+U64
 // cppcheck-suppress unusedFunction
 stack_pakitem_length(const StackPakItem* stack) {
   return stack->length;

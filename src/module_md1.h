@@ -198,20 +198,20 @@ typedef struct {
 /*                          API                          */
 /* ===================================================== */
 
-fn Md1Error md1_load(Md1* md1, IOFile* io_file);
-fn Md1Error md1_get_vertices(const Md1* md1,
+Md1Error md1_load(Md1* md1, IOFile* io_file);
+Md1Error md1_get_vertices(const Md1* md1,
                           U32 pose_idx,
                           U32 frame_idx,
                           F32** frame_vbuf,
                           Sz* frame_vertex_buffer_size);
-fn Md1Error md1_get_vertices_v2(Md1* md1,
+Md1Error md1_get_vertices_v2(Md1* md1,
                              U32 pose_idx,
                              U32 frame_idx,
                              F32** vbuf,
                              Sz* vbuf_size,
                              U32** ibuf,
                              Sz* ibuf_size);
-fn Md1Error md1_unload(Md1* md1);
+Md1Error md1_unload(Md1* md1);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -223,9 +223,9 @@ fn Md1Error md1_unload(Md1* md1);
 
 mount_slave_profiling_context();
 
-local fn Md1Error
+local Md1Error
 md1_load_skins(Md1* md1, IOFile* io_file) {
-  start_profiling(1);
+  start_profiling();
 
   assert(md1 != 0);
   assert(io_file != 0);
@@ -299,9 +299,9 @@ md1_load_skins(Md1* md1, IOFile* io_file) {
   return err;
 }
 
-local fn Md1Error
+local Md1Error
 md1_load_uvs(const Md1* md1, IOFile* io_file, Md1UV** uvs) {
-  start_profiling(1);
+  start_profiling();
 
   assert(md1 != 0);
   assert(io_file != 0);
@@ -326,9 +326,9 @@ md1_load_uvs(const Md1* md1, IOFile* io_file, Md1UV** uvs) {
   return err;
 }
 
-local fn Md1Error
+local Md1Error
 md1_load_triangles(Md1* md1, IOFile* io_file, Md1FacedTriangle** fts) {
-  start_profiling(1);
+  start_profiling();
 
   assert(md1 != 0);
   assert(io_file != 0);
@@ -362,9 +362,9 @@ md1_load_triangles(Md1* md1, IOFile* io_file, Md1FacedTriangle** fts) {
   return err;
 }
 
-local fn Bool
+local Bool
 md1_has_pose_name_changed(ZStr new, CZStr old) {
-  start_profiling(1);
+  start_profiling();
 
   for (U32 i = 0; i < MD1_MAX_FRAME_NAME_LEN - 1; i++) {
     if (isdigit(new[i])) {
@@ -386,13 +386,13 @@ md1_has_pose_name_changed(ZStr new, CZStr old) {
   return FALSE;
 }
 
-local fn Md1Error
+local Md1Error
 md1_load_single_frame(Md1* md1,
                       IOFile* io_file,
                       U32 frame_idx,
                       ZStr frame_name,
                       Bool* is_bbox_loaded) {
-  start_profiling(1);
+  start_profiling();
 
   assert(md1 != 0);
   assert(io_file != 0);
@@ -544,9 +544,9 @@ md1_load_single_frame(Md1* md1,
   return err;
 }
 
-local fn Md1Error
+local Md1Error
 md1_load_frames(Md1* md1, IOFile* io_file) {
-  start_profiling(1);
+  start_profiling();
 
   assert(md1 != 0);
   assert(io_file != 0);
@@ -591,9 +591,9 @@ md1_load_frames(Md1* md1, IOFile* io_file) {
   return err;
 }
 
-local fn Md1Error
+local Md1Error
 md1_make_display_list(Md1* md1, Md1UV* uvs, Md1FacedTriangle* faced_triangles) {
-  start_profiling(1);
+  start_profiling();
 
   assert(md1 != 0);
   assert(uvs != 0);
@@ -650,7 +650,7 @@ md1_make_display_list(Md1* md1, Md1UV* uvs, Md1FacedTriangle* faced_triangles) {
 
 Md1Error
 md1_load(Md1* md1, IOFile* io_file) {
-  start_profiling(1);
+  start_profiling();
 
   assert(md1 != 0);
   assert(io_file != 0);
@@ -757,7 +757,7 @@ md1_get_vertices(const Md1* md1,
                  U32 pose_frame_idx,
                  F32** frame_vbuf,
                  Sz* frame_vertex_buffer_size) {
-  start_profiling(1);
+  start_profiling();
 
   assert(md1 != 0);
   assert(frame_vbuf != 0);
@@ -778,7 +778,7 @@ md1_get_vertices(const Md1* md1,
 
 Md1Error
 md1_unload(Md1* md1) {
-  start_profiling(1);
+  start_profiling();
 
   assert(md1 != 0);
   if (md1->arena) {

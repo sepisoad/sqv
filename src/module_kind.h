@@ -87,9 +87,9 @@ typedef enum {
 /*                          API                          */
 /* ===================================================== */
 
-fn KindError kind_guess_entry(Str, Kind*);
-fn KindError kind_guess_file(CZStr, Kind*);
-fn KindError kind_guess_buffer(CZStr, Kind*);
+KindError kind_guess_entry(Str, Kind*);
+KindError kind_guess_file(CZStr, Kind*);
+KindError kind_guess_buffer(CZStr, Kind*);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -99,9 +99,9 @@ fn KindError kind_guess_buffer(CZStr, Kind*);
 
 mount_slave_profiling_context();
 
-local fn KindError
+local KindError
 guess_file_type(CZStr buf, Kind* kind) {
-  start_profiling(1);
+  start_profiling();
 
   assert(buf != 0);
   assert(kind != 0);
@@ -123,10 +123,10 @@ cleanup:
   return err;
 }
 
-fn KindError
+KindError
 // cppcheck-suppress unusedFunction
 kind_guess_entry(Str path, Kind* kind) {
-  start_profiling(1);
+  start_profiling();
 
   assert(ZS(path) != 0);
   assert(path.length > 0);
@@ -339,10 +339,10 @@ cleanup:
   return err;
 }
 
-fn KindError
+KindError
 // cppcheck-suppress unusedFunction
 kind_guess_file(CZStr path, Kind* kind) {
-  start_profiling(1);
+  start_profiling();
 
   assert(path != 0);
   assert(kind != 0);
@@ -369,10 +369,10 @@ kind_guess_file(CZStr path, Kind* kind) {
   return err;
 }
 
-fn KindError
+KindError
 // cppcheck-suppress unusedFunction
 kind_guess_buffer(CZStr data, Kind* kind) {
-  start_profiling(1);
+  start_profiling();
 
   assert(data != 0);
   assert(kind != 0);

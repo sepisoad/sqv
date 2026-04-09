@@ -39,10 +39,10 @@ struct StackIOItem {
 /*                          API                          */
 /* ===================================================== */
 
-fn StackIOItem* stack_ioitem_create(Arena* arena);
-fn Nothing stack_ioitem_push(StackIOItem* stack, IOItem* ioitem);
-fn IOItem* stack_ioitem_pop(StackIOItem* stack);
-fn Nothing stack_ioitem_clean(StackIOItem* stack);
+StackIOItem* stack_ioitem_create(Arena* arena);
+Nothing stack_ioitem_push(StackIOItem* stack, IOItem* ioitem);
+IOItem* stack_ioitem_pop(StackIOItem* stack);
+Nothing stack_ioitem_clean(StackIOItem* stack);
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -52,9 +52,9 @@ fn Nothing stack_ioitem_clean(StackIOItem* stack);
 
 mount_slave_profiling_context();
 
-fn StackIOItem*
+StackIOItem*
 stack_ioitem_create(Arena* arena) {
-  start_profiling(1);
+  start_profiling();
 
   StackIOItem* stack =
       arena_push(arena, sizeof(StackIOItem), alignof(StackIOItem), TRUE);
@@ -64,9 +64,9 @@ stack_ioitem_create(Arena* arena) {
   return stack;
 }
 
-fn Nothing
+Nothing
 stack_ioitem_push(StackIOItem* stack, IOItem* ioitem) {
-  start_profiling(1);
+  start_profiling();
 
   StackIOItemNode* node = arena_push(stack->arena, sizeof(StackIOItemNode),
                                      alignof(StackIOItemNode), FALSE);
@@ -78,9 +78,9 @@ stack_ioitem_push(StackIOItem* stack, IOItem* ioitem) {
   end_profiling();
 }
 
-fn IOItem*
+IOItem*
 stack_ioitem_pop(StackIOItem* stack) {
-  start_profiling(1);
+  start_profiling();
 
   IOItem* ioitem = 0;
   if (!stack->length) {
@@ -97,9 +97,9 @@ cleanup:
   return ioitem;
 }
 
-fn Nothing
+Nothing
 stack_ioitem_clean(StackIOItem* stack) {
-  start_profiling(1);
+  start_profiling();
 
   for (; stack->length > 0;) {
     stack_ioitem_pop(stack);
@@ -111,7 +111,7 @@ stack_ioitem_clean(StackIOItem* stack) {
   end_profiling();
 }
 
-fn U64
+U64
 // cppcheck-suppress unusedFunction
 stack_ioitem_length(const StackIOItem* stack) {
   return stack->length;

@@ -21,18 +21,18 @@
 /*                          API                          */
 /* ===================================================== */
 
-embed fn Bool isle();
-embed fn I16 nd_i16(I16 num);
-embed fn I32 nd_i32(I32 num);
-embed fn I64 nd_i64(I64 num);
-embed fn F32 nd_f32(F32 num);
-embed fn F64 nd_f64(F64 num);
+embed Bool isle();
+embed I16 nd_i16(I16 num);
+embed I32 nd_i32(I32 num);
+embed I64 nd_i64(I64 num);
+embed F32 nd_f32(F32 num);
+embed F64 nd_f64(F64 num);
 
 /* ===================================================== */
 /*                   INLINE FUNCTIONS                    */
 /* ===================================================== */
 
-embed fn Bool
+embed Bool
 isle() {
   U16 num = 0x1;
   return (*(U8*)&num == 1);
@@ -40,14 +40,14 @@ isle() {
 
 /* ----------------------------------------------------- */
 
-embed fn I16
+embed I16
 nd_i16(I16 num) {
   return isle() ? num : (I16)((num >> 8) | (num << 8));
 }
 
 /* ----------------------------------------------------- */
 
-embed fn I32
+embed I32
 nd_i32(I32 num) {
   return isle() ? num
                 : (I32)((num >> 24) | ((num >> 8) & 0x0000FF00) |
@@ -56,7 +56,7 @@ nd_i32(I32 num) {
 
 /* ----------------------------------------------------- */
 
-embed fn I64
+embed I64
 nd_i64(I64 num) {
   return isle() ? num
                 : (I64)((num >> 56) | ((num >> 40) & 0x000000000000FF00LL) |
@@ -69,7 +69,7 @@ nd_i64(I64 num) {
 
 /* ----------------------------------------------------- */
 
-embed fn F32
+embed F32
 nd_f32(F32 num) {
   if (isle()) {
     return num;
@@ -87,7 +87,7 @@ nd_f32(F32 num) {
 
 /* ----------------------------------------------------- */
 
-embed fn F64
+embed F64
 nd_f64(F64 num) {
   if (isle()) {
     return num;
