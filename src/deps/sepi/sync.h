@@ -122,6 +122,13 @@ SyncCheckpoint sync_checkpoint_destroy(SyncCheckpoint checkpointt);
 SyncCheckpoint sync_checkpoint_await(SyncCheckpoint checkpointt);
 
 /* ===================================================== */
+/*                         MACROS                        */
+/* ===================================================== */
+
+#define sync_with_lock(lock) \
+  defer(sync_lock_acquire((lock)), sync_lock_release((lock)))
+
+/* ===================================================== */
 /*                    IMPLEMENTATION                     */
 /* ===================================================== */
 
