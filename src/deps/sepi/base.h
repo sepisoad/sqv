@@ -51,6 +51,7 @@ struct Empty {};
 #define local static
 #define master extern
 #define slave
+#define atomic _Atomic
 
 /* ===================================================== */
 /*                       CONSTANTS                       */
