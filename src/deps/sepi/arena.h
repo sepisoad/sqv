@@ -57,9 +57,9 @@ struct ArenaScratch {
 Arena* arena_create_(ArenaParams* arena_params);
 Nothing arena_destroy(Arena* arena);
 RawPtr arena_push(Arena* arena,
-                     U64 size_to_allocate,
-                     U64 memory_alignment,
-                     Bool with_zero);
+                  U64 size_to_allocate,
+                  U64 memory_alignment,
+                  Bool with_zero);
 Nothing arena_pop(Arena* arena, U64 amount);
 Nothing arena_pop_to(Arena* arena, U64 position);
 Nothing arena_clear(Arena* arena);
@@ -68,9 +68,9 @@ ArenaScratch arena_scratch_begin(Arena* arena);
 Nothing arena_scratch_end(ArenaScratch arena_scratch);
 embed Arena* arena_create();
 embed RawPtr* arena_push_array_0_init_aligned(Arena* arena,
-                                                 Sz size,
-                                                 U64 count,
-                                                 U64 alignment);
+                                              Sz size,
+                                              U64 count,
+                                              U64 alignment);
 
 /* ===================================================== */
 /*                   INLINE FUNCTIONS                    */
@@ -99,6 +99,14 @@ arena_push_array_0_init_aligned(Arena* arena,
 // TODO:
 // define a malloc like api here to make it possible to use my allocation
 // interface in foreign modules such as stb or sokol
+
+/* ===================================================== */
+/*                         MACROS                        */
+/* ===================================================== */
+
+#define with_scratch(arena)                                      \
+  for (U64 pos = arena_get_position((arena)), _i_ = 0; _i_ == 0; \
+       _i_ = 1, arena_pop_to(arena, pos))
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -272,16 +280,16 @@ arena_push(Arena* arena,
 /* ----------------------------------------------------- */
 
 Nothing
-arena_pop(Arena* a, U64 amount) {
+arena_pop(Arena* arena, U64 amount) {
   start_profiling();
 
-  U64 old_position = arena_get_position(a);
+  U64 old_position = arena_get_position(arena);
   U64 new_position = old_position;
   if (amount < old_position) {
     new_position = old_position - amount;
   }
 
-  arena_pop_to(a, new_position);
+  arena_pop_to(arena, new_position);
 
   end_profiling();
 }
@@ -289,25 +297,25 @@ arena_pop(Arena* a, U64 amount) {
 /* ----------------------------------------------------- */
 
 Nothing
-arena_pop_to(Arena* a, U64 position) {
+arena_pop_to(Arena* arena, U64 position) {
   start_profiling();
 
   Sz arena_header_size = sizeof(Arena);
   U64 normilized_position = max(arena_header_size, position);
-  Arena* current_block = a->current_block;
+  Arena* current_block = arena->current_block;
 
   for (Arena* previous_block = 0;
        current_block->base_position >= normilized_position;
        current_block = previous_block) {
     previous_block = current_block->previous_block;
     current_block->offset = arena_header_size;
-    current_block->previous_block = a->last_freed_block;
-    a->last_freed_block = current_block;
+    current_block->previous_block = arena->last_freed_block;
+    arena->last_freed_block = current_block;
     asan_poison_memory_region((U8*)current_block + arena_header_size,
                               current_block->reserved_size - arena_header_size);
   }
 
-  a->current_block = current_block;
+  arena->current_block = current_block;
   U64 new_offset = normilized_position - current_block->base_position;
   runtime_assert(new_offset <= current_block->offset);
   asan_poison_memory_region((U8*)current_block + new_offset,
@@ -320,10 +328,10 @@ arena_pop_to(Arena* a, U64 position) {
 /* ----------------------------------------------------- */
 
 Nothing
-arena_clear(Arena* a) {
+arena_clear(Arena* arena) {
   start_profiling();
 
-  arena_pop_to(a, 0);
+  arena_pop_to(arena, 0);
 
   end_profiling();
 }
@@ -331,10 +339,10 @@ arena_clear(Arena* a) {
 /* ----------------------------------------------------- */
 
 U64
-arena_get_position(Arena* a) {
+arena_get_position(Arena* arena) {
   start_profiling();
 
-  Arena* current_block = a->current_block;
+  Arena* current_block = arena->current_block;
   U64 position = current_block->base_position + current_block->offset;
 
   end_profiling();
@@ -344,22 +352,22 @@ arena_get_position(Arena* a) {
 /* ----------------------------------------------------- */
 
 ArenaScratch
-arena_scratch_begin(Arena* a) {
+arena_scratch_begin(Arena* arena) {
   start_profiling();
 
-  U64 position = arena_get_position(a);
+  U64 position = arena_get_position(arena);
 
   end_profiling();
-  return (ArenaScratch){a, position};
+  return (ArenaScratch){arena, position};
 }
 
 /* ----------------------------------------------------- */
 
 Nothing
-arena_scratch_end(ArenaScratch s) {
+arena_scratch_end(ArenaScratch scratch) {
   start_profiling();
 
-  arena_pop_to(s.arena, s.offset);
+  arena_pop_to(scratch.arena, scratch.offset);
 
   end_profiling();
 }

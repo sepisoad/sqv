@@ -10,6 +10,8 @@
 #include <sepi/endian.h>   /* only static inline */
 #include <sepi/buffer.h>   /* only static inline */
 #include <sepi/arena.h>
+#include <sepi/membuf.h> // TODO:
+#include <sepi/mempool.h> // TODO:
 #include <sepi/string.h>
 #include <sepi/context.h>
 #include <sepi/sync.h>

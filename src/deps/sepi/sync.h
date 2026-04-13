@@ -90,10 +90,11 @@ struct SyncCheckpoint {
 SyncThread* sync_thread_start(SyncThreadFn fnptr, RawPtr argptr, ContextID tag);
 Nothing sync_thread_await(SyncThread* thread);
 
+// NOTE: A.K.A Mutex
 SyncLock sync_lock_create(Nothing);
 Nothing sync_lock_destroy(SyncLock lock);
 Nothing sync_lock_acquire(SyncLock lock);
-Nothing sync_lock_acquire_for(SyncLock lock, Duration duration);
+// Nothing sync_lock_acquire_for(SyncLock lock, Duration duration);
 Nothing sync_lock_release(SyncLock lock);
 
 SyncRWLock sync_rwlock_create(Nothing);
@@ -102,27 +103,30 @@ Nothing sync_rwlock_acquire_for_reading(SyncRWLock rwlock);
 Nothing sync_rwlock_acquire_for_writing(SyncRWLock rwlock);
 Nothing sync_rwlock_release(SyncRWLock rwlock);
 
+// NOTE: A.K.A Semaphores
 SyncTokens sync_tokens_create(U32 initial_count, U32 max_count);
-SyncTokens sync_tokens_destroy(SyncTokens tokens);
-SyncTokens sync_tokens_acquire(SyncTokens tokens);
-SyncTokens sync_tokens_release(SyncTokens tokens);
+Nothing sync_tokens_destroy(SyncTokens tokens);
+Nothing sync_tokens_acquire(SyncTokens tokens);
+Nothing sync_tokens_release(SyncTokens tokens);
 
+// NOTE: A.K.A Conditions
 SyncSignal sync_signal_create(Nothing);
-SyncSignal sync_signal_destroy(SyncSignal signal);
-SyncSignal sync_signal_listen(SyncSignal signal, SyncLock lock);
-SyncSignal sync_signal_listen_for(SyncSignal signal,
+Nothing sync_signal_destroy(SyncSignal signal);
+Nothing sync_signal_listen(SyncSignal signal, SyncLock lock);
+Nothing sync_signal_listen_for(SyncSignal signal,
                                   SyncLock lock,
                                   Duration duration);
-SyncSignal sync_signal_rw_lock_listen(SyncSignal signal, SyncRWLock rwlock);
-SyncSignal sync_signal_rw_lock_listen_for(SyncSignal signal,
+Nothing sync_signal_rw_lock_listen(SyncSignal signal, SyncRWLock rwlock);
+Nothing sync_signal_rw_lock_listen_for(SyncSignal signal,
                                           SyncRWLock rwlock,
                                           Duration duration);
-SyncSignal sync_signal_notify_one(SyncSignal signal);
-SyncSignal sync_signal_notify_all(SyncSignal signal);
+Nothing sync_signal_notify_one(SyncSignal signal);
+Nothing sync_signal_notify_all(SyncSignal signal);
 
+// NOTE: A.K.A Barrier
 SyncCheckpoint sync_checkpoint_create(Nothing);
-SyncCheckpoint sync_checkpoint_destroy(SyncCheckpoint checkpointt);
-SyncCheckpoint sync_checkpoint_await(SyncCheckpoint checkpointt);
+Nothing sync_checkpoint_destroy(SyncCheckpoint checkpointt);
+Nothing sync_checkpoint_await(SyncCheckpoint checkpointt);
 
 /* ===================================================== */
 /*                         MACROS                        */
@@ -268,24 +272,24 @@ sync_lock_acquire(SyncLock lock) {
 
 /* ----------------------------------------------------- */
 
-Nothing
-sync_lock_acquire_for(SyncLock lock, Duration seconds) {
-  start_profiling();
+// Nothing
+// sync_lock_acquire_for(SyncLock lock, Duration seconds) {
+//   start_profiling();
 
-#if defined(OS_LINUX)
-  struct timespec _seconds = {.tv_sec = seconds, .tv_nsec = 0};
-  runtime_assert(
-      0 == pthread_mutex_timedlock((pthread_mutex_t*)lock.id[0], &_seconds));
-#elif defined(OS_MACOS)
-  // NOTE:
-  // unfortunately macos posix implementation does not support pthread_mutex_timedlock
-  not_implemented();
-#elif defined(OS_WINDOWS)
-  not_implemented();
-#endif
+// #if defined(OS_LINUX)
+//   struct timespec _seconds = {.tv_sec = seconds, .tv_nsec = 0};
+//   runtime_assert(
+//       0 == pthread_mutex_timedlock((pthread_mutex_t*)lock.id[0], &_seconds));
+// #elif defined(OS_MACOS)
+//   // NOTE:
+//   // unfortunately macos posix implementation does not support pthread_mutex_timedlock
+//   not_implemented();
+// #elif defined(OS_WINDOWS)
+//   not_implemented();
+// #endif
 
-  end_profiling();
-}
+//   end_profiling();
+// }
 
 /* ----------------------------------------------------- */
 
