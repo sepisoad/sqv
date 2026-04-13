@@ -7,8 +7,10 @@
 
 #if defined(OS_LINUX)
 #include <pthread.h>
+#include <time.h>
 #elif defined(OS_MACOS)
 #include <pthread.h>
+#include <time.h>
 #elif defined(OS_WINDOWS)
 #include <windows.h>
 #endif
@@ -91,13 +93,14 @@ Nothing sync_thread_await(SyncThread* thread);
 SyncLock sync_lock_create(Nothing);
 Nothing sync_lock_destroy(SyncLock lock);
 Nothing sync_lock_acquire(SyncLock lock);
+Nothing sync_lock_acquire_for(SyncLock lock, Duration duration);
 Nothing sync_lock_release(SyncLock lock);
 
-SyncRWLock sync_rw_lock_create(Nothing);
-SyncRWLock sync_rw_lock_destroy(SyncRWLock rw_lock);
-SyncRWLock sync_rw_lock_acquire_for_reading(SyncRWLock rw_lock);
-SyncRWLock sync_rw_lock_acquire_for_writing(SyncRWLock rw_lock);
-SyncRWLock sync_rw_lock_release(SyncRWLock rw_lock);
+SyncRWLock sync_rwlock_create(Nothing);
+Nothing sync_rwlock_destroy(SyncRWLock rwlock);
+Nothing sync_rwlock_acquire_for_reading(SyncRWLock rwlock);
+Nothing sync_rwlock_acquire_for_writing(SyncRWLock rwlock);
+Nothing sync_rwlock_release(SyncRWLock rwlock);
 
 SyncTokens sync_tokens_create(U32 initial_count, U32 max_count);
 SyncTokens sync_tokens_destroy(SyncTokens tokens);
@@ -110,9 +113,9 @@ SyncSignal sync_signal_listen(SyncSignal signal, SyncLock lock);
 SyncSignal sync_signal_listen_for(SyncSignal signal,
                                   SyncLock lock,
                                   Duration duration);
-SyncSignal sync_signal_rw_lock_listen(SyncSignal signal, SyncRWLock rw_lock);
+SyncSignal sync_signal_rw_lock_listen(SyncSignal signal, SyncRWLock rwlock);
 SyncSignal sync_signal_rw_lock_listen_for(SyncSignal signal,
-                                          SyncRWLock rw_lock,
+                                          SyncRWLock rwlock,
                                           Duration duration);
 SyncSignal sync_signal_notify_one(SyncSignal signal);
 SyncSignal sync_signal_notify_all(SyncSignal signal);
@@ -125,8 +128,14 @@ SyncCheckpoint sync_checkpoint_await(SyncCheckpoint checkpointt);
 /*                         MACROS                        */
 /* ===================================================== */
 
-#define sync_with_lock(lock) \
+#define with_lock(lock) \
   defer(sync_lock_acquire((lock)), sync_lock_release((lock)))
+
+#define with_read_lock(lock) \
+  defer(sync_rwlock_acquire_for_reading((lock)), sync_rwlock_release((lock)))
+
+#define with_write_lock(lock) \
+  defer(sync_rwlock_acquire_for_writing((lock)), sync_rwlock_release((lock)))
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -260,11 +269,117 @@ sync_lock_acquire(SyncLock lock) {
 /* ----------------------------------------------------- */
 
 Nothing
+sync_lock_acquire_for(SyncLock lock, Duration seconds) {
+  start_profiling();
+
+#if defined(OS_LINUX)
+  struct timespec _seconds = {.tv_sec = seconds, .tv_nsec = 0};
+  runtime_assert(
+      0 == pthread_mutex_timedlock((pthread_mutex_t*)lock.id[0], &_seconds));
+#elif defined(OS_MACOS)
+  // NOTE:
+  // unfortunately macos posix implementation does not support pthread_mutex_timedlock
+  not_implemented();
+#elif defined(OS_WINDOWS)
+  not_implemented();
+#endif
+
+  end_profiling();
+}
+
+/* ----------------------------------------------------- */
+
+Nothing
 sync_lock_release(SyncLock lock) {
   start_profiling();
 
 #if defined(OS_LINUX) || defined(OS_MACOS)
   runtime_assert(0 == pthread_mutex_unlock((pthread_mutex_t*)lock.id[0]));
+#elif defined(OS_WINDOWS)
+  not_implemented();
+#endif
+
+  end_profiling();
+}
+
+/* ----------------------------------------------------- */
+
+SyncRWLock
+sync_rwlock_create(Nothing) {
+  start_profiling();
+
+  SyncRWLock rwlock;
+
+#if defined(OS_LINUX) || defined(OS_MACOS)
+  pthread_rwlock_t* _rwlock =
+      arena_push(context_arena(), sizeof(pthread_rwlock_t),
+                 alignof(pthread_rwlock_t), TRUE);
+  runtime_assert(0 == pthread_rwlock_init(_rwlock, 0));
+  rwlock.id[0] = (U64)_rwlock;
+#elif defined(OS_WINDOWS)
+  not_implemented();
+#endif
+
+  end_profiling();
+  return rwlock;
+}
+
+/* ----------------------------------------------------- */
+
+Nothing
+sync_rwlock_destroy(SyncRWLock rwlock) {
+  start_profiling();
+
+  assert(0 != rwlock.id[0]);
+
+#if defined(OS_LINUX) || defined(OS_MACOS)
+  runtime_assert(0 == pthread_rwlock_destroy((pthread_rwlock_t*)rwlock.id[0]));
+#elif defined(OS_WINDOWS)
+  not_implemented();
+#endif
+
+  rwlock.id[0] = 0;
+  end_profiling();
+}
+
+/* ----------------------------------------------------- */
+
+Nothing
+sync_rwlock_acquire_for_reading(SyncRWLock rwlock) {
+  start_profiling();
+
+#if defined(OS_LINUX) || defined(OS_MACOS)
+  runtime_assert(0 == pthread_rwlock_rdlock((pthread_rwlock_t*)rwlock.id[0]));
+#elif defined(OS_WINDOWS)
+  not_implemented();
+#endif
+
+  end_profiling();
+}
+
+/* ----------------------------------------------------- */
+
+Nothing
+sync_rwlock_acquire_for_writing(SyncRWLock rwlock) {
+  start_profiling();
+
+#if defined(OS_LINUX) || defined(OS_MACOS)
+  runtime_assert(0 == pthread_rwlock_wrlock((pthread_rwlock_t*)rwlock.id[0]));
+#elif defined(OS_WINDOWS)
+  not_implemented();
+#endif
+
+  end_profiling();
+}
+
+/* ----------------------------------------------------- */
+
+Nothing
+sync_rwlock_release(SyncRWLock rwlock) {
+  start_profiling();
+
+#if defined(OS_LINUX) || defined(OS_MACOS)
+  runtime_assert(0 == pthread_rwlock_unlock((pthread_rwlock_t*)rwlock.id[0]));
 #elif defined(OS_WINDOWS)
   not_implemented();
 #endif
