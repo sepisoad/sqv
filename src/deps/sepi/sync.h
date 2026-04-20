@@ -7,9 +7,11 @@
 
 #if defined(OS_LINUX)
 #include <pthread.h>
+#include <semaphore.h>
 #include <time.h>
 #elif defined(OS_MACOS)
 #include <pthread.h>
+#include <dispatch/dispatch.h>
 #include <time.h>
 #elif defined(OS_WINDOWS)
 #include <windows.h>
@@ -89,6 +91,7 @@ struct SyncCheckpoint {
 
 SyncThread* sync_thread_start(SyncThreadFn fnptr, RawPtr argptr, ContextID tag);
 Nothing sync_thread_await(SyncThread* thread);
+Nothing sync_thread_sleep(Duration duration);
 
 // NOTE: A.K.A Mutex
 SyncLock sync_lock_create(Nothing);
@@ -104,7 +107,8 @@ Nothing sync_rwlock_acquire_for_writing(SyncRWLock rwlock);
 Nothing sync_rwlock_release(SyncRWLock rwlock);
 
 // NOTE: A.K.A Semaphores
-SyncTokens sync_tokens_create(U32 initial_count, U32 max_count);
+// TODO: tokens are not really tested!
+SyncTokens sync_tokens_create(U32 initial_count);
 Nothing sync_tokens_destroy(SyncTokens tokens);
 Nothing sync_tokens_acquire(SyncTokens tokens);
 Nothing sync_tokens_release(SyncTokens tokens);
@@ -114,12 +118,12 @@ SyncSignal sync_signal_create(Nothing);
 Nothing sync_signal_destroy(SyncSignal signal);
 Nothing sync_signal_listen(SyncSignal signal, SyncLock lock);
 Nothing sync_signal_listen_for(SyncSignal signal,
-                                  SyncLock lock,
-                                  Duration duration);
+                               SyncLock lock,
+                               Duration duration);
 Nothing sync_signal_rw_lock_listen(SyncSignal signal, SyncRWLock rwlock);
 Nothing sync_signal_rw_lock_listen_for(SyncSignal signal,
-                                          SyncRWLock rwlock,
-                                          Duration duration);
+                                       SyncRWLock rwlock,
+                                       Duration duration);
 Nothing sync_signal_notify_one(SyncSignal signal);
 Nothing sync_signal_notify_all(SyncSignal signal);
 
@@ -140,6 +144,9 @@ Nothing sync_checkpoint_await(SyncCheckpoint checkpointt);
 
 #define with_write_lock(lock) \
   defer(sync_rwlock_acquire_for_writing((lock)), sync_rwlock_release((lock)))
+
+#define with_tokens(tokens) \
+  defer(sync_tokens_acquire((tokens)), sync_tokens_release((tokens)))
 
 /* ===================================================== */
 /*                    IMPLEMENTATION                     */
@@ -218,6 +225,24 @@ sync_thread_await(SyncThread* thread) {
 
 /* ----------------------------------------------------- */
 
+Nothing
+sync_thread_sleep(Duration duration) {
+  start_profiling();
+
+#if defined(OS_LINUX) || defined(OS_MACOS)
+  struct timespec ts;
+  ts.tv_sec = duration / 1000000000L;
+  ts.tv_nsec = duration % 1000000000L;
+  nanosleep(&ts, NULL);
+#elif defined(OS_WINDOWS)
+  Sleep((unsigned long)(duration / 1000000L));
+#endif
+
+  end_profiling();
+}
+
+/* ----------------------------------------------------- */
+
 SyncLock
 sync_lock_create(Nothing) {
   start_profiling();
@@ -282,8 +307,8 @@ sync_lock_acquire(SyncLock lock) {
 //       0 == pthread_mutex_timedlock((pthread_mutex_t*)lock.id[0], &_seconds));
 // #elif defined(OS_MACOS)
 //   // NOTE:
-//   // unfortunately macos posix implementation does not support pthread_mutex_timedlock
-//   not_implemented();
+//   // unfortunately macos posix implementation does not support
+//   pthread_mutex_timedlock not_implemented();
 // #elif defined(OS_WINDOWS)
 //   not_implemented();
 // #endif
@@ -392,6 +417,110 @@ sync_rwlock_release(SyncRWLock rwlock) {
 }
 
 /* ----------------------------------------------------- */
+
+SyncTokens
+sync_tokens_create(U32 initial_count) {
+  start_profiling();
+
+  SyncTokens tokens;
+
+#if defined(OS_LINUX)
+  sem_t* _sem =
+      arena_push(context_arena(), sizeof(sem_t), alignof(sem_t), TRUE);
+  runtime_assert(0 == sem_init(_sem, 0, initial_count));
+  tokens.id[0] = (U64)_sem;
+#elif defined(OS_MACOS)
+  dispatch_semaphore_t* _sem =
+      arena_push(context_arena(), sizeof(dispatch_semaphore_t),
+                 alignof(dispatch_semaphore_t), TRUE);
+  *_sem = dispatch_semaphore_create(initial_count);
+  runtime_assert(0 != _sem);
+  tokens.id[0] = (U64)_sem;
+#elif defined(OS_WINDOWS)
+  not_implemented();
+#endif
+
+  end_profiling();
+  return tokens;
+}
+
+/* ----------------------------------------------------- */
+
+Nothing
+sync_tokens_destroy(SyncTokens tokens) {
+  start_profiling();
+
+  assert(0 != tokens.id[0]);
+
+#if defined(OS_LINUX)
+  runtime_assert(0 == sem_destroy((sem_t*)tokens.id[0]));
+#elif defined(OS_MACOS)
+  // dispatch_release((dispatch_semaphore_t)tokens.id[0]);
+#elif defined(OS_WINDOWS)
+#endif
+
+  end_profiling();
+}
+
+/* ----------------------------------------------------- */
+
+Nothing
+sync_tokens_acquire(SyncTokens tokens) {
+  start_profiling();
+
+  assert(0 != tokens.id[0]);
+
+#if defined(OS_LINUX)
+  while (1) {
+    i32 result = sem_wait((sem_t*)tokens.id[0]);
+    if (0 == result)
+      break;
+
+    if (EAGAIN == result)
+      continue;
+
+    break;
+  }
+#elif defined(OS_MACOS)
+  while (1) {
+    I32 result = dispatch_semaphore_wait((dispatch_semaphore_t)tokens.id[0], DISPATCH_TIME_NOW);
+    if (0 == result)
+      break;
+  }
+#elif defined(OS_WINDOWS)
+#endif
+
+  end_profiling();
+}
+
+/* ----------------------------------------------------- */
+
+Nothing
+sync_tokens_release(SyncTokens tokens) {
+  start_profiling();
+
+  assert(0 != tokens.id[0]);
+
+#if defined(OS_LINUX)
+  runtime_assert(0 == sem_post((sem_t*)tokens.id[0]));
+  while (1) {
+    i32 result = sem_wait((sem_t*)tokens.id[0]);
+    if (0 == result)
+      break;
+
+    if (EAGAIN == result)
+      continue;
+
+    break;
+  }
+
+#elif defined(OS_MACOS)
+  dispatch_semaphore_signal((dispatch_semaphore_t)tokens.id[0]);
+#elif defined(OS_WINDOWS)
+#endif
+
+  end_profiling();
+}
 
 /* ===================================================== */
 /*                          END                          */

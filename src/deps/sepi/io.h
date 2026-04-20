@@ -361,7 +361,7 @@ io_close_file(IOFile* io_file) {
     fclose(io_file->file);
   }
 
-  buf_reset(io_file->buffer);
+  buf_reset(&io_file->buffer);
   zero_memory(io_file, sizeof(IOFile));
 
   end_profiling();
@@ -418,7 +418,7 @@ io_load_file(Arena* arena, Str path, IOFile* io_file) {
 
   Sz rsize = fread((void*)io_file->buffer.base, 1, io_file->buffer.size,
                    io_file->file);
-  if (rsize == io_file->buffer.size) {
+  if (rsize != io_file->buffer.size) {
     err = IO_ERR_FILE_OPEN;
     goto cleanup;
   }
