@@ -473,8 +473,10 @@ app_md1_init_offscreen_pipeline() {
 
   // bbox pipeline
   sg_buffer_desc bbox_vertex_buffer_desc = {
-      .size = sizeof(g_state.md1.gpu.bbox_vertex_buffer),
-      .usage.dynamic_update = true,
+      .data = {
+          .ptr = g_state.md1.gpu.bbox_vertex_buffer,
+          .size = g_state.md1.gpu.bbox_vertex_buffer_size,
+      }
   };
   sg_buffer bbox_vertex_buffer = sg_make_buffer(&bbox_vertex_buffer_desc);
   sg_shader bbox_shader =
@@ -811,7 +813,7 @@ app_md1_draw_mode_md1_loaded(U32 window_width, U32 window_height) {
   F32 dx = bbmax->X - bbmin->X;
   F32 dy = bbmax->Y - bbmin->Y;
   F32 dz = bbmax->Z - bbmin->Z;
-  F32 rad = 1.0f * sqrtf(dx * (dx * g_state.zoom) + dy * dy + dz * dz);
+  F32 rad = 0.8f * sqrtf(dx * (dx * g_state.zoom) + dy * dy + dz * dz);
 
   F32 aspect = window_width / window_height;
   F32 dist = (rad / sinf(HMM_ToRadians(FOV) * 0.5f)) * 1.5f;
@@ -833,7 +835,11 @@ app_md1_draw_mode_md1_loaded(U32 window_width, U32 window_height) {
       HMM_MultiplyMat4(rotation,
                        HMM_Translate(HMM_MultiplyVec3f(center, -1.0f))));
 
-  default_vs_params_t vs_params = {
+  default_vs_params_t default_vs_params = {
+      .mvp = HMM_MultiplyMat4(view_proj, model),
+  };
+
+  bbox_vs_params_t bbox_vs_params = {
       .mvp = HMM_MultiplyMat4(view_proj, model),
   };
 
@@ -842,18 +848,28 @@ app_md1_draw_mode_md1_loaded(U32 window_width, U32 window_height) {
 
   md1_get_vertices(md1, g_state.pose, g_state.frame, &vertex_buffer,
                    &vertex_buffer_size);
-  I32 elements_count = vertex_buffer_size / sizeof(F32) / 5;
+  I32 mode_elements_count = (I32) (vertex_buffer_size / sizeof(F32) / 5);
+  I32 bbox_elements_count = (I32) (g_state.md1.gpu.bbox_vertex_buffer_size / sizeof(F32) / 3);
 
   sg_update_buffer(
       g_state.offscreen.normal.bindings.vertex_buffers[0],
       &(sg_range){.ptr = vertex_buffer, .size = vertex_buffer_size});
 
+  //
   sg_begin_pass(&(sg_pass){.action = g_state.display.pass_action,
                            .swapchain = sglue_swapchain()});
   sg_apply_pipeline(g_state.offscreen.normal.pipeline);
-  sg_apply_uniforms(UB_default_vs_params, &SG_RANGE(vs_params));
+  sg_apply_uniforms(UB_default_vs_params, &SG_RANGE(default_vs_params));
   sg_apply_bindings(&g_state.offscreen.normal.bindings);
-  sg_draw(0, elements_count, 1);
+  sg_draw(0, mode_elements_count, 1);
+
+
+  sg_apply_pipeline(g_state.offscreen.bbox.pipeline);
+  sg_apply_uniforms(UB_bbox_vs_params, &SG_RANGE(bbox_vs_params));
+  sg_apply_bindings(&g_state.offscreen.bbox.bindings);
+  sg_draw(0, bbox_elements_count, 1);
+  //
+
   sg_end_pass();
   sg_commit();
 

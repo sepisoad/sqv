@@ -176,10 +176,8 @@ typedef struct {
 
 typedef struct {
   F32* frames_vertex_buffer;
-  F32* frames_vertex_buffer_v2;
   Sz frame_vertex_buffer_size;
   U32* index_buffer;
-  Sz index_buffer_size;
   F32 bbox_vertex_buffer[MD1_BBOX_VERTEX_COUNT * 3];
   Sz bbox_vertex_buffer_size;
 } Md1GPUBuffers;
