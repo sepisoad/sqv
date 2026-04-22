@@ -126,8 +126,8 @@ local Nothing app_md1_init(Nothing);
 local AppMd1Error app_md1_init_style(struct nk_style* s);
 local AppMd1Error app_md1_init_icons(Nothing);
 local AppMd1Error app_md1_init_icon(AppMd1Image* app_icon,
-                                     const U8* buffer,
-                                     Sz size);
+                                    const U8* buffer,
+                                    Sz size);
 local AppMd1Error app_md1_init_display_pipeline();
 local AppMd1Error app_md1_init_offscreen_pipeline();
 
@@ -143,17 +143,17 @@ local AppMd1Error app_md1_handle_drop_event(Str path);
 local Nothing app_md1_frame(Nothing);
 local U32 app_md1_draw_ui(struct nk_context* ctx);
 local Nothing app_md1_draw_mode_empty(struct nk_context* ctx,
+                                      nk_flags window_flags,
+                                      U32 window_width,
+                                      U32 window_height);
+local Nothing app_md1_draw_mode_failed(struct nk_context* ctx,
                                        nk_flags window_flags,
                                        U32 window_width,
                                        U32 window_height);
-local Nothing app_md1_draw_mode_failed(struct nk_context* ctx,
-                                        nk_flags window_flags,
-                                        U32 window_width,
-                                        U32 window_height);
 local Nothing app_md1_draw_mode_md1_loaded(struct nk_context* ctx,
-                                            nk_flags window_flags,
-                                            U32 window_width,
-                                            U32 window_height);
+                                           nk_flags window_flags,
+                                           U32 window_width,
+                                           U32 window_height);
 /* ===================================================== */
 /*                       FUNCTIONS                       */
 /* ===================================================== */

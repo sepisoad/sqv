@@ -53,7 +53,7 @@ Nothing context_scratch_end(ArenaScratch scratch);
 
 mount_slave_profiling_context();
 
-thread_local Context* context_thread_local = 0;
+thread_local Context context_thread_local;
 
 /* ----------------------------------------------------- */
 
@@ -61,13 +61,13 @@ Nothing
 context_init(ContextID context_id) {
   start_profiling();
 
-  assert(context_thread_local == 0);
+  assert(context_thread_local.arena == 0);
 
   Arena* arena = arena_create();
-  context_thread_local =
-      arena_push(arena, sizeof(Context), alignof(Context), TRUE);
-  context_thread_local->arena = arena;
-  context_thread_local->id = context_id;
+  // context_thread_local =
+  //     arena_push(arena, sizeof(Context), alignof(Context), TRUE);
+  context_thread_local.arena = arena;
+  context_thread_local.id = context_id;
 
   end_profiling();
 }
@@ -78,11 +78,10 @@ Nothing
 context_deinit(Nothing) {
   start_profiling();
 
-  assert(context_thread_local != 0);
-  assert(context_thread_local->arena != 0);
+  assert(context_thread_local.arena != 0);
 
-  arena_destroy(context_thread_local->arena);
-  context_thread_local = 0;
+  arena_destroy(context_thread_local.arena);
+  zero_memory(&context_thread_local, sizeof(Context));
 
   end_profiling();
 }
@@ -93,11 +92,10 @@ Context*
 context(Nothing) {
   start_profiling();
 
-  assert(context_thread_local != 0);
-  assert(context_thread_local->arena != 0);
+  assert(context_thread_local.arena != 0);
 
   end_profiling();
-  return context_thread_local;
+  return &context_thread_local;
 }
 
 /* ----------------------------------------------------- */
@@ -106,11 +104,10 @@ Arena*
 context_arena(Nothing) {
   start_profiling();
 
-  assert(context_thread_local != 0);
-  assert(context_thread_local->arena != 0);
+  assert(context_thread_local.arena != 0);
 
   end_profiling();
-  return context_thread_local->arena;
+  return context_thread_local.arena;
 }
 
 /* ----------------------------------------------------- */
@@ -119,11 +116,10 @@ ArenaScratch
 context_scratch_begin(Nothing) {
   start_profiling();
 
-  assert(context_thread_local != 0);
-  assert(context_thread_local->arena != 0);
+  assert(context_thread_local.arena != 0);
 
   end_profiling();
-  return arena_scratch_begin(context_thread_local->arena);
+  return arena_scratch_begin(context_thread_local.arena);
 }
 
 /* ----------------------------------------------------- */
