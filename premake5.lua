@@ -278,7 +278,7 @@ newaction {
   trigger = "app-md1",
   description = "run md1 app",
   execute = function()
-    os.execute(".build/app_md1")
+    os.execute(".build/app_md1 --input=.keep/dog.mdl")
   end
 }
 

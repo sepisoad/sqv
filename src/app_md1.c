@@ -92,7 +92,11 @@ local struct {
   AppMd1Mode mode;
   Bool is_app_styled;
   Md1 md1;
-  // U32 zoom;
+  U32 pose;
+  U32 frame;
+  U32 skin;
+  U32 zoom;
+  F32 rotation_y;
   Str input_path;
   IOFile input_io_file;
   Str512 error_text;
@@ -128,6 +132,7 @@ local AppMd1Error app_md1_init_icons(Nothing);
 local AppMd1Error app_md1_init_icon(AppMd1Image* app_icon,
                                     const U8* buffer,
                                     Sz size);
+local Nothing app_md1_init_state();
 local AppMd1Error app_md1_init_display_pipeline();
 local AppMd1Error app_md1_init_offscreen_pipeline();
 
@@ -141,7 +146,6 @@ local Nothing app_md1_handle_user_input_events(const sapp_event* e);
 local AppMd1Error app_md1_handle_drop_event(Str path);
 
 local Nothing app_md1_frame(Nothing);
-local U32 app_md1_draw_ui(struct nk_context* ctx);
 local Nothing app_md1_draw_mode_empty(struct nk_context* ctx,
                                       nk_flags window_flags,
                                       U32 window_width,
@@ -150,10 +154,7 @@ local Nothing app_md1_draw_mode_failed(struct nk_context* ctx,
                                        nk_flags window_flags,
                                        U32 window_width,
                                        U32 window_height);
-local Nothing app_md1_draw_mode_md1_loaded(struct nk_context* ctx,
-                                           nk_flags window_flags,
-                                           U32 window_width,
-                                           U32 window_height);
+local Nothing app_md1_draw_mode_md1_loaded(U32 window_width, U32 window_height);
 /* ===================================================== */
 /*                       FUNCTIONS                       */
 /* ===================================================== */
@@ -201,6 +202,8 @@ local Nothing
 app_md1_init(Nothing) {
   start_profiling();
 
+  app_md1_init_state();
+
   g_state.app = app_create(0, 0);
 
   sg_setup(&(sg_desc){
@@ -213,8 +216,6 @@ app_md1_init(Nothing) {
       .dpi_scale = sapp_dpi_scale(),
       .logger.func = slog_func,
   });
-
-  g_state.mode = APP_MD1_MODE_EMPTY;
 
   app_md1_init_display_pipeline();
 
@@ -394,6 +395,34 @@ cleanup:
 
 /* ===================================================== */
 
+local Nothing
+app_md1_init_state() {
+  start_profiling();
+
+  g_state.mode = APP_MD1_MODE_EMPTY;
+  g_state.zoom = 0;
+  str512_reset(&g_state.error_text);
+
+  // g_state.display.pass_action;
+
+  // g_state.offscreen.normal.pipeline;
+  // g_state.offscreen.normal.bindings;
+  // g_state.offscreen.normal.data;
+  // g_state.offscreen.normal.target;
+  // g_state.offscreen.normal.view;
+  // g_state.offscreen.normal.vbuf;
+  // g_state.offscreen.normal.size;
+
+  // g_state.offscreen.bbox.pipeline;
+  // g_state.offscreen.bbox.bindings;
+  // g_state.offscreen.bbox.vbuf;
+  // g_state.offscreen.bbox.size;
+
+  end_profiling();
+}
+
+/* ===================================================== */
+
 local AppMd1Error
 app_md1_init_display_pipeline() {
   start_profiling();
@@ -418,8 +447,9 @@ app_md1_init_offscreen_pipeline() {
 
   // main 3d model pipeline
   sg_buffer_desc vertex_buffer_desc = {
-      .data = {.ptr = g_state.offscreen.normal.vbuf,
-               .size = g_state.offscreen.normal.vbuf_size}};
+      .size = g_state.offscreen.normal.vbuf_size,
+      .usage.dynamic_update = true,
+  };
   sg_buffer vertex_buffer = sg_make_buffer(&vertex_buffer_desc);
   sg_shader shader =
       sg_make_shader(default_md1_model_shader_desc(sg_query_backend()));
@@ -434,6 +464,7 @@ app_md1_init_offscreen_pipeline() {
       .shader = shader,
       .primitive_type = SG_PRIMITIVETYPE_TRIANGLES,
       .cull_mode = SG_CULLMODE_NONE,
+      .face_winding = SG_FACEWINDING_CCW,
       .depth = {.compare = SG_COMPAREFUNC_LESS_EQUAL, .write_enabled = true},
       .layout = {.attrs = {[ATTR_default_md1_model_position] =
                                {.format = SG_VERTEXFORMAT_FLOAT3},
@@ -441,11 +472,10 @@ app_md1_init_offscreen_pipeline() {
                                .format = SG_VERTEXFORMAT_FLOAT2}}}});
 
   // bbox pipeline
-  g_state.offscreen.bbox.vbuf = (F32*)g_state.md1.gpu.bbox_vertex_buffer;
-  g_state.offscreen.bbox.vbuf_size = sizeof(g_state.md1.gpu.bbox_vertex_buffer);
   sg_buffer_desc bbox_vertex_buffer_desc = {
-      .data = {.ptr = g_state.offscreen.bbox.vbuf,
-               .size = g_state.offscreen.bbox.vbuf_size}};
+      .size = sizeof(g_state.md1.gpu.bbox_vertex_buffer),
+      .usage.dynamic_update = true,
+  };
   sg_buffer bbox_vertex_buffer = sg_make_buffer(&bbox_vertex_buffer_desc);
   sg_shader bbox_shader =
       sg_make_shader(bbox_md1_bbox_shader_desc(sg_query_backend()));
@@ -455,6 +485,7 @@ app_md1_init_offscreen_pipeline() {
       .shader = bbox_shader,
       .primitive_type = SG_PRIMITIVETYPE_LINES,
       .cull_mode = SG_CULLMODE_NONE,
+      .face_winding = SG_FACEWINDING_CCW,
       .depth = {.compare = SG_COMPAREFUNC_LESS_EQUAL, .write_enabled = false},
       .layout = {.attrs = {[ATTR_bbox_md1_bbox_position] = {
                                .format = SG_VERTEXFORMAT_FLOAT3}}}});
@@ -472,11 +503,6 @@ app_md1_cleanup(Nothing) {
   md1_unload(&g_state.md1);
   snk_shutdown();
   sg_shutdown();
-  if (APP_MD1_MODE_LOADED == g_state.mode) {
-    // TODO:
-    // handle this shit!
-    // pak_unload(&g_state.pak);
-  }
   app_destroy(g_state.app);
 
   end_profiling();
@@ -488,21 +514,14 @@ local Nothing
 app_md1_cleanup_reload(Nothing) {
   start_profiling();
 
-  AppMd1Mode old_mode = g_state.mode;
-  g_state.mode = APP_MD1_MODE_EMPTY;
-  // g_state.is_extracting_requested = FALSE;
-  // g_state.is_packaging_requested = FALSE;
-  // g_state.requested_extracting_md1_item = 0;
-
   app_md1_cleanup_3d();
-
-  str512_reset(&g_state.error_text);
-
   io_close_file(&g_state.input_io_file);
-  if (APP_MD1_MODE_LOADED == old_mode) {
+  if (APP_MD1_MODE_LOADED == g_state.mode) {
     md1_unload(&g_state.md1);
   }
+
   arena_clear(context_arena());
+  app_md1_init_state();
 
   end_profiling();
 }
@@ -671,53 +690,43 @@ app_md1_frame(Nothing) {
   start_profiling();
   start_frame_profiling();
 
-  struct nk_context* ctx = snk_new_frame();
-  if (g_state.is_app_styled == FALSE) {
-    app_md1_init_style(&ctx->style);
-    g_state.is_app_styled = TRUE;
-  }
+  // if (g_state.is_app_styled == FALSE) {
+  //   app_md1_init_style(&ctx->style);
+  //   g_state.is_app_styled = TRUE;
+  // }
 
-  app_md1_draw_ui(ctx);
-  sg_begin_pass(&(sg_pass){
-      .action = g_state.display.pass_action,
-      .swapchain = sglue_swapchain(),
-  });
-  snk_render(sapp_width(), sapp_height());
+  // app_md1_draw_ui(ctx);
 
-  sg_end_pass();
-  sg_commit();
+  // sg_begin_pass(&(sg_pass){
+  //     .action = g_state.display.pass_action,
+  //     .swapchain = sglue_swapchain(),
+  // });
+  // snk_render(sapp_width(), sapp_height());
 
-  end_frame_profiling();
-  end_profiling();
-}
+  // sg_end_pass();
 
-/* ===================================================== */
+  // sg_commit();
 
-local U32
-app_md1_draw_ui(struct nk_context* ctx) {
-  start_profiling();
-
-  local char window_title[] = "SQV::Md1 Viewer";
-  local nk_flags window_flags = NK_WINDOW_BORDER;
+  ///
 
   U32 window_width = sapp_width();
   U32 window_height = sapp_height();
-
-  nk_style_hide_cursor(ctx);
+  local nk_flags window_flags = NK_WINDOW_BORDER;
 
   if (g_state.mode == APP_MD1_MODE_EMPTY) {
+    struct nk_context* ctx = snk_new_frame();
     app_md1_draw_mode_empty(ctx, window_flags, window_width, window_height);
   } else if (g_state.mode == APP_MD1_MODE_LOADED) {
-    app_md1_draw_mode_md1_loaded(ctx, window_flags, window_width,
-                                 window_height);
+    app_md1_draw_mode_md1_loaded(window_width, window_height);
   } else if (g_state.mode == APP_MD1_MODE_FAILED) {
+    struct nk_context* ctx = snk_new_frame();
     app_md1_draw_mode_failed(ctx, window_flags, window_width, window_height);
   }
 
-  Bool is_window_closed = !nk_window_is_closed(ctx, window_title);
+  ///
 
+  end_frame_profiling();
   end_profiling();
-  return is_window_closed;
 }
 
 /* ===================================================== */
@@ -790,16 +799,62 @@ app_md1_draw_mode_failed(struct nk_context* ctx,
 /* ===================================================== */
 
 local Nothing
-app_md1_draw_mode_md1_loaded(struct nk_context* ctx,
-                             nk_flags window_flags,
-                             U32 window_width,
-                             U32 window_height) {
+app_md1_draw_mode_md1_loaded(U32 window_width, U32 window_height) {
   start_profiling();
 
-  ignore(ctx);
-  ignore(window_flags);
-  ignore(window_width);
-  ignore(window_height);
+  const F32 FOV = 60.0f;
+
+  Md1* md1 = &g_state.md1;
+  hmm_v3* bbmin = &md1->bbox.min;
+  hmm_v3* bbmax = &md1->bbox.max;
+  hmm_vec3 center = HMM_MultiplyVec3f(HMM_AddVec3(*bbmin, *bbmax), 0.5f);
+  F32 dx = bbmax->X - bbmin->X;
+  F32 dy = bbmax->Y - bbmin->Y;
+  F32 dz = bbmax->Z - bbmin->Z;
+  F32 rad = 1.0f * sqrtf(dx * (dx * g_state.zoom) + dy * dy + dz * dz);
+
+  F32 aspect = window_width / window_height;
+  F32 dist = (rad / sinf(HMM_ToRadians(FOV) * 0.5f)) * 1.5f;
+
+  hmm_vec3 eye = HMM_AddVec3(center, HMM_Vec3(0.0f, 0.0f, dist));
+  hmm_vec3 up = HMM_Vec3(0.0f, 1.0f, 0.0f);
+
+  hmm_mat4 proj = HMM_Perspective(FOV, aspect, 0.1f, dist * 4.0f);
+  hmm_mat4 view = HMM_LookAt(eye, center, up);
+  hmm_mat4 view_proj = HMM_MultiplyMat4(proj, view);
+
+  hmm_mat4 rxm = HMM_Rotate(90, HMM_Vec3(1.0f, 0.0f, 0.0f));
+  hmm_mat4 rym = HMM_Rotate(180, HMM_Vec3(0.0f, 1.0f, 0.0f));
+  hmm_mat4 rzm = HMM_Rotate(g_state.rotation_y, HMM_Vec3(0.0f, 0.0f, -1.0f));
+  hmm_mat4 rotation = HMM_MultiplyMat4(HMM_MultiplyMat4(rxm, rym), rzm);
+
+  hmm_mat4 model = HMM_MultiplyMat4(
+      HMM_Translate(center),
+      HMM_MultiplyMat4(rotation,
+                       HMM_Translate(HMM_MultiplyVec3f(center, -1.0f))));
+
+  default_vs_params_t vs_params = {
+      .mvp = HMM_MultiplyMat4(view_proj, model),
+  };
+
+  F32* vertex_buffer = NULL;
+  Sz vertex_buffer_size = 0;
+
+  md1_get_vertices(md1, g_state.pose, g_state.frame, &vertex_buffer,
+                   &vertex_buffer_size);
+
+  sg_update_buffer(
+      g_state.offscreen.normal.bindings.vertex_buffers[0],
+      &(sg_range){.ptr = vertex_buffer, .size = vertex_buffer_size});
+
+  sg_begin_pass(&(sg_pass){.action = g_state.display.pass_action,
+                           .swapchain = sglue_swapchain()});
+  sg_apply_pipeline(g_state.offscreen.normal.pipeline);
+  sg_apply_uniforms(UB_default_vs_params, &SG_RANGE(vs_params));
+  sg_apply_bindings(&g_state.offscreen.normal.bindings);
+  sg_draw(0, vertex_buffer_size / sizeof(F32) / 5, 1);
+  sg_end_pass();
+  sg_commit();
 
   end_profiling();
 }

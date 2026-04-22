@@ -204,13 +204,6 @@ Md1Error md1_get_vertices(const Md1* md1,
                           U32 frame_idx,
                           F32** frame_vbuf,
                           Sz* frame_vertex_buffer_size);
-Md1Error md1_get_vertices_v2(Md1* md1,
-                             U32 pose_idx,
-                             U32 frame_idx,
-                             F32** vbuf,
-                             Sz* vbuf_size,
-                             U32** ibuf,
-                             Sz* ibuf_size);
 Md1Error md1_unload(Md1* md1);
 
 /* ===================================================== */
@@ -238,6 +231,7 @@ md1_load_skins(Md1* md1, IOFile* io_file) {
   U32 sw = details->skin_width;
   U32 sh = details->skin_height;
   Sz skin_sz = sw * sh;
+  Buf* filebuf = &io_file->buffer;
   Md1Skin* skins = arena_push(a, sizeof(Md1Skin) * details->skins_count,
                               alignof(Md1Skin), FALSE);
   Md1Error err = MD1_ERR_SUCCESS;
@@ -245,8 +239,8 @@ md1_load_skins(Md1* md1, IOFile* io_file) {
   runtime_assert(skins != 0);
 
   for (U32 skin_idx = 0; skin_idx < details->skins_count; skin_idx++) {
-    const MD1SkinType* st = (MD1SkinType*)buf_get_position(&io_file->buffer);
-    buf_move_offset(&io_file->buffer, sizeof(MD1SkinType));
+    const MD1SkinType* st = (MD1SkinType*)buf_get_position(filebuf);
+    buf_move_offset(filebuf, sizeof(MD1SkinType));
 
     if (MD1_SKIN_SINGLE == *st) {
       Sz data_sz = sizeof(U8) * skin_sz * channels;
@@ -254,7 +248,7 @@ md1_load_skins(Md1* md1, IOFile* io_file) {
       assert(data != 0);
 
       // constructing pixel data
-      const U8* const raw_data = (U8*)buf_get_position(&io_file->buffer);
+      const U8* const raw_data = (U8*)buf_get_position(filebuf);
       for (U32 raw_idx = 0, rgba = 0; raw_idx < skin_sz; raw_idx++, rgba += 4) {
         U32 palette_idx = raw_data[raw_idx];
         data[rgba + 0] = quake1_palette[palette_idx][0]; /* RED */
@@ -262,7 +256,7 @@ md1_load_skins(Md1* md1, IOFile* io_file) {
         data[rgba + 2] = quake1_palette[palette_idx][2]; /* BLUE */
         data[rgba + 3] = 255; /* ALPHA - always opaque */
       }
-      buf_move_offset(&io_file->buffer, skin_sz);
+      buf_move_offset(filebuf, skin_sz);
 
       // allocating texture data
       skins[skin_idx].image = sg_make_image(&(sg_image_desc){
@@ -310,6 +304,8 @@ md1_load_uvs(const Md1* md1, IOFile* io_file, Md1UV** uvs) {
   assert(uvs != 0);
 
   const Md1Details* details = &md1->details;
+  Buf* filebuf = &io_file->buffer;
+
   Arena* a = md1->arena;
   Sz uvs_sz = sizeof(Md1UV) * details->vertices_count;
   Md1Error err = MD1_ERR_SUCCESS;
@@ -318,9 +314,9 @@ md1_load_uvs(const Md1* md1, IOFile* io_file, Md1UV** uvs) {
   runtime_assert(*uvs != 0);
 
   for (U32 i = 0; i < details->vertices_count; i++) {
-    buf_read_i32(&io_file->buffer, &(*uvs)[i].is_on_seam);
-    buf_read_i32(&io_file->buffer, &(*uvs)[i].u);
-    buf_read_i32(&io_file->buffer, &(*uvs)[i].v);
+    buf_read_i32(filebuf, &(*uvs)[i].is_on_seam);
+    buf_read_i32(filebuf, &(*uvs)[i].u);
+    buf_read_i32(filebuf, &(*uvs)[i].v);
   }
 
   end_profiling();
@@ -337,6 +333,7 @@ md1_load_triangles(Md1* md1, IOFile* io_file, Md1FacedTriangle** fts) {
   assert(fts != 0);
 
   const Md1Details* const details = &md1->details;
+  Buf* filebuf = &io_file->buffer;
   Arena* arena = md1->arena;
   Sz fts_sz = sizeof(Md1FacedTriangle) * details->triangles_count;
   // Sz idices_sz = sizeof(U32) * details->triangles_count * 3;
@@ -348,10 +345,10 @@ md1_load_triangles(Md1* md1, IOFile* io_file, Md1FacedTriangle** fts) {
   for (U32 i = 0, j = 0; i < details->triangles_count; i++, j += 3) {
     I32 a, b, c, f = 0;
 
-    buf_read_i32(&io_file->buffer, &f);
-    buf_read_i32(&io_file->buffer, &a);
-    buf_read_i32(&io_file->buffer, &b);
-    buf_read_i32(&io_file->buffer, &c);
+    buf_read_i32(filebuf, &f);
+    buf_read_i32(filebuf, &a);
+    buf_read_i32(filebuf, &b);
+    buf_read_i32(filebuf, &c);
 
     (*fts)[i].is_front_face = f;
     (*fts)[i].vertices_idx[0] = a;
@@ -405,9 +402,10 @@ md1_load_single_frame(Md1* md1,
   Md1Error err = MD1_ERR_SUCCESS;
   Sz frame_single_size = sizeof(MD1FrameSingle);
   MD1FrameSingle frame_single = {0};
+  Buf* filebuf = &io_file->buffer;
 
-  memcpy(&frame_single, buf_get_position(&io_file->buffer), frame_single_size);
-  buf_move_offset(&io_file->buffer, frame_single_size);
+  memcpy(&frame_single, buf_get_position(filebuf), frame_single_size);
+  buf_move_offset(filebuf, frame_single_size);
 
   if (md1_has_pose_name_changed(frame_single.name, frame_name) &&
       frame_idx > 0) {
@@ -514,7 +512,7 @@ md1_load_single_frame(Md1* md1,
     md1->gpu.bbox_vertex_buffer_size = size;
   }
 
-  // Md1NormalVertex* nv = (Md1NormalVertex*)buf_get_position(&io_file->buffer);
+  // Md1NormalVertex* nv = (Md1NormalVertex*)buf_get_position(filebuf);
 
   Md1Vertex* frame_verts =
       md1->vertices + (details->vertices_count * frame_idx);
@@ -526,7 +524,7 @@ md1_load_single_frame(Md1* md1,
     // NOTE: basically 'Md1NormalVertex' is composed of 4 one byte elements
     //       so we do not need to be worried about endianness and we can
     //       safely copy the memory here!
-    memcpy(&nv, buf_get_position(&io_file->buffer), nv_size);
+    memcpy(&nv, buf_get_position(filebuf), nv_size);
 
     frame_verts[i].vertex.X = nv.vertex[0];
     frame_verts[i].vertex.Y = nv.vertex[1];
@@ -538,7 +536,7 @@ md1_load_single_frame(Md1* md1,
     frame_verts[i].normal.Y = quake1_normals[nv.normal_idx][1];
     frame_verts[i].normal.Z = quake1_normals[nv.normal_idx][2];
 
-    buf_move_offset(&io_file->buffer, sizeof(Md1NormalVertex));
+    buf_move_offset(filebuf, sizeof(Md1NormalVertex));
   }
 
   end_profiling();
@@ -559,6 +557,7 @@ md1_load_frames(Md1* md1, IOFile* io_file) {
   char frame_name[MD1_MAX_FRAME_NAME_LEN] = {0};
   Bool is_bbox_loaded = FALSE;
   Md1Error err = MD1_ERR_SUCCESS;
+  Buf* filebuf = &io_file->buffer;
 
   Sz vertices_sz =
       sizeof(Md1Vertex) * details->vertices_count * details->frames_count;
@@ -578,7 +577,7 @@ md1_load_frames(Md1* md1, IOFile* io_file) {
 
   for (U32 frame_idx = 0; frame_idx < details->frames_count; frame_idx++) {
     MD1FrameType ft = 0;
-    buf_read_i32(&io_file->buffer, &ft);
+    buf_read_i32(filebuf, &ft);
 
     if (MD1_FT_SINGLE == ft) {
       md1_load_single_frame(md1, io_file, frame_idx, frame_name,
@@ -661,28 +660,29 @@ md1_load(Arena* arena, Md1* md1, IOFile* io_file) {
   Md1Error err = MD1_ERR_SUCCESS;
   zero_memory(md1, sizeof(Md1));
   Md1RawHeader rh = {0};
+  Buf* filebuf = &io_file->buffer;
 
-  buf_read_i32(&io_file->buffer, &rh.magic_code);
-  buf_read_i32(&io_file->buffer, &rh.version);
-  buf_read_f32(&io_file->buffer, &rh.scale[0]);
-  buf_read_f32(&io_file->buffer, &rh.scale[1]);
-  buf_read_f32(&io_file->buffer, &rh.scale[2]);
-  buf_read_f32(&io_file->buffer, &rh.translate[0]);
-  buf_read_f32(&io_file->buffer, &rh.translate[1]);
-  buf_read_f32(&io_file->buffer, &rh.translate[2]);
-  buf_read_f32(&io_file->buffer, &rh.bounding_radius);
-  buf_read_f32(&io_file->buffer, &rh.eye_position[0]);
-  buf_read_f32(&io_file->buffer, &rh.eye_position[1]);
-  buf_read_f32(&io_file->buffer, &rh.eye_position[2]);
-  buf_read_i32(&io_file->buffer, &rh.skins_count);
-  buf_read_i32(&io_file->buffer, &rh.skin_width);
-  buf_read_i32(&io_file->buffer, &rh.skin_height);
-  buf_read_i32(&io_file->buffer, &rh.vertices_count);
-  buf_read_i32(&io_file->buffer, &rh.triangles_count);
-  buf_read_i32(&io_file->buffer, &rh.frames_count);
-  buf_read_i32(&io_file->buffer, &rh.sync_type);
-  buf_read_i32(&io_file->buffer, &rh.flags);
-  buf_read_f32(&io_file->buffer, &rh.size);
+  buf_read_i32(filebuf, &rh.magic_code);
+  buf_read_i32(filebuf, &rh.version);
+  buf_read_f32(filebuf, &rh.scale[0]);
+  buf_read_f32(filebuf, &rh.scale[1]);
+  buf_read_f32(filebuf, &rh.scale[2]);
+  buf_read_f32(filebuf, &rh.translate[0]);
+  buf_read_f32(filebuf, &rh.translate[1]);
+  buf_read_f32(filebuf, &rh.translate[2]);
+  buf_read_f32(filebuf, &rh.bounding_radius);
+  buf_read_f32(filebuf, &rh.eye_position[0]);
+  buf_read_f32(filebuf, &rh.eye_position[1]);
+  buf_read_f32(filebuf, &rh.eye_position[2]);
+  buf_read_i32(filebuf, &rh.skins_count);
+  buf_read_i32(filebuf, &rh.skin_width);
+  buf_read_i32(filebuf, &rh.skin_height);
+  buf_read_i32(filebuf, &rh.vertices_count);
+  buf_read_i32(filebuf, &rh.triangles_count);
+  buf_read_i32(filebuf, &rh.frames_count);
+  buf_read_i32(filebuf, &rh.sync_type);
+  buf_read_i32(filebuf, &rh.flags);
+  buf_read_f32(filebuf, &rh.size);
 
   Md1Details* details = &md1->details;
 
@@ -755,19 +755,19 @@ Md1Error
 md1_get_vertices(const Md1* md1,
                  U32 pose_idx,
                  U32 pose_frame_idx,
-                 F32** frame_vbuf,
+                 F32** frame_vertex_buffer,
                  Sz* frame_vertex_buffer_size) {
   start_profiling();
 
   assert(md1 != 0);
-  assert(frame_vbuf != 0);
+  assert(frame_vertex_buffer != 0);
   assert(frame_vertex_buffer_size != 0);
   assert(pose_idx < md1->details.poses_count);
   assert(pose_frame_idx < md1->poses[pose_idx].frames_count);
 
   Md1Error err = MD1_ERR_SUCCESS;
   const Md1Pose* const pose = &md1->poses[pose_idx];
-  *frame_vbuf =
+  *frame_vertex_buffer =
       &md1->gpu.frames_vertex_buffer[(pose->first_frame + pose_frame_idx) *
                                      md1->gpu.frame_vertex_buffer_size];
   *frame_vertex_buffer_size = md1->gpu.frame_vertex_buffer_size * sizeof(F32);
