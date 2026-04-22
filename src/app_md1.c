@@ -842,6 +842,7 @@ app_md1_draw_mode_md1_loaded(U32 window_width, U32 window_height) {
 
   md1_get_vertices(md1, g_state.pose, g_state.frame, &vertex_buffer,
                    &vertex_buffer_size);
+  I32 elements_count = vertex_buffer_size / sizeof(F32) / 5;
 
   sg_update_buffer(
       g_state.offscreen.normal.bindings.vertex_buffers[0],
@@ -852,7 +853,7 @@ app_md1_draw_mode_md1_loaded(U32 window_width, U32 window_height) {
   sg_apply_pipeline(g_state.offscreen.normal.pipeline);
   sg_apply_uniforms(UB_default_vs_params, &SG_RANGE(vs_params));
   sg_apply_bindings(&g_state.offscreen.normal.bindings);
-  sg_draw(0, vertex_buffer_size / sizeof(F32) / 5, 1);
+  sg_draw(0, elements_count, 1);
   sg_end_pass();
   sg_commit();
 
