@@ -102,9 +102,9 @@ struct IOItem {
 
 IOError io_create_file(Arena* arena, Str path, IOFile* io_file);
 IOError io_create_file_with_size(Arena* arena,
-                                     Str path,
-                                     Sz size,
-                                     IOFile* io_file);
+                                 Str path,
+                                 Sz size,
+                                 IOFile* io_file);
 IOError io_open_file(Arena* arena, Str path, IOFile* io_file);
 IOError io_close_file(IOFile* io_file);
 IOError io_load_file(Arena* a, Str path, IOFile* io_file);
@@ -115,12 +115,10 @@ IOError io_is_path_a_file(Str path, Bool* is_file);
 IOError io_is_path_a_directory(Str path, Bool* is_dir);
 IOError io_make_directory(Str path, IOFlags flags);
 IOError io_read_directory(Arena* arena,
-                              Str path,
-                              IOItem* io_item,
-                              IOFlags flags);
-IOError io_get_directory_children_count(Str path,
-                                            U32* count,
-                                            IOFlags flags);
+                          Str path,
+                          IOItem* io_item,
+                          IOFlags flags);
+IOError io_get_directory_children_count(Str path, U32* count, IOFlags flags);
 IOError io_get_path_base_name(Arena* arena, Str path, Str* out);
 IOError io_get_path_directory_name(Arena* arena, Str path, Str* out);
 
@@ -258,13 +256,13 @@ io_write_from_i64(IOFile* io_file, I64* i64) {
 mount_slave_profiling_context();
 
 local IOError io_read_directory_(Arena* arena,
-                                    Str path,
-                                    IOItem* io_item,
-                                    IOFlags flags);
+                                 Str path,
+                                 IOItem* io_item,
+                                 IOFlags flags);
 local IOError io_read_directory_recursively_(Arena* arena,
-                                                Str path,
-                                                IOItem* io_item,
-                                                IOFlags flags);
+                                             Str path,
+                                             IOItem* io_item,
+                                             IOFlags flags);
 local IOError io_make_directory_(Str path);
 local IOError io_make_directory_recursively_(Str path);
 
@@ -413,7 +411,7 @@ io_load_file(Arena* arena, Str path, IOFile* io_file) {
   rewind(io_file->file);
 
   io_file->buffer.base =
-      (const U8*)arena_push(arena, io_file->buffer.size, alignof(U8), FALSE);
+      arena_push(arena, io_file->buffer.size, alignof(U8), FALSE);
   runtime_assert(io_file->buffer.base != 0);
 
   Sz rsize = fread((void*)io_file->buffer.base, 1, io_file->buffer.size,

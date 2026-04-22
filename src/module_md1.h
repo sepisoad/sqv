@@ -198,7 +198,7 @@ typedef struct {
 /*                          API                          */
 /* ===================================================== */
 
-Md1Error md1_load(Md1* md1, IOFile* io_file);
+Md1Error md1_load(Arena* arena, Md1* md1, IOFile* io_file);
 Md1Error md1_get_vertices(const Md1* md1,
                           U32 pose_idx,
                           U32 frame_idx,
@@ -238,7 +238,8 @@ md1_load_skins(Md1* md1, IOFile* io_file) {
   U32 sw = details->skin_width;
   U32 sh = details->skin_height;
   Sz skin_sz = sw * sh;
-  Md1Skin* skins = arena_push(a, sizeof(Md1Skin) * details->skins_count, alignof(Md1Skin), FALSE);
+  Md1Skin* skins = arena_push(a, sizeof(Md1Skin) * details->skins_count,
+                              alignof(Md1Skin), FALSE);
   Md1Error err = MD1_ERR_SUCCESS;
 
   runtime_assert(skins != 0);
@@ -649,13 +650,13 @@ md1_make_display_list(Md1* md1, Md1UV* uvs, Md1FacedTriangle* faced_triangles) {
 }
 
 Md1Error
-md1_load(Md1* md1, IOFile* io_file) {
+md1_load(Arena* arena, Md1* md1, IOFile* io_file) {
   start_profiling();
 
   assert(md1 != 0);
   assert(io_file != 0);
   assert(io_file->buffer.base != 0);
-  assert(md1->arena == 0);
+  assert(arena != 0);
 
   Md1Error err = MD1_ERR_SUCCESS;
   zero_memory(md1, sizeof(Md1));
@@ -710,8 +711,7 @@ md1_load(Md1* md1, IOFile* io_file) {
   runtime_assert(details->triangles_count > 0);
   runtime_assert(details->frames_count > 0);
 
-  // TODO: set some initial params
-  md1->arena = arena_create();
+  md1->arena = arena;
 
   err = md1_load_skins(md1, io_file);
   if (err != MD1_ERR_SUCCESS) {
@@ -780,11 +780,14 @@ Md1Error
 md1_unload(Md1* md1) {
   start_profiling();
 
-  assert(md1 != 0);
-  if (md1->arena) {
-    arena_destroy(md1->arena);
-    md1->arena = 0;
-  }
+  // assert(md1 != 0);
+  // if (md1->arena) {
+  //   arena_destroy(md1->arena);
+  //   md1->arena = 0;
+  // }
+
+  // NOTE:
+  // since we recived arena from outside world, we do not care who cleans it up
 
   end_profiling();
   return MD1_ERR_SUCCESS;

@@ -643,7 +643,7 @@ app_md1_handle_drop_event(Str path) {
     goto cleanup;
   }
 
-  Md1Error mderr = md1_load(&g_state.md1, &io_file);
+  Md1Error mderr = md1_load(context_arena(), &g_state.md1, &io_file);
   if (MD1_ERR_SUCCESS != mderr) {
     err = APP_MD1_ERR_MODULE_MD1;
     goto cleanup;
