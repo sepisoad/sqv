@@ -108,8 +108,6 @@ local struct {
       sg_pipeline pipeline;
       sg_bindings bindings;
       sg_buffer vertex_data;
-      sg_image render_target;
-      sg_view render_target_view;
       F32* vbuf;
       Sz vbuf_size;
     } normal;
@@ -119,6 +117,13 @@ local struct {
       F32* vbuf;
       Sz vbuf_size;
     } bbox;
+    struct {
+      sg_image image;
+      sg_view view;
+      sg_view view_attr;
+      sg_sampler sampler;
+      snk_image_t ui_image;
+    } render_target;
   } offscreen;
 } g_state;
 
@@ -476,12 +481,40 @@ app_md1_init_offscreen_pipeline() {
       .data = {
           .ptr = g_state.md1.gpu.bbox_vertex_buffer,
           .size = g_state.md1.gpu.bbox_vertex_buffer_size,
-      }
-  };
+      }};
   sg_buffer bbox_vertex_buffer = sg_make_buffer(&bbox_vertex_buffer_desc);
   sg_shader bbox_shader =
       sg_make_shader(bbox_md1_bbox_shader_desc(sg_query_backend()));
   g_state.offscreen.bbox.bindings.vertex_buffers[0] = bbox_vertex_buffer;
+
+  // offscreen render target
+  g_state.offscreen.render_target.image = sg_make_image(&(sg_image_desc){
+      .usage.color_attachment = true,
+      .width = APP_MD1_WINDOW_WIDTH,
+      .height = APP_MD1_WINDOW_HEIGHT,
+      .pixel_format = SG_PIXELFORMAT_RGBA8,
+      // .sample_count = SG_PIXELFORMAT_DEPTH,
+  });
+
+  g_state.offscreen.render_target.view = sg_make_view(&(sg_view_desc){
+      .texture = {.image = g_state.offscreen.render_target.image},
+  });
+
+  g_state.offscreen.render_target.view_attr = sg_make_view(&(sg_view_desc){
+      .color_attachment = {.image = g_state.offscreen.render_target.image},
+  });
+
+  g_state.offscreen.render_target.sampler = sg_make_sampler(&(sg_sampler_desc){
+      .min_filter = SG_FILTER_NEAREST,
+      .mag_filter = SG_FILTER_NEAREST,
+      .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
+      .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
+  });
+
+  g_state.offscreen.render_target.ui_image = snk_make_image(&(snk_image_desc_t){
+      .texture_view = g_state.offscreen.render_target.view,
+      .sampler = g_state.offscreen.render_target.sampler,
+  });
 
   g_state.offscreen.bbox.pipeline = sg_make_pipeline(&(sg_pipeline_desc){
       .shader = bbox_shader,
@@ -595,10 +628,9 @@ app_md1_cleanup_3d(Nothing) {
   AppMd1Error err = APP_MD1_ERR_SUCCESS;
 
   sg_destroy_buffer(g_state.offscreen.normal.vertex_data);
-  sg_destroy_image(g_state.offscreen.normal.render_target);
-  sg_destroy_view(g_state.offscreen.normal.render_target_view);
-  // sg_destroy_sampler();
-  // sg_destroy_shader();
+  sg_destroy_image(g_state.offscreen.render_target.image);
+  sg_destroy_view(g_state.offscreen.render_target.view);
+  snk_destroy_image(g_state.offscreen.render_target.ui_image);
   sg_destroy_pipeline(g_state.offscreen.normal.pipeline);
 
   end_profiling();
@@ -692,10 +724,15 @@ app_md1_frame(Nothing) {
   start_profiling();
   start_frame_profiling();
 
-  // if (g_state.is_app_styled == FALSE) {
-  //   app_md1_init_style(&ctx->style);
-  //   g_state.is_app_styled = TRUE;
-  // }
+  struct nk_context* ctx = snk_new_frame();
+  U32 window_width = sapp_width();
+  U32 window_height = sapp_height();
+  local nk_flags window_flags = NK_WINDOW_BORDER;
+
+  if (g_state.is_app_styled == FALSE) {
+    app_md1_init_style(&ctx->style);
+    g_state.is_app_styled = TRUE;
+  }
 
   // app_md1_draw_ui(ctx);
 
@@ -711,21 +748,15 @@ app_md1_frame(Nothing) {
 
   ///
 
-  U32 window_width = sapp_width();
-  U32 window_height = sapp_height();
-  local nk_flags window_flags = NK_WINDOW_BORDER;
-
   if (g_state.mode == APP_MD1_MODE_EMPTY) {
-    struct nk_context* ctx = snk_new_frame();
     app_md1_draw_mode_empty(ctx, window_flags, window_width, window_height);
   } else if (g_state.mode == APP_MD1_MODE_LOADED) {
     app_md1_draw_mode_md1_loaded(window_width, window_height);
   } else if (g_state.mode == APP_MD1_MODE_FAILED) {
-    struct nk_context* ctx = snk_new_frame();
     app_md1_draw_mode_failed(ctx, window_flags, window_width, window_height);
   }
 
-  ///
+  sg_commit();
 
   end_frame_profiling();
   end_profiling();
@@ -848,30 +879,28 @@ app_md1_draw_mode_md1_loaded(U32 window_width, U32 window_height) {
 
   md1_get_vertices(md1, g_state.pose, g_state.frame, &vertex_buffer,
                    &vertex_buffer_size);
-  I32 mode_elements_count = (I32) (vertex_buffer_size / sizeof(F32) / 5);
-  I32 bbox_elements_count = (I32) (g_state.md1.gpu.bbox_vertex_buffer_size / sizeof(F32) / 3);
+  I32 mode_elements_count = (I32)(vertex_buffer_size / sizeof(F32) / 5);
+  I32 bbox_elements_count =
+      (I32)(g_state.md1.gpu.bbox_vertex_buffer_size / sizeof(F32) / 3);
 
   sg_update_buffer(
       g_state.offscreen.normal.bindings.vertex_buffers[0],
       &(sg_range){.ptr = vertex_buffer, .size = vertex_buffer_size});
 
-  //
   sg_begin_pass(&(sg_pass){.action = g_state.display.pass_action,
                            .swapchain = sglue_swapchain()});
+
   sg_apply_pipeline(g_state.offscreen.normal.pipeline);
   sg_apply_uniforms(UB_default_vs_params, &SG_RANGE(default_vs_params));
   sg_apply_bindings(&g_state.offscreen.normal.bindings);
   sg_draw(0, mode_elements_count, 1);
 
-
   sg_apply_pipeline(g_state.offscreen.bbox.pipeline);
   sg_apply_uniforms(UB_bbox_vs_params, &SG_RANGE(bbox_vs_params));
   sg_apply_bindings(&g_state.offscreen.bbox.bindings);
   sg_draw(0, bbox_elements_count, 1);
-  //
 
   sg_end_pass();
-  sg_commit();
 
   end_profiling();
 }
